@@ -1,0 +1,100 @@
+/* css/components/entries.css */
+
+/* Component: Today's Entries Section */
+.today-entries {
+    margin-top: var(--spacing-xl);
+    padding: var(--spacing-lg);
+    background: var(--color-bg-secondary);
+    border-radius: var(--radius-lg);
+  }
+  
+  .today-entries__title {
+    margin-bottom: var(--spacing-md);
+    font-size: var(--font-size-xl);
+    color: var(--color-text);
+  }
+  
+  .today-entries__list {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-md);
+  }
+  
+  .today-entries__empty {
+    padding: var(--spacing-xl);
+    text-align: center;
+    color: var(--color-text-muted);
+    font-style: italic;
+  }
+  
+  /* Component: Entry Card */
+  .entry-card {
+    padding: var(--spacing-md);
+    background: var(--color-bg);
+    border-radius: var(--radius-md);
+    border: 1px solid var(--color-border);
+    box-shadow: var(--shadow-sm);
+  }
+  
+  .entry-card__header {
+    display: flex;
+    gap: var(--spacing-md);
+    align-items: baseline;
+    margin-bottom: var(--spacing-sm);
+  }
+  
+  .entry-card__title {
+    font-size: var(--font-size-base);
+    font-weight: 600;
+    color: var(--color-text);
+  }
+  
+  .entry-card__duration {
+    font-size: var(--font-size-lg);
+    font-weight: 700;
+    color: var(--color-primary);
+    padding-left: 1rem;
+
+  }
+  
+  .entry-card__meta {
+    display: flex;
+    gap: var(--spacing-md);
+    font-size: var(--font-size-sm);
+    color: var(--color-text-light);
+  }
+  
+  .entry-card__category {
+    padding: var(--spacing-xs) var(--spacing-sm);
+    background: var(--color-primary-light);
+    border-radius: var(--radius-sm);
+    font-size: 0.75rem;
+    font-weight: 500;
+    color: var(--color-primary-dark);
+  }
+  
+  .entry-card__time {
+    color: var(--color-text-light);
+    margin-left: 1rem;
+  }
+  
+  .entry-card__notes {
+    margin-top: 0.75rem;
+    padding-top: 0.75rem;
+    border-top: 1px solid var(--color-border);
+    font-size: var(--font-size-sm);
+    color: var(--color-text-light);
+    font-style: italic;
+  }
+  
+  /* Component: Total */
+  .entries-total {
+    padding: 0.75rem;
+    margin-bottom: var(--spacing-md);
+    background: var(--color-primary-light);
+    border-radius: var(--radius-md);
+    text-align: center;
+    font-size: var(--font-size-base);
+    color: var(--color-primary-dark);
+  }
+  

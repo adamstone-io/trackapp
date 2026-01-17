@@ -5,6 +5,7 @@ import { Task } from "../domain/task.js";
 import { TimeEntry } from "../domain/time-entry.js";
 import { TimerView } from "../views/timer-view.js";
 import { CurrentTaskView } from "../views/current-task-view.js";
+import { EntriesView } from "../views/list-entries-view.js";
 import { formatTime } from "../utils/time.js";
 import { saveTimeEntries, loadTimeEntries } from "../data/storage.js";
 
@@ -69,10 +70,32 @@ export function createTimerController() {
     timeEntries.push(activeEntry);
     saveTimeEntries(timeEntries);
 
+    // Refresh the entries list to show the new entry
+    refreshEntriesList();
+
     console.log("Entry completed and saved:", activeEntry);
 
     currentTask.clearCurrentTask();
     activeEntry = null;
+  }
+
+  /**
+   * Refresh the today's entries list.
+   */
+  function refreshEntriesList() {
+    const entries = loadTimeEntries();
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    const tomorrow = new Date(today);
+    tomorrow.setDate(tomorrow.getDate() + 1);
+
+    const todayEntries = entries.filter((entry) => {
+      const entryDate = new Date(entry.startedAt);
+      return entryDate >= today && entryDate < tomorrow;
+    });
+
+    EntriesView.render(todayEntries);
   }
 
   return () => {

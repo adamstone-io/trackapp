@@ -1,0 +1,44 @@
+/* css/base/variables.css */
+:root {
+    /* Colors */
+    --color-primary: #2563eb;
+    --color-primary-dark: #1e40af;
+    --color-primary-light: #eff6ff;
+    
+    --color-success: #10b981;
+    --color-danger: #ef4444;
+    --color-warning: #f59e0b;
+    
+    --color-text: #333;
+    --color-text-light: #666;
+    --color-text-muted: #999;
+    
+    --color-bg: #ffffff;
+    --color-bg-secondary: #f9f9f9;
+    --color-border: #e0e0e0;
+    
+    /* Spacing */
+    --spacing-xs: 0.25rem;
+    --spacing-sm: 0.5rem;
+    --spacing-md: 1rem;
+    --spacing-lg: 1.5rem;
+    --spacing-xl: 2rem;
+    
+    /* Typography */
+    --font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    --font-size-sm: 0.875rem;
+    --font-size-base: 1rem;
+    --font-size-lg: 1.125rem;
+    --font-size-xl: 1.25rem;
+    
+    /* Border radius */
+    --radius-sm: 4px;
+    --radius-md: 6px;
+    --radius-lg: 8px;
+    
+    /* Shadows */
+    --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.05);
+    --shadow-md: 0 4px 6px rgba(0, 0, 0, 0.1);
+    --shadow-lg: 0 10px 15px rgba(0, 0, 0, 0.1);
+  }
+  
