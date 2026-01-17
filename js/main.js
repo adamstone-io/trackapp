@@ -1,19 +1,16 @@
 // main.js
-import { createTimer } from "./controllers/timer-controller.js";
-import { byId } from "./ui/ui-core.js";
-import { ids } from "./ui/ids.js";
+import { createTimerController } from "./controllers/timer-controller.js";
+import { createMomentController } from "./controllers/moment-controller.js";
+import { createDataManagementController } from "./controllers/data-management-controller.js";
 
 document.addEventListener("DOMContentLoaded", () => {
-  const primaryTimer = createTimer();
+  // Initialize controllers
+  const timerDispose = createTimerController();
+  const momentDispose = createMomentController();
+  const dataDispose = createDataManagementController();
 
-  const nameEl = byId(ids.taskName);
-  const categoryEl = byId(ids.taskCategory);
-  function updateTitle() {
-    const task = nameEl.value.trim();
-    const category = categoryEl.value || "Other";
-    primaryTimer.setTaskTitle(task ? `${task} • ${category}` : "");
+  // Optional: expose for debugging
+  if (window.location.hostname === "localhost") {
+    window.debug = { timerDispose, momentDispose, dataDispose };
   }
-  nameEl.addEventListener("input", updateTitle);
-  categoryEl.addEventListener("change", updateTitle);
-  updateTitle();
 });

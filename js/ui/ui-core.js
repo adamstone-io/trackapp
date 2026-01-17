@@ -1,6 +1,12 @@
 const uiCache = new Map();
 
 function byId(id) {
+  /**
+   * Returns a DOM element by id, failing fast if it does not exist.
+   *
+   * This function centralizes DOM lookup, caching, and error handling so callers do not need to check for null or repeat defensive logic. If an expected element is missing, it is treated as a programmer error.
+   *
+   */
   const cached = uiCache.get(id);
   if (cached && cached.isConnected) return cached;
 

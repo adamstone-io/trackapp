@@ -1,69 +1,39 @@
 // state/timer.js
-import { nowMs } from "../utils/time.js";
 
+/**
+ * Timer manages elapsed time for a single timing session.
+ * Create multiple instances for independent timers.
+ */
 export class Timer {
   constructor() {
     this.isRunning = false;
     this.isPaused = false;
-
-    this.startTimeMs = null; // set on start/resume (anchor of current run)
-    this.pauseStartTimeMs = null; // set on pause
-    this.elapsedSeconds = 0; // accumulated run time (excludes paused time)
-
-    this._tickId = null; // setInterval handle
-    this._subs = new Set(); // subscribers: (snapshot) => void
-
-    this.taskTitle = "";
+    this.startTimeMs = null;
+    this.pauseStartTimeMs = null;
+    this.elapsedSeconds = 0;
+    this._tickId = null;
+    this._subs = new Set();
   }
 
-  // Public read: current elapsed seconds
-  getElapsedSeconds(now = nowMs()) {
-    if (!this.isRunning || this.isPaused || this.startTimeMs === null) {
-      return this.elapsedSeconds;
-    }
-    const sinceStart = Math.floor((now - this.startTimeMs) / 1000);
-    return this.elapsedSeconds + sinceStart;
-  }
-
-  // Public read: consistent snapshot for rendering
-  snapshot(now = nowMs()) {
-    return {
-      isRunning: this.isRunning,
-      isPaused: this.isPaused,
-      startTimeMs: this.startTimeMs,
-      pauseStartTimeMs: this.pauseStartTimeMs,
-      elapsedSeconds: this.getElapsedSeconds(now),
-      taskTitle: this.taskTitle,
-    };
-  }
-
-  // Subscribe to updates; returns an unsubscribe function
-  subscribe(fn) {
-    if (typeof fn === "function") {
-      this._subs.add(fn);
-      fn(this.snapshot()); // immediate first call
-    }
-    return () => this._subs.delete(fn);
-  }
-
-  // Internal: notify subscribers
-  _emit() {
-    const snap = this.snapshot();
+  _notify() {
+    const snapshot = this.getSnapshot();
     this._subs.forEach((fn) => {
       try {
-        fn(snap);
-      } catch {}
+        fn(snapshot);
+      } catch (err) {
+        console.error("Timer subscriber error:", err);
+      }
     });
   }
 
-  // Internal: tick management
   _startTick() {
     this._stopTick();
     if (this.isRunning && !this.isPaused) {
-      this._tickId = setInterval(() => this._emit(), 1000);
-      this._emit(); // immediate
+      this._tickId = setInterval(() => this._notify(), 1000);
+      this._notify();
     }
   }
+
   _stopTick() {
     if (this._tickId) {
       clearInterval(this._tickId);
@@ -71,8 +41,14 @@ export class Timer {
     }
   }
 
-  // Transitions
-  start(now = nowMs()) {
+  getElapsedSeconds(now = Date.now()) {
+    if (!this.isRunning || this.isPaused || this.startTimeMs === null) {
+      return this.elapsedSeconds;
+    }
+    return this.elapsedSeconds + Math.floor((now - this.startTimeMs) / 1000);
+  }
+
+  start(now = Date.now()) {
     if (this.isRunning) return;
     this.isRunning = true;
     this.isPaused = false;
@@ -82,28 +58,27 @@ export class Timer {
     this._startTick();
   }
 
-  pause(now = nowMs()) {
+  pause(now = Date.now()) {
     if (!this.isRunning || this.isPaused) return;
     if (this.startTimeMs !== null) {
-      const sinceStart = Math.floor((now - this.startTimeMs) / 1000);
-      this.elapsedSeconds += sinceStart; // accumulate up to pause
+      this.elapsedSeconds += Math.floor((now - this.startTimeMs) / 1000);
     }
     this.isPaused = true;
     this.pauseStartTimeMs = now;
     this.startTimeMs = null;
     this._stopTick();
-    this._emit();
+    this._notify();
   }
 
-  resume(now = nowMs()) {
+  resume(now = Date.now()) {
     if (!this.isRunning || !this.isPaused) return;
     this.isPaused = false;
-    this.startTimeMs = now; // anchor a new running stretch
+    this.startTimeMs = now;
     this.pauseStartTimeMs = null;
     this._startTick();
   }
 
-  stop(now = nowMs()) {
+  stop(now = Date.now()) {
     if (!this.isRunning) return 0;
     const total = this.getElapsedSeconds(now);
     this.reset();
@@ -117,11 +92,24 @@ export class Timer {
     this.pauseStartTimeMs = null;
     this.elapsedSeconds = 0;
     this._stopTick();
-    this._emit();
+    this._notify();
   }
 
-  cancel() {
-    // Discard elapsed time and stop
-    this.reset();
+  getSnapshot(now = Date.now()) {
+    return {
+      isRunning: this.isRunning,
+      isPaused: this.isPaused,
+      startTimeMs: this.startTimeMs,
+      pauseStartTimeMs: this.pauseStartTimeMs,
+      elapsedSeconds: this.getElapsedSeconds(now),
+    };
+  }
+
+  subscribe(fn) {
+    if (typeof fn === "function") {
+      this._subs.add(fn);
+      fn(this.getSnapshot());
+    }
+    return () => this._subs.delete(fn);
   }
 }
