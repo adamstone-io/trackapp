@@ -25,10 +25,7 @@ export class Moment {
       taskTitle = null,
       isMilestone = false,
     }) {
-      if (!description || description.trim() === "") {
-        throw new Error("Moment description is required");
-      }
-  
+      
       this.id = id ?? crypto.randomUUID();
       this.description = description.trim();
       this.category = category;

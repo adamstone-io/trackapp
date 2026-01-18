@@ -52,7 +52,7 @@ export function getSnapshot() {
   return {
     task: currentTask,
     hasTask: currentTask !== null,
-    title: currentTask?.title || "No active task",
+    title: currentTask?.title || "",
     category: currentTask?.category || null,
   };
 }

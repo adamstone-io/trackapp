@@ -18,10 +18,27 @@ export function createTimerController() {
 
   const timer = new Timer();  // ✅ create instance
 
+  // Countdown state
+  let countdownMode = false;
+  let targetDuration = 0;
+
   // Subscribe to timer state
   const unsubTimer = timer.subscribe((snapshot) => {
+    let displayTime = snapshot.elapsedSeconds;
+
+    // In countdown mode, show remaining time instead of elapsed time
+    if (countdownMode && targetDuration > 0) {
+      displayTime = Math.max(0, targetDuration - snapshot.elapsedSeconds);
+
+      // Auto-stop when countdown reaches zero
+      if (snapshot.elapsedSeconds >= targetDuration && snapshot.isRunning) {
+        handleStop();
+        return;
+      }
+    }
+
     TimerView.render({
-      time: formatTime(snapshot.elapsedSeconds),
+      time: formatTime(displayTime),
       running: snapshot.isRunning,
       paused: snapshot.isPaused,
     });
@@ -34,6 +51,20 @@ export function createTimerController() {
       running: timer.getSnapshot().isRunning,
     });
   });
+
+  // Listen for countdown mode changes
+  const handleModeChange = (event) => {
+    countdownMode = event.detail.mode === "countdown";
+    targetDuration = event.detail.targetDuration || 0;
+  };
+
+  // Listen for countdown duration changes
+  const handleDurationChange = (event) => {
+    targetDuration = event.detail.duration || 0;
+  };
+
+  document.addEventListener("timer:modeChange", handleModeChange);
+  document.addEventListener("countdown:durationChange", handleDurationChange);
 
   // Bind timer controls
   const unbind = TimerView.bind({
@@ -102,5 +133,7 @@ export function createTimerController() {
     unbind();
     unsubTimer();
     unsubTask();
+    document.removeEventListener("timer:modeChange", handleModeChange);
+    document.removeEventListener("countdown:durationChange", handleDurationChange);
   };
 }

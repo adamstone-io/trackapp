@@ -25,6 +25,7 @@ export class Task {
       plannedStart = null,
       plannedDuration = null,
       archived = false,
+      createdAt = null,
     }) {
       
 
@@ -36,6 +37,7 @@ export class Task {
       this.plannedDuration = plannedDuration;
       this.archived = archived;
       this.createdAt = new Date().toISOString();
+      this.createdAt = createdAt ?? new Date().toISOString();
     }
   
     /**

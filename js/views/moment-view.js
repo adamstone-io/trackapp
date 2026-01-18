@@ -6,7 +6,6 @@ export const MomentView = {
   modal: () => byId(momentIds.momentModal),
   descriptionInput: () => byId(momentIds.momentDescriptionInput),
   categorySelect: () => byId(momentIds.momentCategorySelect),
-  milestoneCheckbox: () => byId(momentIds.momentMilestoneCheckbox),
   saveBtn: () => byId(momentIds.momentSaveBtn),
   cancelBtn: () => byId(momentIds.momentCancelBtn),
 
@@ -23,14 +22,13 @@ export const MomentView = {
   reset() {
     this.descriptionInput().value = "";
     this.categorySelect().value = "General";
-    this.milestoneCheckbox().checked = false;
   },
 
   readMoment() {
     return {
       description: this.descriptionInput().value.trim(),
       category: this.categorySelect().value,
-      isMilestone: this.milestoneCheckbox().checked,
+      isMilestone: false,
     };
   },
 

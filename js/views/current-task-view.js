@@ -12,7 +12,7 @@ export const CurrentTaskView = {
    * Hides task input while the timer is running.
    */
   render({ taskTitle, running }) {
-    this.title().textContent = taskTitle || "No active task";
+    this.title().textContent = taskTitle || "";
     running ? hide(this.inputSection()) : show(this.inputSection());
   },
 

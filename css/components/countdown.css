@@ -1,0 +1,113 @@
+/* css/components/countdown.css */
+
+/* Empty state */
+.favorites-empty {
+    padding: var(--spacing-lg);
+    text-align: center;
+    color: var(--color-text-light);
+    font-size: var(--font-size-sm);
+    font-style: italic;
+  }
+  
+  /* Favorite chip improvements */
+  .favorite-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--spacing-xs);
+    padding: var(--spacing-xs) var(--spacing-md);
+    background: var(--color-bg-secondary);
+    color: var(--color-text);
+    border: 2px solid var(--color-border);
+    border-radius: var(--radius-full);
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+  
+  .favorite-chip:hover {
+    background: var(--color-primary-light);
+    border-color: var(--color-primary);
+    color: var(--color-primary);
+  }
+  
+  .favorite-chip--selected {
+    background: var(--color-primary);
+    color: white;
+    border-color: var(--color-primary-dark);
+  }
+  
+  .favorite-chip__label {
+    font-weight: 600;
+  }
+  
+  .favorite-chip__time {
+    opacity: 0.7;
+    font-size: var(--font-size-sm);
+  }
+  
+  .favorite-chip__remove {
+    background: none;
+    border: none;
+    color: currentColor;
+    cursor: pointer;
+    padding: 0;
+    margin-left: var(--spacing-xs);
+    font-size: 1.25rem;
+    line-height: 1;
+    opacity: 0.6;
+    transition: opacity 0.2s;
+  }
+  
+  .favorite-chip__remove:hover {
+    opacity: 1;
+  }
+  
+  .favorite-chip--selected .favorite-chip__remove:hover {
+    opacity: 1;
+    color: #fecaca; /* Light red tint on white */
+  }
+  
+  /* Duration input (HH : MM : SS) */
+.duration-input {
+    display: flex;
+    align-items: flex-end;
+    /* justify-content: center; */
+    gap: var(--spacing-sm);
+    margin-top: var(--spacing-md);
+}
+
+.duration-input__group {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+.duration-input__group label {
+    font-size: var(--font-size-xs);
+    font-weight: 600;
+    color: var(--color-text-light);
+    margin-bottom: var(--spacing-xs);
+}
+
+.duration-input__group input {
+    width: 4rem;
+    padding: var(--spacing-sm);
+    text-align: center;
+    font-size: var(--font-size-lg);
+    font-weight: 700;
+    border: 2px solid var(--color-border);
+    border-radius: var(--radius-md);
+    background: white;
+}
+
+.duration-input__group input:focus {
+    outline: none;
+    border-color: var(--color-primary);
+}
+
+.duration-input__separator {
+    font-size: 1.5rem;
+    font-weight: 700;
+    padding-bottom: 0.4rem;
+    color: var(--color-text-light);
+}

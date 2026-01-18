@@ -28,40 +28,115 @@
       <main class="timer-main">
         <!-- Timer Display Section -->
         <section class="timer">
+
+          <section class="timer">
+            <!-- Timer Mode Toggle -->
+            <div class="timer__mode">
+              <button 
+                id="mode-stopwatch-btn" 
+                class="mode-btn mode-btn--active" 
+                type="button"
+              >
+                ⏱️ Stopwatch
+              </button>
+              <button 
+                id="mode-countdown-btn" 
+                class="mode-btn" 
+                type="button"
+              >
+                ⏲️ Countdown
+              </button>
+
+              <button
+              id="timer-menu-btn"
+              class="icon-btn"
+              aria-label="Timer options"
+              type="button"
+            >
+              <svg
+                class="icon"
+                width="16"
+                height="16"
+                viewBox="0 0 16 16"
+                aria-hidden="true"
+              >
+                <circle cx="8" cy="2" r="1.5" />
+                <circle cx="8" cy="8" r="1.5" />
+                <circle cx="8" cy="14" r="1.5" />
+              </svg>
+            </button>
+            
+
+            </div>
+          <!-- Timer header actions -->
+
+
+            <!-- Countdown Duration Selector (hidden by default) -->
+            <div id="countdown-section" class="countdown-section hidden">
+              <h3 class="countdown-section__title">Set Duration</h3>
+              
+              <!-- Favorites Quick Select -->
+              <div class="duration-favorites">
+                <div id="favorites-list" class="duration-favorites__list">
+                  <!-- Populated by JS -->
+                </div>
+                <button 
+                  id="add-favorite-btn" 
+                  class="btn btn--outline btn--small" 
+                  type="button"
+                  title="Save current duration as favorite"
+                >
+                  ⭐ Save Favorite
+                </button>
+              </div>
+          
+              <!-- Manual Duration Input -->
+              <div class="duration-input">
+                <div class="duration-input__group">
+                  <label for="hours-input">Hours</label>
+                  <input 
+                    type="number" 
+                    id="hours-input" 
+                    min="0" 
+                    max="23" 
+                    value="0"
+                  />
+                </div>
+                <span class="duration-input__separator">:</span>
+                <div class="duration-input__group">
+                  <label for="minutes-input">Minutes</label>
+                  <input 
+                    type="number" 
+                    id="minutes-input" 
+                    min="0" 
+                    max="59" 
+                    value="25"
+                  />
+                </div>
+                <span class="duration-input__separator">:</span>
+                <div class="duration-input__group">
+                  <label for="seconds-input">Seconds</label>
+                  <input 
+                    type="number" 
+                    id="seconds-input" 
+                    min="0" 
+                    max="59" 
+                    value="0"
+                  />
+                </div>
+              </div>
+            </div>
+          
+        
+            <!-- ... -->
+          </section>
           <div class="timer__header">
             <div class="timer__title-section">
               <div class="timer__title" id="current-task-title">
                 Ready to track time
               </div>
             </div>
-            <div class="timer__menu">
-              <button
-                class="menu__trigger"
-                id="timer-menu-trigger"
-                type="button"
-                title="Timer options"
-                aria-label="Timer options"
-              >
-                <div class="menu__dots">
-                  <span></span>
-                  <span></span>
-                  <span></span>
-                </div>
-              </button>
-              <div class="menu__dropdown hidden" id="timer-menu-dropdown">
-                <button
-                  class="menu__item"
-                  id="manual-entry-action"
-                  type="button"
-                >
-                  ➕ Add Manual Entry
-                </button>
-                <button class="menu__item" id="log-moment-action" type="button">
-                  📍 Log Moment
-                </button>
-              </div>
-            </div>
-          </div>
+          
 
           <div class="timer__display">
             <div id="timer-clock" class="timer__clock">00:00:00</div>
@@ -74,7 +149,7 @@
           <!-- Task Input Section (visible when not running) -->
           <div id="task-input-section" class="timer__input-section">
             <div class="timer__input-group">
-              <label for="task-name">Task Name:</label>
+              
               <input
                 type="text"
                 id="task-name"
@@ -84,7 +159,7 @@
             </div>
 
             <div class="timer__input-group">
-              <label for="task-category">Category:</label>
+              
               <select id="task-category">
                 <option value="">Select a category</option>
                 <option value="Work">Work</option>
@@ -217,10 +292,9 @@
         
         <form id="moment-form">
           <div class="form-group">
-            <label for="moment-description">What happened?</label>
             <textarea 
               id="moment-description" 
-              placeholder="Describe this moment..."
+              placeholder="What happened?"
               maxlength="500"
               required
             ></textarea>
@@ -238,15 +312,7 @@
             </select>
           </div>
 
-          <div class="form-group">
-            <label>
-              <input 
-                type="checkbox" 
-                id="moment-milestone"
-              />
-              Mark as milestone
-            </label>
-          </div>
+         
 
           <div class="modal__actions">
             <button 

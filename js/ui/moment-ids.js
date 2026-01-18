@@ -9,7 +9,6 @@ export const momentIds = {
   // Form fields
   momentDescriptionInput: "moment-description",  
   momentCategorySelect: "moment-category",
-  momentMilestoneCheckbox: "moment-milestone",
 
   // Actions
   momentSaveBtn: "moment-save-btn",

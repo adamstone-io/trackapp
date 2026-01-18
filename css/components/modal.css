@@ -1,0 +1,54 @@
+.modal {
+    position: fixed;
+    inset: 0;
+    z-index: 1001;
+
+    background: #fff;
+
+    display: flex;
+    flex-direction: column;
+    align-items: center;        /* horizontal centering */
+    justify-content: flex-start; /* stick to top */
+
+    padding: 24px;
+    padding-top: 32px;          /* “just below the top edge” */
+    overflow: auto;
+}
+
+.modal-content {
+    width: min(560px, 100%);
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+
+.modal-content input {
+    width: 100%;
+}
+
+.modal-actions {
+    display: flex;
+    gap: 8px;
+    justify-content: flex-end;
+    margin-top: 8px;
+}
+
+.time-row {
+    display: flex;
+    gap: 12px;
+}
+
+.time-row .field {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+/* Optional: stack on small screens */
+@media (max-width: 520px) {
+    .time-row {
+        flex-direction: column;
+    }
+}
