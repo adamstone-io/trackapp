@@ -127,3 +127,35 @@ export function clearAllData() {
     }
     return false;
 }
+export function updateTimeEntry(id, patch) {
+    const raw = localStorage.getItem(STORAGE_KEYS.timeEntries);
+    const data = raw ? JSON.parse(raw) : [];
+
+    const index = data.findIndex((e) => e.id === id);
+    if (index === -1) return false;
+
+    // Do not allow patch to replace id
+    const current = data[index];
+    data[index] = {
+        ...current,
+        ...patch,
+        id: current.id,
+    };
+
+    localStorage.setItem(STORAGE_KEYS.timeEntries, JSON.stringify(data));
+    return true;
+}
+
+export function deleteTimeEntry(id) {
+    const raw = localStorage.getItem(STORAGE_KEYS.timeEntries);
+    const data = raw ? JSON.parse(raw) : [];
+
+    const next = data.filter((e) => e.id !== id);
+    const changed = next.length !== data.length;
+
+    if (changed) {
+        localStorage.setItem(STORAGE_KEYS.timeEntries, JSON.stringify(next));
+    }
+
+    return changed;
+}

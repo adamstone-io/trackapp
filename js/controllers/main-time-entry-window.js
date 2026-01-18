@@ -1,5 +1,5 @@
 import { createDropdownMenu } from "../views/components/dropdown-menu.js";
-import { createManualTimeEntryModal } from "../views/components/manual-time-entry-modal.js"
+import { createTimeEntryModal } from "../views/components/time-entry-modal.js"
 
 
 export function createMainTimeEntryWindowController(options = {}) {
@@ -14,7 +14,7 @@ export function createMainTimeEntryWindowController(options = {}) {
   function init() {
     if (!menuButton) return;
 
-    manualEntryModal = createManualTimeEntryModal({
+    manualEntryModal = createTimeEntryModal({
         onSave: onManualEntrySaved,
     });
 
