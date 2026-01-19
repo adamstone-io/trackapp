@@ -8,53 +8,61 @@ import { saveMoments, loadMoments } from "../data/storage.js";
 
 let moments = [];
 
-export function createMomentController() {
-  // Load existing moments from storage
-  moments = loadMoments();
-  // Bind the trigger button (from CurrentTaskView area)
-  const logMomentBtn = byId(momentIds.logMomentBtn);
-  logMomentBtn.addEventListener("click", () => MomentView.open());
+export function createMomentController({ onMomentAdded } = {}) {
+    moments = loadMoments();
 
-  // Bind modal actions
-  const unbindModal = MomentView.bind({
-    onSave: handleSave,
-    onCancel: handleCancel,
-  });
+    const logMomentBtn = byId(momentIds.logMomentBtn);
 
-  function handleSave() {
-    const data = MomentView.readMoment();
-    
-    if (!data.description) {
-      alert("Please describe this moment");
-      return;
-    }
+    const handleOpen = () => {
+        MomentView.open();
+    };
 
-    const taskSnapshot = currentTask.getSnapshot();
-    
-    const moment = new Moment({
-      description: data.description,
-      category: data.category,
-      isMilestone: data.isMilestone,
-      taskId: taskSnapshot.task?.id || null,
-      taskTitle: taskSnapshot.task?.title || null,
+    logMomentBtn.addEventListener("click", handleOpen);
+
+    const unbindModal = MomentView.bind({
+        onSave: handleSave,
+        onCancel: handleCancel,
     });
 
-    moments.push(moment);
-    saveMoments(moments);
-    console.log("Moment saved:", moment);
+    function handleSave() {
+        const data = MomentView.readMoment();
 
-    MomentView.close();
-  }
+        if (!data.description) {
+            alert("Please describe this moment");
+            return;
+        }
 
-  function handleCancel() {
-    MomentView.close();
-  }
+        const taskSnapshot = currentTask.getSnapshot();
 
-  return {
-    getMoments: () => [...moments],
-    dispose: () => {
-      unbindModal();
-      logMomentBtn.removeEventListener("click", MomentView.open);
-    },
-  };
+        const moment = new Moment({
+            description: data.description,
+            category: data.category,
+            isMilestone: data.isMilestone,
+            taskId: taskSnapshot.task?.id || null,
+            taskTitle: taskSnapshot.task?.title || null,
+        });
+
+        const next = loadMoments();
+        next.push(moment);
+        saveMoments(next);
+        moments = next;
+
+        if (typeof onMomentAdded === "function") {
+            onMomentAdded(moment);
+        }
+
+        MomentView.close();
+    }
+
+    function handleCancel() {
+        MomentView.close();
+    }
+
+    return {
+        getMoments: () => [...moments],
+        dispose: () => {
+            unbindModal();
+            logMomentBtn.removeEventListener("click", handleOpen);
+        },
+    };
 }
