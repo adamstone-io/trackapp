@@ -9,10 +9,15 @@ import { createManualEntryController } from "./controllers/manual-time-entry-con
 
 document.addEventListener("DOMContentLoaded", () => {
     const timerDispose = createTimerController();
-    const momentDispose = createMomentController();
     const dataDispose = createDataManagementController();
     const entriesController = createEntriesController();
     const countdownDispose = createCountdownController();
+
+    const momentController = createMomentController({
+        onMomentAdded: () => {
+            entriesController.refresh();
+        },
+    });
 
     const manualEntryController = createManualEntryController({
         onEntryAdded: () => {
@@ -29,9 +34,9 @@ document.addEventListener("DOMContentLoaded", () => {
     if (window.location.hostname === "localhost") {
         window.debug = {
             timerDispose,
-            momentDispose,
             dataDispose,
             countdownDispose,
+            momentController,
         };
     }
 });

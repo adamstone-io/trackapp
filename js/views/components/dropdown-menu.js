@@ -43,14 +43,20 @@ export function createDropdownMenu({ items }) {
     }
 
     function open() {
-        if (!trigger) return;
+        if (!trigger || !root) return;
     
         const rect = trigger.getBoundingClientRect();
     
-        root.style.top = `${rect.top + window.scrollY}px`;
-        root.style.left = `${rect.left + window.scrollX}px`;
-    
+        // Temporarily show to measure width
         root.classList.remove("hidden");
+        root.style.visibility = "hidden";
+    
+        const menuWidth = root.offsetWidth;
+    
+        root.style.top = `${rect.bottom + window.scrollY}px`;
+        root.style.left = `${rect.right + window.scrollX - menuWidth}px`;
+    
+        root.style.visibility = "";
         trigger.classList.add("icon-btn--active");
         isOpen = true;
     }

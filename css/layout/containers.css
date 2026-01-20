@@ -25,12 +25,7 @@
     margin-bottom: var(--spacing-xl);
   }
   
-  /* Nav content is centered like container */
-  .nav {
-    max-width: 50rem;
-    margin: 0 auto;
-    padding: var(--spacing-lg);
-  }
+
   
   /* Main content spacing */
   .timer-main {
@@ -52,4 +47,6 @@
       padding: var(--spacing-md);
     }
   }
+
+
   

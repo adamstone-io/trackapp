@@ -12,6 +12,8 @@
     margin-bottom: var(--spacing-md);
     font-size: var(--font-size-xl);
     color: var(--color-text);
+    margin-top: 1rem;
+    margin-bottom: 0.5rem;
   }
   
   .today-entries__list {
@@ -40,7 +42,6 @@
     display: flex;
     gap: var(--spacing-md);
     align-items: baseline;
-    margin-bottom: var(--spacing-sm);
   }
   
   .entry-card__title {
@@ -60,8 +61,10 @@
 
   .entry-card__meta {
       display: flex;
-      align-items: center;
+      justify-content: flex-end;
       gap: 8px;
+      width: 100%;
+      padding-left: 0;
   }
   
   .entry-card__menu-btn {
@@ -84,7 +87,7 @@
   
   .entry-card__time {
     color: var(--color-text-light);
-    margin-left: 1rem;
+    margin-left: auto;
   }
   
   .entry-card__notes {

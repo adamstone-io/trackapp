@@ -1,79 +1,210 @@
-    // views/entries-view.js
-    import { byId } from "../ui/ui-core.js";
+// js/views/list-entries-view.js
+import { formatTime } from "../utils/time.js";
 
-    export const EntriesView = {
-        list: () => byId("entries-list"),
-        empty: () => byId("entries-empty"),
+function byId(id) {
+    return document.getElementById(id);
+}
 
-        render(entries) {
-            const list = this.list();
-            const empty = this.empty();
+function listEl() {
+    const el = byId("entries-list");
+    if (!el) {
+        throw new Error("EntriesView: missing #entries-list");
+    }
+    return el;
+}
 
-            if (entries.length === 0) {
-                list.style.display = "none";
-                empty.style.display = "block";
-                return;
-            }
+function emptyEl() {
+    return byId("entries-empty");
+}
 
-            list.style.display = "block";
-            empty.style.display = "none";
+function isTimelineItem(value) {
+    return (
+        value &&
+        typeof value === "object" &&
+        typeof value.kind === "string" &&
+        ("entry" in value || "moment" in value)
+    );
+}
 
-            list.innerHTML = entries
-                .map((entry) => this.renderEntry(entry))
-                .join("");
-        },
+function computeDurationSeconds(entry) {
+    if (!entry) return 0;
 
-        renderEntry(entry) {
-            const duration = this.formatDuration(entry.durationSeconds);
-            const timeRange = this.formatTimeRange(entry.startedAt, entry.endedAt);
+    if (Number.isFinite(entry.durationSeconds)) return entry.durationSeconds;
 
-            return `
-                    <div class="entry-card" data-entry-id="${entry.id}">
-        <div class="entry-card__header">
-            <span class="entry-card__title">${entry.taskTitle || "Untitled Task"}</span>
-            <span class="entry-card__duration">${duration}</span>
+    if (!entry.startedAt || !entry.endedAt) return 0;
+
+    const start = new Date(entry.startedAt).getTime();
+    const end = new Date(entry.endedAt).getTime();
+    const diff = Math.round((end - start) / 1000);
+
+    return Number.isFinite(diff) && diff > 0 ? diff : 0;
+}
+
+function formatTimeRange(entry) {
+    const start = entry?.startedAt ? new Date(entry.startedAt) : null;
+    const end = entry?.endedAt ? new Date(entry.endedAt) : null;
+
+    if (!start) return "";
+
+    const fmt = new Intl.DateTimeFormat(undefined, {
+        hour: "2-digit",
+        minute: "2-digit",
+    });
+
+    if (!end) return fmt.format(start);
+
+    return `${fmt.format(start)} – ${fmt.format(end)}`;
+}
+
+function escapeHtml(text) {
+    return String(text ?? "")
+        .replaceAll("&", "&amp;")
+        .replaceAll("<", "&lt;")
+        .replaceAll(">", "&gt;")
+        .replaceAll("\"", "&quot;")
+        .replaceAll("'", "&#039;");
+}
+
+function renderEntry(entry) {
+    if (!entry) return "";
+
+    const title = (entry.taskTitle ?? "Untitled Task").trim() || "Untitled Task";
+    const durationSeconds = computeDurationSeconds(entry);
+    const durationLabel = formatTime(durationSeconds);
+    const timeRange = formatTimeRange(entry);
+
+    return `
+        <div class="entry-card" data-entry-id="${escapeHtml(entry.id ?? "")}">
+            <div class="entry-card__header">
+                <span class="entry-card__title">${escapeHtml(title)}</span>
+                <span class="entry-card__duration">${escapeHtml(durationLabel)}</span>
+            </div>
+
+            <div class="entry-card__meta">
+                ${timeRange ? `<span class="entry-card__time">${escapeHtml(timeRange)}</span>` : ""}
+                <span>
+                <button
+                    class="icon-btn entry-card__menu-btn"
+                    type="button"
+                    aria-label="Entry options"
+                    data-entry-menu
+                >
+                    <svg class="icon" width="16" height="16" viewBox="0 0 16 16" aria-hidden="true">
+                        <circle cx="8" cy="2" r="1.5" />
+                        <circle cx="8" cy="8" r="1.5" />
+                        <circle cx="8" cy="14" r="1.5" />
+                    </svg>
+                </button>
+                </span>
+            </div>
         </div>
+    `;
+}
 
-        <div class="entry-card__meta">
-            <span class="entry-card__time">${timeRange}</span>
+function renderMoment(moment) {
+    if (!moment) return "";
 
-            <button
-                class="icon-btn entry-card__menu-btn"
-                aria-label="Time Entry options"
-                type="button"
-                data-entry-menu
-            >
-                <svg class="icon" width="16" height="16" viewBox="0 0 16 16" aria-hidden="true">
-                    <circle cx="8" cy="2" r="1.5" />
-                    <circle cx="8" cy="8" r="1.5" />
-                    <circle cx="8" cy="14" r="1.5" />
-                </svg>
-            </button>
+    const description = (moment.description ?? "").trim();
+    const createdAt = Number.isFinite(moment.timestampMs) ? new Date(moment.timestampMs) : moment.createdAt ? new Date(moment.createdAt) : null;
+
+    const fmt = new Intl.DateTimeFormat(undefined, {
+        hour: "2-digit",
+        minute: "2-digit",
+    });
+
+    const timeLabel = createdAt ? fmt.format(createdAt) : "";
+
+    return `
+        <div class="entry-card" data-moment-id=" ${escapeHtml(moment.id ?? "")}">
+            <div class="enty-card__header">
+            <div class="entry-card__title">${description}</div>
+            <div class="entry-card__meta">
+            ${
+        timeLabel
+            ? `<span class="entry-card__time">${escapeHtml(timeLabel)}
+               </span>`
+            : ""
+    }          <span>
+                <button
+                    class="icon-btn entry-card__menu-btn"
+                    type="button"
+                    aria-label="Moment options"
+                    data-moment-menu
+                >
+                    <svg class="icon" width="16" height="16" viewBox="0 0 16 16" aria-hidden="true">
+                        <circle cx="8" cy="2" r="1.5" />
+                        <circle cx="8" cy="8" r="1.5" />
+                        <circle cx="8" cy="14" r="1.5" />
+                    </svg>
+                </button>
+            </span>
+</div>
+            </div>
         </div>
-    </div>
-            `;
-        },
+    `;
+}
 
-        formatDuration(seconds) {
-            const hours = Math.floor(seconds / 3600);
-            const minutes = Math.floor((seconds % 3600) / 60);
+function renderItem(item) {
+    if (!item) return "";
 
-            if (hours > 0) return `${hours}h ${minutes}m`;
-            return `${minutes}m`;
-        },
+    if (item.kind === "moment") {
+        return renderMoment(item.moment);
+    }
 
-        formatTimeRange(startedAt, endedAt) {
-            const start = new Date(startedAt);
-            const end = new Date(endedAt);
+    const entry = item.kind === "entry" ? item.entry : item;
 
-            const formatTime = (date) => {
-                return date.toLocaleTimeString("en-US", {
-                    hour: "numeric",
-                    minute: "2-digit",
-                    hour12: true,
-                });
-            };
+    return renderEntry(entry);
+}
 
-            return `${formatTime(start)} - ${formatTime(end)}`;
-        },
-    };
+function coerceToRenderableItems(items) {
+    const arr = Array.isArray(items) ? items : [];
+
+    return arr
+        .filter(Boolean)
+        .map((item) => {
+            if (isTimelineItem(item)) return item;
+
+            return { kind: "entry", entry: item };
+        });
+}
+
+export const EntriesView = {
+    list() {
+        return listEl();
+    },
+
+    render(items) {
+        const list = listEl();
+        const empty = emptyEl();
+
+        const renderables = coerceToRenderableItems(items);
+
+        renderables.sort((a, b) => {
+            const aMs =
+  a.kind === "moment"
+    ? Number.isFinite(a.moment?.timestampMs)
+      ? a.moment.timestampMs
+      : new Date(a.moment?.createdAt ?? 0).getTime()
+    : new Date(a.entry?.startedAt ?? 0).getTime();
+
+const bMs =
+  b.kind === "moment"
+    ? Number.isFinite(b.moment?.timestampMs)
+      ? b.moment.timestampMs
+      : new Date(b.moment?.createdAt ?? 0).getTime()
+    : new Date(b.entry?.startedAt ?? 0).getTime();
+
+            return bMs - aMs;
+        });
+
+        if (renderables.length === 0) {
+            list.innerHTML = "";
+            if (empty) empty.style.display = "block";
+            return;
+        }
+
+        if (empty) empty.style.display = "none";
+
+        list.innerHTML = renderables.map(renderItem).join("");
+    },
+};

@@ -12,28 +12,21 @@ export class Moment {
      * @param {string} data.description - What happened at this moment
      * @param {string} [data.category] - Category (default: "General")
      * @param {number} [data.timestampMs] - When this moment occurred (default: now)
-     * @param {string} [data.taskId] - Reference to associated task (optional)
-     * @param {string} [data.taskTitle] - Snapshot of task title (optional)
-     * @param {boolean} [data.isMilestone] - Whether this is a significant milestone
+     * @param {string} [data.createdAt] - ISO date string for creation time (optional)
      */
     constructor({
       id,
       description,
       category = "General",
+      createdAt = null,
       timestampMs = Date.now(),
-      taskId = null,
-      taskTitle = null,
-      isMilestone = false,
     }) {
       
       this.id = id ?? crypto.randomUUID();
       this.description = description.trim();
       this.category = category;
       this.timestampMs = timestampMs;
-      this.taskId = taskId;
-      this.taskTitle = taskTitle;
-      this.isMilestone = Boolean(isMilestone);
-      this.createdAt = new Date().toISOString();
+      this.createdAt = createdAt ?? new Date().toISOString();
     }
   
     /**

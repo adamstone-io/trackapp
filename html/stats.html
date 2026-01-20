@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>TempoTrack - Stats</title>
+    <link rel="stylesheet" href="../css/main.css" />
+  </head>
+  <body>
+    <header>
+      <nav class="nav">
+        <div class="nav__content">
+          <h1 class="nav__title">TEMPO TRACK</h1>
+          <p class="nav__tagline">"What gets measured gets managed."</p>
+        </div>
+        
+        <ul class="nav__links">
+          <li class="nav__item">
+            <a class="nav__link" href="habits.html">Habits</a>
+          </li>
+          <li class="nav__item">
+            <a class="nav__link" href="timer.html">Time</a>
+          </li>
+          <li class="nav__item">
+            <a class="nav__link nav__link--active" href="stats.html">Stats</a>
+          </li>
+        </ul>
+        
+        
+      </nav>
+    </header>
+
+    <div class="container">
+      <main class="timer-main">
+        <section class="today-entries">
+          <div class="entry-card">
+            <div class="entry-card__header">
+              <span class="entry-card__title">Today</span>
+              <span id="stats-total-today" class="entry-card__duration">0m</span>
+            </div>
+
+            <div class="entry-card__meta">
+              <span id="stats-summary" class="entry-card__time"></span>
+              <button id="stats-refresh-btn" class="btn btn--outline" type="button">
+                Refresh
+              </button>
+            </div>
+          </div>
+
+          <h2 class="today-entries__title" style="margin-top: var(--spacing-lg);">
+            Time by Task (Today)
+          </h2>
+
+          <div id="stats-by-task-list" class="today-entries__list"></div>
+
+          <div id="stats-empty" class="today-entries__empty" style="display: none;">
+            No time entries logged today
+          </div>
+        </section>
+      </main>
+    </div>
+
+    <script type="module" src="../js/stats-main.js"></script>
+  </body>
+</html>

@@ -1,0 +1,348 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  
+    <title>TempoTrack - Advanced Time Tracker</title>
+    <link rel="stylesheet" href="../css/main.css" />
+  </head>
+  <body>
+    <!-- Header stays full-width -->
+    <header>
+      <nav class="nav">
+        <div class="nav__content">
+          <h1 class="nav__title">TEMPO TRACK</h1>
+          <p class="nav__tagline">"What gets measured gets managed."</p>
+        </div>
+        
+        <ul class="nav__links">
+          <li class="nav__item">
+            <a class="nav__link" href="habits.html">Habits</a>
+          </li>
+          <li class="nav__item">
+            <a class="nav__link nav__link--active" href="timer.html">Time</a>
+          </li>
+          <li class="nav__item">
+            <a class="nav__link" href="stats.html">Stats</a>
+          </li>
+        </ul>
+        
+        
+      </nav>
+    </header>
+
+    <!-- Container centers main content -->
+    <div class="container">
+      <main class="timer-main-container">
+        <!-- Timer Display Section -->
+        <section class="timer">
+
+          <section class="timer">
+            <!-- Timer Mode Toggle -->
+            <div class="timer__mode">
+              <button 
+                id="mode-stopwatch-btn" 
+                class="mode-btn mode-btn--active" 
+                type="button"
+              >
+                ⏱️ Stopwatch
+              </button>
+              <button 
+                id="mode-countdown-btn" 
+                class="mode-btn" 
+                type="button"
+              >
+                ⏲️ Countdown
+              </button>
+
+              <button
+              id="timer-menu-btn"
+              class="icon-btn"
+              aria-label="Timer options"
+              type="button"
+            >
+              <svg
+                class="icon"
+                width="16"
+                height="16"
+                viewBox="0 0 16 16"
+                aria-hidden="true"
+              >
+                <circle cx="8" cy="2" r="1.5" />
+                <circle cx="8" cy="8" r="1.5" />
+                <circle cx="8" cy="14" r="1.5" />
+              </svg>
+            </button>
+            
+
+            </div>
+          <!-- Timer header actions -->
+
+
+            <!-- Countdown Duration Selector (hidden by default) -->
+            <div id="countdown-section" class="countdown-section hidden">
+              <h3 class="countdown-section__title">Set Duration</h3>
+              
+              <!-- Favorites Quick Select -->
+              <div class="duration-favorites">
+                <div id="favorites-list" class="duration-favorites__list">
+                  <!-- Populated by JS -->
+                </div>
+                <button 
+                  id="add-favorite-btn" 
+                  class="btn btn--outline btn--small" 
+                  type="button"
+                  title="Save current duration as favorite"
+                >
+                  ⭐ Save Favorite
+                </button>
+              </div>
+          
+              <!-- Manual Duration Input -->
+              <div class="duration-input">
+                <div class="duration-input__group">
+                  <label for="hours-input">Hours</label>
+                  <input 
+                    type="number" 
+                    id="hours-input" 
+                    min="0" 
+                    max="23" 
+                    value="0"
+                  />
+                </div>
+                <span class="duration-input__separator">:</span>
+                <div class="duration-input__group">
+                  <label for="minutes-input">Minutes</label>
+                  <input 
+                    type="number" 
+                    id="minutes-input" 
+                    min="0" 
+                    max="59" 
+                    value="25"
+                  />
+                </div>
+                <span class="duration-input__separator">:</span>
+                <div class="duration-input__group">
+                  <label for="seconds-input">Seconds</label>
+                  <input 
+                    type="number" 
+                    id="seconds-input" 
+                    min="0" 
+                    max="59" 
+                    value="0"
+                  />
+                </div>
+              </div>
+            </div>
+          
+        
+            <!-- ... -->
+          </section>
+          <div class="timer__header">
+            <div class="timer__title-section">
+              <div class="timer__title" id="current-task-title">
+                Ready to track time
+              </div>
+            </div>
+          
+
+          <div class="timer__display">
+            <div id="timer-clock" class="timer__clock">00:00:00</div>
+            <div
+              id="pause-duration-display"
+              class="timer__pause-display hidden"
+            ></div>
+          </div>
+
+          <!-- Task Input Section (visible when not running) -->
+          <div id="task-input-section" class="timer__input-section">
+            <div class="timer__input-group">
+              
+              <input
+                type="text"
+                id="task-name"
+                placeholder="What are you working on?"
+                maxlength="100"
+              />
+            </div>
+
+            <div class="timer__input-group">
+              
+              <select id="task-category">
+                <option value="">Select a category</option>
+                <option value="Work">Work</option>
+                <option value="Personal">Personal</option>
+                <option value="Learning">Learning</option>
+                <option value="Health">Health</option>
+                <option value="Break">Break</option>
+                <option value="Other">Other</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="timer__controls">
+            <button id="start-btn" class="btn btn--primary">Start Timer</button>
+            <button
+              id="log-moment-btn"
+              class="btn btn--secondary"
+              type="button"
+              title="Log a moment in time"
+            >
+              📍 Log Moment
+            </button>
+            <button
+              id="pause-btn"
+              class="btn btn--outline hidden"
+              type="button"
+              title="Pause timer (quick mental break)"
+            >
+              ⏸️ Pause
+            </button>
+            <button
+              id="resume-btn"
+              class="btn btn--outline hidden"
+              type="button"
+              title="Resume work"
+            >
+              ▶️ Resume
+            </button>
+            <button
+              id="log-break-btn"
+              class="btn btn--secondary hidden"
+              type="button"
+              title="Log current pause as a break"
+            >
+              📝 Log Break
+            </button>
+            <button id="stop-btn" class="btn btn--secondary hidden" type="button">
+              Stop & Save
+            </button>
+            <button
+              id="cancel-btn"
+              class="btn btn--outline hidden"
+              type="button"
+            >
+              Cancel
+            </button>
+          </div>
+
+          <!-- Segment Controls (appears when timer is running) -->
+          <div id="segment-controls" class="timer__segment-controls hidden">
+            <button
+              id="name-segment-btn"
+              class="btn btn--outline btn--small"
+              type="button"
+              title="Name current work segment"
+            >
+              📝 Name
+            </button>
+            <button
+              id="new-segment-btn"
+              class="btn btn--outline btn--small"
+              type="button"
+              title="Start new work segment"
+            >
+              ➕ New
+            </button>
+            <button
+              id="split-entry-btn"
+              class="btn btn--outline btn--small"
+              type="button"
+              title="Split into separate entries"
+            >
+              ✂️ Split
+            </button>
+          </div>
+        </section>
+
+        <!-- Recent Entry Display -->
+        <section id="recent-entry" class="entry-preview">
+          <div id="entry-details" class="entry-preview__details"></div>
+        </section>
+
+        <!-- Data Controls -->
+        <section class="data-controls">
+          <button id="export-data-btn" class="btn btn--outline" type="button">
+            💾 Export Data
+          </button>
+          
+          <button id="import-data-btn" class="btn btn--outline" type="button">
+            📂 Import Data
+          </button>
+          
+          <button id="clear-data-btn" class="btn btn--danger" type="button">
+            🗑️ Clear All Data
+          </button>
+          
+          <input 
+            type="file" 
+            id="import-file-input" 
+            accept=".json" 
+            style="display: none;"
+          />
+        </section>
+
+        <!-- Today's Entries -->
+        <section class="today-entries">
+          <h2 class="today-entries__title">Today's Time Entries</h2>
+          <div id="entries-list" class="today-entries__list"></div>
+          <div id="entries-empty" class="today-entries__empty" style="display: none;">
+            No entries logged today
+          </div>
+        </section>
+      </main>
+    </div>
+
+    <!-- Modals (outside container, full viewport) -->
+    <div id="moment-modal" class="modal hidden">
+      <div class="modal__content">
+        <h2>Log Moment</h2>
+        
+        <form id="moment-form">
+          <div class="form-group">
+            <textarea 
+              id="moment-description" 
+              placeholder="What happened?"
+              maxlength="500"
+              required
+            ></textarea>
+          </div>
+
+          <div class="form-group">
+            <label for="moment-category">Category</label>
+            <select id="moment-category">
+              <option value="General">General</option>
+              <option value="Insight">Insight</option>
+              <option value="Progress">Progress</option>
+              <option value="Milestone">Milestone</option>
+              <option value="Blocker">Blocker</option>
+              <option value="Decision">Decision</option>
+            </select>
+          </div>
+
+         
+
+          <div class="modal__actions">
+            <button 
+              type="submit" 
+              id="moment-save-btn" 
+              class="btn btn--primary"
+            >
+              Save Moment
+            </button>
+            <button 
+              type="button" 
+              id="moment-cancel-btn" 
+              class="btn btn--outline"
+            >
+              Cancel
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <script type="module" src="../js/timer-main.js"></script>
+  </body>
+</html>
