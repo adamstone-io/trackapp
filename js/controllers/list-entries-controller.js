@@ -29,6 +29,10 @@ export function createEntriesController() {
 
     /** @type {Array<Function>} */
     let menuDisposers = [];
+    /** @type {Array<Function>} */
+    let momentMenuDisposers = [];
+    /** @type {Function | null} */
+    let onEditMoment = null;
 
     function getTodayWindowMs() {
         const start = new Date();
@@ -43,6 +47,11 @@ export function createEntriesController() {
     function disposeMenus() {
         for (const dispose of menuDisposers) dispose();
         menuDisposers = [];
+    }
+
+    function disposeMomentMenus() {
+        for (const dispose of momentMenuDisposers) dispose();
+        momentMenuDisposers = [];
     }
 
     function attachEntryMenus(entries) {
@@ -80,6 +89,38 @@ export function createEntriesController() {
         });
     }
 
+    function attachMomentMenus(moments) {
+        disposeMomentMenus();
+
+        const listEl = EntriesView.list();
+        const buttons = listEl.querySelectorAll("[data-moment-menu]");
+
+        buttons.forEach((btn) => {
+            const card = btn.closest("[data-moment-id]");
+            if (!card) return;
+
+            const momentId = card.getAttribute("data-moment-id");
+            const moment = moments.find((m) => m.id === momentId);
+            if (!moment) return;
+
+            const menu = createDropdownMenu({
+                items: [
+                    {
+                        label: "Edit",
+                        onSelect: () => {
+                            if (typeof onEditMoment === "function") {
+                                onEditMoment(moment);
+                            }
+                        },
+                    },
+                ],
+            });
+
+            menu.attachTo(btn);
+            momentMenuDisposers.push(() => menu.dispose());
+        });
+    }
+
     function refresh() {
         const { startMs, endMs } = getTodayWindowMs();
 
@@ -114,14 +155,19 @@ export function createEntriesController() {
 
         // Menus only exist for entries
         attachEntryMenus(todayEntries);
+        attachMomentMenus(todayMoments);
     }
 
     refresh();
 
     return {
         refresh,
+        setMomentEditor: (handler) => {
+            onEditMoment = typeof handler === "function" ? handler : null;
+        },
         dispose: () => {
             disposeMenus();
+            disposeMomentMenus();
             modal.dispose();
         },
     };

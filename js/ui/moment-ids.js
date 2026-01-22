@@ -5,10 +5,12 @@ export const momentIds = {
 
   // Modal/sheet container
   momentModal: "moment-modal",
+  momentModalTitle: "moment-modal-title",
 
   // Form fields
   momentDescriptionInput: "moment-description",  
   momentCategorySelect: "moment-category",
+  momentTimeInput: "moment-time",
 
   // Actions
   momentSaveBtn: "moment-save-btn",

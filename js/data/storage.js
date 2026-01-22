@@ -28,6 +28,24 @@ export function loadMoments() {
     }
 }
 
+export function updateMoment(id, patch) {
+    const raw = localStorage.getItem(STORAGE_KEYS.moments);
+    const data = raw ? JSON.parse(raw) : [];
+
+    const index = data.findIndex((m) => m.id === id);
+    if (index === -1) return false;
+
+    const current = data[index];
+    data[index] = {
+        ...current,
+        ...patch,
+        id: current.id,
+    };
+
+    localStorage.setItem(STORAGE_KEYS.moments, JSON.stringify(data));
+    return true;
+}
+
 // ========== TASKS ==========
 
 export function saveTasks(tasks) {

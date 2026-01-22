@@ -115,7 +115,7 @@ function renderMoment(moment) {
     const timeLabel = createdAt ? fmt.format(createdAt) : "";
 
     return `
-        <div class="entry-card" data-moment-id=" ${escapeHtml(moment.id ?? "")}">
+        <div class="entry-card" data-moment-id="${escapeHtml(moment.id ?? "")}">
             <div class="enty-card__header">
             <div class="entry-card__title">${description}</div>
             <div class="entry-card__meta">

@@ -14,10 +14,12 @@ document.addEventListener("DOMContentLoaded", () => {
     const dataDispose = createDataManagementController();
 
     const momentController = createMomentController({
-        onMomentAdded: () => {
+        onMomentsChanged: () => {
             entriesController.refresh();
         },
     });
+
+    entriesController.setMomentEditor((moment) => momentController.openEdit(moment));
 
     const manualEntryController = createManualEntryController({
         onEntryAdded: () => {
