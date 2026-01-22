@@ -8,10 +8,10 @@ import { createMainTimeEntryWindowController } from "./controllers/main-time-ent
 import { createManualEntryController } from "./controllers/manual-time-entry-controller.js";
 
 document.addEventListener("DOMContentLoaded", () => {
-    const timerDispose = createTimerController();
-    const dataDispose = createDataManagementController();
     const entriesController = createEntriesController();
     const countdownDispose = createCountdownController();
+    const timerDispose = createTimerController({ onEntryAdded: () => { entriesController.refresh() } });
+    const dataDispose = createDataManagementController();
 
     const momentController = createMomentController({
         onMomentAdded: () => {

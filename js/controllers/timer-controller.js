@@ -12,7 +12,7 @@ import { saveTimeEntries, loadTimeEntries } from "../data/storage.js";
 let activeEntry = null;
 let timeEntries = [];
 
-export function createTimerController() {
+export function createTimerController({ onEntryAdded }) {
   // Load existing time entries from storage
   timeEntries = loadTimeEntries();
 
@@ -101,11 +101,9 @@ export function createTimerController() {
     timeEntries.push(activeEntry);
     saveTimeEntries(timeEntries);
 
-    // Refresh the entries list to show the new entry
-    refreshEntriesList();
-
-    console.log("Entry completed and saved:", activeEntry);
-
+    if (typeof onEntryAdded === "function") {
+      onEntryAdded(activeEntry);
+    }
     currentTask.clearCurrentTask();
     activeEntry = null;
   }
