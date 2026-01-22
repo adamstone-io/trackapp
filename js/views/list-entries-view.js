@@ -77,9 +77,6 @@ function renderEntry(entry) {
         <div class="entry-card" data-entry-id="${escapeHtml(entry.id ?? "")}">
             <div class="entry-card__header">
                 <span class="entry-card__title">${escapeHtml(title)}</span>
-                <span class="entry-card__duration">${escapeHtml(durationLabel)}</span>
-            </div>
-
             <div class="entry-card__meta">
                 ${timeRange ? `<span class="entry-card__time">${escapeHtml(timeRange)}</span>` : ""}
                 <span>
@@ -96,6 +93,11 @@ function renderEntry(entry) {
                     </svg>
                 </button>
                 </span>
+            </div>   
+            </div>
+
+            <div class="entry-card__footer">
+             <span class="entry-card__duration">${escapeHtml(durationLabel)}</span>
             </div>
         </div>
     `;
@@ -116,9 +118,9 @@ function renderMoment(moment) {
 
     return `
         <div class="entry-card" data-moment-id="${escapeHtml(moment.id ?? "")}">
-            <div class="enty-card__header">
+            <div class="entry-card__header">
             <div class="entry-card__title">${description}</div>
-            <div class="entry-card__meta">
+           
             ${
         timeLabel
             ? `<span class="entry-card__time">${escapeHtml(timeLabel)}
@@ -138,7 +140,7 @@ function renderMoment(moment) {
                     </svg>
                 </button>
             </span>
-</div>
+
             </div>
         </div>
     `;

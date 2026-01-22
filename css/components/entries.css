@@ -40,21 +40,21 @@
   
   .entry-card__header {
     display: flex;
-    gap: var(--spacing-md);
-    align-items: baseline;
   }
   
   .entry-card__title {
     font-size: var(--font-size-base);
     font-weight: 600;
     color: var(--color-text);
+    white-space: nowrap;
   }
   
   .entry-card__duration {
     font-size: var(--font-size-lg);
     font-weight: 700;
     color: var(--color-primary);
-    padding-left: 1rem;
+    padding-right: 1rem;
+    margin-left: auto;
 
   }
   
@@ -62,7 +62,6 @@
   .entry-card__meta {
       display: flex;
       justify-content: flex-end;
-      gap: 8px;
       width: 100%;
       padding-left: 0;
   }
@@ -110,3 +109,6 @@
     color: var(--color-primary-dark);
   }
   
+  .entry-card__footer {
+    display: flex;
+  }
