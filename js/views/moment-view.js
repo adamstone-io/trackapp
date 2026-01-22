@@ -55,7 +55,9 @@ export const MomentView = {
     });
     if (moment && Number.isFinite(moment.timestampMs)) {
       const date = new Date(moment.timestampMs);
-      this.timeInput().value = date.toISOString().slice(11, 16);
+      const hh = String(date.getHours()).padStart(2, "0");
+      const mm = String(date.getMinutes()).padStart(2, "0");
+      this.timeInput().value = `${hh}:${mm}`;
     } else {
       this.timeInput().value = "";
     }
