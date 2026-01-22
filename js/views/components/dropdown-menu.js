@@ -1,9 +1,23 @@
 // views/components/dropdown-menu.js
 
+let openMenu = null;
+
+function setOpenMenu(menu) {
+    if (openMenu && openMenu !== menu) { 
+        openMenu.close();}
+    openMenu = menu;
+}
+
 export function createDropdownMenu({ items }) {
     let isOpen = false;
     let root = null;
     let trigger = null;
+
+    const api = {
+        attachTo,
+        close,
+        dispose,
+    };
 
     function createMenu() {
         root = document.createElement("div");
@@ -44,7 +58,7 @@ export function createDropdownMenu({ items }) {
 
     function open() {
         if (!trigger || !root) return;
-    
+        setOpenMenu(api);
         const rect = trigger.getBoundingClientRect();
     
         // Temporarily show to measure width
@@ -69,6 +83,10 @@ export function createDropdownMenu({ items }) {
         root.classList.add("hidden");
         trigger.classList.remove("icon-btn--active");
         isOpen = false;
+
+        if (openMenu === api) {
+            openMenu = null;
+        }
     }
     
 
@@ -83,11 +101,11 @@ export function createDropdownMenu({ items }) {
         trigger?.removeEventListener("click", toggle);
         document.removeEventListener("click", handleOutsideClick);
         root?.remove();
+
+        if (openMenu === api) {
+            openMenu = null;
+        }
     }
 
-    return {
-        attachTo,
-        close,
-        dispose,
-    };
+    return api;
 }
