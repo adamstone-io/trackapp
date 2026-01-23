@@ -44,6 +44,12 @@ export const MomentView = {
   openForCreate() {
     this.setMode("create");
     this.reset();
+
+    const now = new Date();
+    const hh = String(now.getHours()).padStart(2, "0");
+    const mm = String(now.getMinutes()).padStart(2, "0");
+    this.timeInput().value = `${hh}:${mm}`;
+    
     this.open();
   },
 
