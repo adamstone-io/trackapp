@@ -6,20 +6,20 @@
     padding: var(--spacing-lg);
     background: var(--color-bg-secondary);
     border-radius: var(--radius-lg);
+    margin-bottom: var(--spacing-xl);
   }
   
   .today-entries__title {
     margin-bottom: var(--spacing-md);
     font-size: var(--font-size-xl);
     color: var(--color-text);
-    margin-top: 1rem;
     margin-bottom: 0.5rem;
   }
   
   .today-entries__list {
     display: flex;
     flex-direction: column;
-    gap: var(--spacing-md);
+    gap: var(--spacing-sm);
   }
   
   .today-entries__empty {
