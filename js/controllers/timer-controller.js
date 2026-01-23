@@ -105,6 +105,7 @@ export function createTimerController({ onEntryAdded }) {
       onEntryAdded(activeEntry);
     }
     currentTask.clearCurrentTask();
+    CurrentTaskView.clearInputs();
     activeEntry = null;
   }
 

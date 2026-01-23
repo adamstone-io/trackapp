@@ -25,4 +25,9 @@ export const CurrentTaskView = {
       category: this.categorySelect().value || "Other",
     };
   },
+
+  clearInputs() {
+    this.nameInput().value = "";
+    this.categorySelect().value = "";
+  }
 };
