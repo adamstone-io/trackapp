@@ -12,8 +12,18 @@ function formatTime(seconds) {
   return `${pad(h)}:${pad(m)}:${pad(sec)}`;
 }
 
+// Format seconds as rounded minutes or seconds.
+function formatDurationLabel(seconds) {
+  const s = Math.max(0, Math.round(seconds || 0));
+  if (s < 60) {
+    return `${s} second${s === 1 ? "" : "s"}`;
+  }
+  const minutes = Math.round(s / 60);
+  return `${minutes} minute${minutes === 1 ? "" : "s"}`;
+}
+
 function nowSec() {
   return Math.floor(Date.now() / 1000);
 }
 
-export { nowMs, formatTime, nowSec };
+export { nowMs, formatTime, formatDurationLabel, nowSec };

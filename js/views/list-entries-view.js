@@ -1,5 +1,5 @@
 // js/views/list-entries-view.js
-import { formatTime } from "../utils/time.js";
+import { formatDurationLabel } from "../utils/time.js";
 
 function byId(id) {
     return document.getElementById(id);
@@ -70,7 +70,8 @@ function renderEntry(entry) {
 
     const title = (entry.taskTitle ?? "Untitled Task").trim() || "Untitled Task";
     const durationSeconds = computeDurationSeconds(entry);
-    const durationLabel = formatTime(durationSeconds);
+
+    const durationLabel = formatDurationLabel(durationSeconds);
     const timeRange = formatTimeRange(entry);
 
     return `
