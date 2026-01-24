@@ -21,18 +21,24 @@ export function createTimerController({ onEntryAdded }) {
   // Countdown state
   let countdownMode = false;
   let targetDuration = 0;
+  const countdownModeBtn = document.getElementById("mode-countdown-btn");
+
+  const isCountdownUiActive = () => {
+    if (!countdownModeBtn) return countdownMode;
+    return countdownModeBtn.classList.contains("mode-btn--active");
+  };
 
   // Subscribe to timer state
   const unsubTimer = timer.subscribe((snapshot) => {
     let displayTime = snapshot.elapsedSeconds;
 
     // In countdown mode, show remaining time instead of elapsed time
-    if (countdownMode && targetDuration > 0) {
+    if (countdownMode && targetDuration > 0 && isCountdownUiActive()) {
       displayTime = Math.max(0, targetDuration - snapshot.elapsedSeconds);
 
       // Auto-stop when countdown reaches zero
       if (snapshot.elapsedSeconds >= targetDuration && snapshot.isRunning) {
-        handleStop();
+        handleStop("countdown-zero");
         return;
       }
     }
@@ -81,6 +87,10 @@ export function createTimerController({ onEntryAdded }) {
     
     currentTask.setCurrentTask(task);
     timer.start();
+    if (!isCountdownUiActive()) {
+      countdownMode = false;
+      targetDuration = 0;
+    }
     
     activeEntry = new TimeEntry({
       taskId: task.id,
@@ -89,7 +99,7 @@ export function createTimerController({ onEntryAdded }) {
     });
   }
 
-  function handleStop() {
+  function handleStop(reason = "manual") {
     const duration = timer.stop();
 
     activeEntry.finalize({

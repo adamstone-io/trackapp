@@ -6,6 +6,7 @@ const STORAGE_KEYS = {
     moments: "moments",
     timeEntries: "timeEntries",
     tasks: "tasks",
+    activeTimer: "activeTimer",
 };
 
 // ========== MOMENTS ==========
@@ -84,6 +85,28 @@ export function loadTimeEntries() {
         console.error("Failed to load time entries:", error);
         return [];
     }
+}
+
+// ========== ACTIVE TIMER ==========
+
+export function saveActiveTimer(payload) {
+    localStorage.setItem(STORAGE_KEYS.activeTimer, JSON.stringify(payload));
+}
+
+export function loadActiveTimer() {
+    const raw = localStorage.getItem(STORAGE_KEYS.activeTimer);
+    if (!raw) return null;
+
+    try {
+        return JSON.parse(raw);
+    } catch (error) {
+        console.error("Failed to load active timer:", error);
+        return null;
+    }
+}
+
+export function clearActiveTimer() {
+    localStorage.removeItem(STORAGE_KEYS.activeTimer);
 }
 
 // ========== EXPORT ==========
