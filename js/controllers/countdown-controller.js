@@ -1,11 +1,12 @@
 // controllers/countdown-controller.js
 
-import { 
-    loadDurationFavorites, 
-    addDurationFavorite, 
-    removeDurationFavorite, 
-    getDurationSeconds 
-  } from "../data/duration-favorites.js";
+import {
+  loadDurationFavorites,
+  addDurationFavorite,
+  removeDurationFavorite,
+  getDurationSeconds,
+} from "../data/duration-favorites.js";
+import { formatTime } from "../utils/time.js";
   
   export function createCountdownController() {
     // State
@@ -20,11 +21,9 @@ import {
       modeStopwatch: document.getElementById("mode-stopwatch-btn"),
       modeCountdown: document.getElementById("mode-countdown-btn"),
       countdownSection: document.getElementById("countdown-section"),
-      hoursInput: document.getElementById("hours-input"),
-      minutesInput: document.getElementById("minutes-input"),
-      secondsInput: document.getElementById("seconds-input"),
       favoritesList: document.getElementById("favorites-list"),
       addFavoriteBtn: document.getElementById("add-favorite-btn"),
+      clock: document.getElementById("timer-clock"),
     };
   
     // Event listener references (for cleanup)
@@ -36,7 +35,7 @@ import {
     function init() {
       bindEvents();
       renderFavorites();
-      updateTargetDuration(); // Set initial duration from inputs
+      elements.clock.contentEditable = "false";
     }
   
     /**
@@ -45,12 +44,11 @@ import {
     function bindEvents() {
       addListener(elements.modeStopwatch, "click", () => setMode("stopwatch"));
       addListener(elements.modeCountdown, "click", () => setMode("countdown"));
-      
-      addListener(elements.hoursInput, "input", updateTargetDuration);
-      addListener(elements.minutesInput, "input", updateTargetDuration);
-      addListener(elements.secondsInput, "input", updateTargetDuration);
-      
+
       addListener(elements.addFavoriteBtn, "click", handleAddFavorite);
+      addListener(elements.clock, "focus", handleClockFocus);
+      addListener(elements.clock, "keydown", handleClockKeydown);
+      addListener(elements.clock, "blur", handleClockBlur);
     }
   
     /**
@@ -72,6 +70,11 @@ import {
       elements.modeStopwatch.classList.toggle("mode-btn--active", !isCountdown);
       elements.modeCountdown.classList.toggle("mode-btn--active", isCountdown);
       elements.countdownSection.classList.toggle("hidden", !isCountdown);
+      elements.clock.contentEditable = isCountdown ? "true" : "false";
+      elements.clock.classList.toggle("timer__clock--editable", isCountdown);
+      if (!isCountdown) {
+        elements.clock.textContent = formatTime(0);
+      }
       
       // Dispatch event for timer controller
       document.dispatchEvent(new CustomEvent("timer:modeChange", { 
@@ -85,25 +88,6 @@ import {
     /**
      * Update target duration from input fields
      */
-    function updateTargetDuration() {
-      const hours = parseInt(elements.hoursInput.value) || 0;
-      const minutes = parseInt(elements.minutesInput.value) || 0;
-      const seconds = parseInt(elements.secondsInput.value) || 0;
-      
-      state.targetDuration = (hours * 3600) + (minutes * 60) + seconds;
-      state.selectedFavoriteId = null; // Clear selection when manual input
-      
-      // Update favorites selection UI
-      updateFavoritesSelection();
-      
-      // Notify timer controller of duration change
-      if (state.mode === "countdown") {
-        document.dispatchEvent(new CustomEvent("countdown:durationChange", {
-          detail: { duration: state.targetDuration }
-        }));
-      }
-    }
-  
     /**
      * Render all favorite durations
      */
@@ -113,7 +97,7 @@ import {
       if (favorites.length === 0) {
         elements.favoritesList.innerHTML = `
           <div class="favorites-empty">
-            No favorites yet. Set a duration and click "⭐ Save Favorite"
+            No favorites yet. Click the clock to set a duration and save it.
           </div>
         `;
         return;
@@ -138,8 +122,55 @@ import {
           }
         }
       });
+
+      if (state.targetDuration === 0 && favorites.length > 0) {
+        selectFavorite(favorites[0]);
+      }
     }
   
+    function handleClockKeydown(event) {
+      if (state.mode !== "countdown") return;
+      if (event.key === "Enter") {
+        event.preventDefault();
+        elements.clock.blur();
+      }
+      if (event.key === "Escape") {
+        event.preventDefault();
+        elements.clock.textContent = formatTime(state.targetDuration);
+        elements.clock.blur();
+      }
+    }
+
+    function handleClockBlur() {
+      if (state.mode !== "countdown") return;
+      const input = elements.clock.textContent;
+      const parsed = parseDurationInput(input);
+      if (parsed === null) {
+        elements.clock.textContent = formatTime(state.targetDuration);
+        return;
+      }
+
+      state.targetDuration = parsed;
+      state.selectedFavoriteId = null;
+      updateFavoritesSelection();
+      elements.clock.textContent = formatTime(state.targetDuration);
+
+      document.dispatchEvent(
+        new CustomEvent("countdown:durationChange", {
+          detail: { duration: state.targetDuration },
+        }),
+      );
+    }
+
+    function handleClockFocus() {
+      if (state.mode !== "countdown") return;
+      const selection = window.getSelection();
+      const range = document.createRange();
+      range.selectNodeContents(elements.clock);
+      selection.removeAllRanges();
+      selection.addRange(range);
+    }
+
     /**
      * Create HTML for a favorite chip
      */
@@ -181,12 +212,6 @@ import {
       state.selectedFavoriteId = favorite.id;
       const seconds = getDurationSeconds(favorite);
       state.targetDuration = seconds;
-      
-      // Update input fields
-      const { hours, minutes, secs } = secondsToHMS(seconds);
-      elements.hoursInput.value = hours;
-      elements.minutesInput.value = minutes;
-      elements.secondsInput.value = secs;
       
       // Update UI
       updateFavoritesSelection();
@@ -257,6 +282,28 @@ import {
       const minutes = Math.floor((totalSeconds % 3600) / 60);
       const secs = totalSeconds % 60;
       return { hours, minutes, secs };
+    }
+
+    function parseDurationInput(value) {
+      const trimmed = String(value || "").trim();
+      if (!trimmed) return null;
+      const parts = trimmed.split(":").map((part) => part.trim());
+      if (parts.some((part) => part === "")) return null;
+      const nums = parts.map((part) => Number(part));
+      if (nums.some((num) => Number.isNaN(num) || num < 0)) return null;
+
+      if (nums.length === 3) {
+        const [hours, minutes, seconds] = nums;
+        return Math.floor(hours * 3600 + minutes * 60 + seconds);
+      }
+      if (nums.length === 2) {
+        const [minutes, seconds] = nums;
+        return Math.floor(minutes * 60 + seconds);
+      }
+      if (nums.length === 1) {
+        return Math.floor(nums[0]);
+      }
+      return null;
     }
   
     /**

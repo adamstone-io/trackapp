@@ -33,6 +33,10 @@
   font-weight: 600;
 }
 
+.timer__clock--editable {
+  cursor: text;
+}
+
 #task-name,
 #task-category {
   padding: 0.5rem 1.5rem;

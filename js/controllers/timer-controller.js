@@ -29,18 +29,22 @@ export function createTimerController({ onEntryAdded }) {
   };
 
   // Subscribe to timer state
-  const unsubTimer = timer.subscribe((snapshot) => {
+  const renderSnapshot = (snapshot) => {
     let displayTime = snapshot.elapsedSeconds;
 
     const isCountdownActive = () =>
       countdownModeBtn?.classList.contains("mode-btn--active");
 
     if (isCountdownActive() && targetDuration > 0) {
-      const remaining = targetDuration - snapshot.elapsedSeconds;
-      displayTime = Math.max(0, remaining);
-      if (remaining <= 0 && snapshot.isRunning) {
-        handleStop("countdown-zero");
-        return;
+      if (snapshot.isRunning) {
+        const remaining = targetDuration - snapshot.elapsedSeconds;
+        displayTime = Math.max(0, remaining);
+        if (remaining <= 0) {
+          handleStop("countdown-zero");
+          return;
+        }
+      } else {
+        displayTime = targetDuration;
       }
     }
 
@@ -49,6 +53,10 @@ export function createTimerController({ onEntryAdded }) {
       running: snapshot.isRunning,
       paused: snapshot.isPaused,
     });
+  };
+
+  const unsubTimer = timer.subscribe((snapshot) => {
+    renderSnapshot(snapshot);
   });
 
   // Subscribe to current task state
@@ -69,11 +77,13 @@ export function createTimerController({ onEntryAdded }) {
       CurrentTaskView.clearInputs();
       activeEntry = null;
     }
+    renderSnapshot(timer.getSnapshot());
   };
 
   // Listen for countdown duration changes
   const handleDurationChange = (event) => {
     targetDuration = event.detail.duration || 0;
+    renderSnapshot(timer.getSnapshot());
   };
 
   document.addEventListener("timer:modeChange", handleModeChange);
