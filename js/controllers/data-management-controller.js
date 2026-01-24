@@ -1,34 +1,59 @@
-// controllers/data-management-controller.js
-import { DataManagementView } from "../views/data-management-view.js";
+// js/controllers/data-management-controller.js
 import { exportAllData, importAllData, clearAllData } from "../data/storage.js";
 
-export function createDataManagementController() {
-  const unbind = DataManagementView.bind({
-    onExport: handleExport,
-    onImport: handleImport,
-    onClear: handleClear,
-  });
+/**
+ * Deep module: owns all data-management behavior and DOM wiring.
+ * Simple interface: menu items + dispose.
+ */
+export function createDataManagementMenu(options = {}) {
+  const mount = options.mount ?? document.body;
 
-  function handleExport() {
-    exportAllData();
-    console.log("Data exported");
-  }
+  const fileInput = document.createElement("input");
+  fileInput.type = "file";
+  fileInput.accept = ".json";
+  fileInput.style.display = "none";
+  mount.appendChild(fileInput);
 
-  async function handleImport(file) {
+  async function handleFileChange(e) {
+    const file = e.target.files[0];
+    if (!file) return;
+
     const success = await importAllData(file);
     if (success) {
       alert("Data imported! Refreshing...");
       location.reload();
     }
+    e.target.value = "";
   }
 
-  function handleClear() {
-    if (clearAllData()) {
-      location.reload();
-    }
+  fileInput.addEventListener("change", handleFileChange);
+
+  const items = [
+    {
+      label: "Export data",
+      onSelect: () => {
+        exportAllData();
+        console.log("Data exported");
+      },
+    },
+    {
+      label: "Import data",
+      onSelect: () => fileInput.click(),
+    },
+    {
+      label: "Clear all data",
+      onSelect: () => {
+        if (clearAllData()) {
+          location.reload();
+        }
+      },
+    },
+  ];
+
+  function dispose() {
+    fileInput.removeEventListener("change", handleFileChange);
+    fileInput.remove();
   }
 
-  return {
-    dispose: unbind,
-  };
+  return { items, dispose };
 }
