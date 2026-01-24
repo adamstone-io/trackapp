@@ -1,5 +1,5 @@
 // controllers/timer-controller.js
-import { Timer } from "../state/timer.js";  // ✅ import class
+import { Timer } from "../state/timer.js"; // ✅ import class
 import * as currentTask from "../state/current-task.js";
 import { Task } from "../domain/task.js";
 import { TimeEntry } from "../domain/time-entry.js";
@@ -16,7 +16,7 @@ export function createTimerController({ onEntryAdded }) {
   // Load existing time entries from storage
   timeEntries = loadTimeEntries();
 
-  const timer = new Timer();  // ✅ create instance
+  const timer = new Timer(); // ✅ create instance
 
   // Countdown state
   let countdownMode = false;
@@ -32,12 +32,13 @@ export function createTimerController({ onEntryAdded }) {
   const unsubTimer = timer.subscribe((snapshot) => {
     let displayTime = snapshot.elapsedSeconds;
 
-    // In countdown mode, show remaining time instead of elapsed time
-    if (countdownMode && targetDuration > 0 && isCountdownUiActive()) {
-      displayTime = Math.max(0, targetDuration - snapshot.elapsedSeconds);
+    const isCountdownActive = () =>
+      countdownModeBtn?.classList.contains("mode-btn--active");
 
-      // Auto-stop when countdown reaches zero
-      if (snapshot.elapsedSeconds >= targetDuration && snapshot.isRunning) {
+    if (isCountdownActive() && targetDuration > 0) {
+      const remaining = targetDuration - snapshot.elapsedSeconds;
+      displayTime = Math.max(0, remaining);
+      if (remaining <= 0 && snapshot.isRunning) {
         handleStop("countdown-zero");
         return;
       }
@@ -62,6 +63,12 @@ export function createTimerController({ onEntryAdded }) {
   const handleModeChange = (event) => {
     countdownMode = event.detail.mode === "countdown";
     targetDuration = event.detail.targetDuration || 0;
+    if (!countdownMode) {
+      timer.reset();
+      currentTask.clearCurrentTask();
+      CurrentTaskView.clearInputs();
+      activeEntry = null;
+    }
   };
 
   // Listen for countdown duration changes
@@ -82,16 +89,16 @@ export function createTimerController({ onEntryAdded }) {
 
   function handleStart() {
     const taskData = CurrentTaskView.readTask();
-    
+
     const task = new Task(taskData);
-    
+
     currentTask.setCurrentTask(task);
     timer.start();
     if (!isCountdownUiActive()) {
       countdownMode = false;
       targetDuration = 0;
     }
-    
+
     activeEntry = new TimeEntry({
       taskId: task.id,
       taskTitle: task.title,
@@ -143,6 +150,9 @@ export function createTimerController({ onEntryAdded }) {
     unsubTimer();
     unsubTask();
     document.removeEventListener("timer:modeChange", handleModeChange);
-    document.removeEventListener("countdown:durationChange", handleDurationChange);
+    document.removeEventListener(
+      "countdown:durationChange",
+      handleDurationChange,
+    );
   };
 }
