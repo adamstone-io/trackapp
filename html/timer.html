@@ -79,26 +79,7 @@
                     </div>
 
             <!-- Countdown Duration Selector (hidden by default) -->
-            <div id="countdown-section" class="countdown-section hidden">
-              
 
-              <!-- Favorites Quick Select -->
-              <div class="duration-favorites">
-                <div id="favorites-list" class="duration-favorites__list">
-                  <!-- Populated by JS -->
-                </div>
-               
-              </div>
-
-              <button
-              id="add-favorite-btn"
-              class="btn btn--outline btn--small"
-              type="button"
-              title="Save current duration as favorite"
-            >
-              ⭐ Save Favorite
-            </button>
-            </div>
 
 
 
@@ -113,7 +94,52 @@
 
 
           <div class="timer__display">
-            <div id="timer-clock" class="timer__clock">00:00:00</div>
+            <div id="timer-clock" class="timer__clock">
+              <span id="timer-clock-display" class="timer__clock-display">
+                <span class="timer__clock-display-part" data-clock-part="hours"
+                  >00</span
+                >
+                <span class="timer__clock-sep">:</span>
+                <span class="timer__clock-display-part" data-clock-part="minutes"
+                  >00</span
+                >
+                <span class="timer__clock-sep">:</span>
+                <span class="timer__clock-display-part" data-clock-part="seconds"
+                  >00</span
+                >
+              </span>
+              <div id="timer-clock-edit" class="timer__clock-edit hidden">
+                <input
+                  id="timer-clock-hours"
+                  class="timer__clock-input"
+                  type="text"
+                  inputmode="numeric"
+                  pattern="[0-9]*"
+                  maxlength="2"
+                  aria-label="Hours"
+                />
+                <span class="timer__clock-sep">:</span>
+                <input
+                  id="timer-clock-minutes"
+                  class="timer__clock-input"
+                  type="text"
+                  inputmode="numeric"
+                  pattern="[0-9]*"
+                  maxlength="2"
+                  aria-label="Minutes"
+                />
+                <span class="timer__clock-sep">:</span>
+                <input
+                  id="timer-clock-seconds"
+                  class="timer__clock-input"
+                  type="text"
+                  inputmode="numeric"
+                  pattern="[0-9]*"
+                  maxlength="2"
+                  aria-label="Seconds"
+                />
+              </div>
+            </div>
             <div
               id="pause-duration-display"
               class="timer__pause-display hidden"
@@ -148,7 +174,26 @@
         </div>
 
 
+        <div id="countdown-section" class="countdown-section hidden">
+              
 
+          <!-- Favorites Quick Select -->
+          <div class="duration-favorites">
+            <div id="favorites-list" class="duration-favorites__list">
+              <!-- Populated by JS -->
+            </div>
+           
+          </div>
+
+          <button
+          id="add-favorite-btn"
+          class="btn btn--outline btn--small"
+          type="button"
+          title="Save current duration as favorite"
+        >
+        Save Favorite
+        </button>
+        </div>
 
           <div class="timer__controls">
             <button id="start-btn" class="btn btn--primary">Start Timer</button>

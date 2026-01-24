@@ -15,6 +15,16 @@ export const TimerView = {
 
   render({ time, running, paused, taskTitle }) {
     const clock = this.clock();
+    const clockDisplay = clock?.querySelector("#timer-clock-display");
+    const hoursDisplay = clockDisplay?.querySelector(
+      '[data-clock-part="hours"]',
+    );
+    const minutesDisplay = clockDisplay?.querySelector(
+      '[data-clock-part="minutes"]',
+    );
+    const secondsDisplay = clockDisplay?.querySelector(
+      '[data-clock-part="seconds"]',
+    );
     const start = this.start();
     const pauseBtn = this.pause();
     const resumeBtn = this.resume();
@@ -23,7 +33,16 @@ export const TimerView = {
     const cancelBtn = this.cancel();
     const segments = this.segmentControls();
 
-    clock.textContent = time;
+    if (clockDisplay && hoursDisplay && minutesDisplay && secondsDisplay) {
+      const [hours = "00", minutes = "00", seconds = "00"] = String(time).split(
+        ":",
+      );
+      hoursDisplay.textContent = hours;
+      minutesDisplay.textContent = minutes;
+      secondsDisplay.textContent = seconds;
+    } else if (clock) {
+      clock.textContent = time;
+    }
 
     if (!running) {
       show(start);

@@ -25,16 +25,119 @@
 
 .timer__display {
   text-align: center;
+  margin-bottom: 1.5rem;
 }
 
 .timer__clock {
-  display: block;
+  display: flex;
+  justify-content: center;
   font-size: 3.5rem;
   font-weight: 600;
+  --clock-cell-width: 5rem;
+  --clock-cell-padding: 0.2rem 0.3rem;
+  --clock-gap: 0.25rem;
+  --clock-line-height: 1;
+  --clock-weight: 600;
+  --clock-sep-width: 0.6em;
 }
 
 .timer__clock--editable {
   cursor: text;
+}
+
+.timer__clock-edit {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--clock-gap);
+  font-size: inherit;
+  line-height: var(--clock-line-height);
+  font-variant-numeric: tabular-nums;
+  height: 1em;
+  /* width: calc(
+    (var(--clock-cell-width) * 3) + (var(--clock-gap) * 2) +
+      (var(--clock-sep-width) * 2)
+  ); */
+}
+
+.timer__clock-display {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--clock-gap);
+  font-size: inherit;
+  line-height: var(--clock-line-height);
+  font-variant-numeric: tabular-nums;
+  height: 1em;
+  /* width: calc(
+    (var(--clock-cell-width) * 3) + (var(--clock-gap) * 2) +
+      (var(--clock-sep-width) * 2)
+  ); */
+}
+
+.timer__clock-display-part {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: var(--clock-cell-width);
+  padding: var(--clock-cell-padding);
+  box-sizing: border-box;
+  font-weight: var(--clock-weight);
+  line-height: 1em;
+  height: 1em;
+  border: none;
+  border-radius: 0.5rem;
+}
+
+.timer__clock-input {
+  margin: 0;
+  color: inherit;
+  width: var(--clock-cell-width);
+  padding: 0;
+  box-sizing: border-box;
+  font-size: inherit;
+  font-weight: var(--clock-weight);
+  line-height: 1em;
+  height: 1em;
+  font-family: inherit;
+  font-variant-numeric: tabular-nums;
+  text-align: center;
+  border: none;
+  border-radius: 0.5rem;
+  background: transparent;
+  caret-color: transparent;
+}
+
+.timer__clock-input:focus {
+  outline: none;
+  box-shadow: none;
+  border: none;
+}
+
+.timer__clock-sep {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: var(--clock-sep-width);
+  font-size: inherit;
+  line-height: 1em;
+  height: 1em;
+  margin-bottom: 0;
+  margin: 0;
+  padding: 0;
+}
+
+.timer__clock--editing .timer__clock-input {
+  outline: none;
+}
+
+.timer__clock-input::-webkit-outer-spin-button,
+.timer__clock-input::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+.timer__clock-input[type="number"] {
+  -moz-appearance: textfield;
+  appearance: textfield;
 }
 
 #task-name,
@@ -64,6 +167,7 @@
   display: flex;
   justify-content: center;
   gap: 1rem;
+  margin-bottom: 1.5rem;
 }
 
 #mode-stopwatch-btn,
