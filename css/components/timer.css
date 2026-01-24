@@ -1,20 +1,29 @@
 /* css/components/timer.css */
 .timer__input-group {
-    margin-bottom: var(--spacing-md);
-  }
-  
-  .timer__controls {
-    margin-top: var(--spacing-lg);
-  }
-  
-  .data-controls {
-    margin-top: var(--spacing-xl);
-    margin-bottom: var(--spacing-xl);
-  }
-  
-  .timer-main-container {
-    padding-left: 15%;
-    padding-right: 15%;
-    margin-top: 1rem;
-  }
-  
+  margin-bottom: var(--spacing-md);
+}
+
+.timer__controls {
+  margin-top: var(--spacing-lg);
+}
+
+.data-controls {
+  margin-top: var(--spacing-xl);
+  margin-bottom: var(--spacing-xl);
+}
+
+.timer-main-container {
+  padding-left: 15%;
+  padding-right: 15%;
+  margin-top: 1rem;
+}
+
+.timer__display {
+  text-align: center;
+}
+
+.timer__clock {
+  display: block;
+  font-size: 3.5rem;
+  font-weight: 600;
+}
