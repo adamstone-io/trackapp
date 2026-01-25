@@ -9,6 +9,7 @@ import { EntriesView } from "../views/list-entries-view.js";
 import { formatTime } from "../utils/time.js";
 import { saveTimeEntries, loadTimeEntries } from "../data/storage.js";
 import { createBreakModal } from "../views/components/break-modal.js";
+import { SoundManager } from "../utils/sound-manager.js";
 
 let activeEntry = null;
 let timeEntries = [];
@@ -162,6 +163,10 @@ export function createTimerController({ onEntryAdded }) {
   function handleStop(reason = "manual") {
     clearPauseTracking();
     const duration = timer.stop();
+
+    if (reason === "countdown-zero") {
+      SoundManager.play("timerFinished");
+    }
 
     activeEntry.finalize({
       endedAt: new Date().toISOString(),

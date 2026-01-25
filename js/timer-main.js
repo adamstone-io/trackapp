@@ -5,8 +5,15 @@ import { createEntriesController } from "./controllers/list-entries-controller.j
 import { createCountdownController } from "./controllers/countdown-controller.js";
 import { createMainTimeEntryWindowController } from "./controllers/main-time-entry-window.js";
 import { createManualEntryController } from "./controllers/manual-time-entry-controller.js";
+import { SoundManager } from "./utils/sound-manager.js";
 
 document.addEventListener("DOMContentLoaded", () => {
+  SoundManager.register(
+    "timerFinished",
+    "../sounds/timer-finished/alert-04/alert-04-short.mp3",
+    { volume: 0.9 },
+  );
+
   const entriesController = createEntriesController();
   const countdownDispose = createCountdownController();
   const timerDispose = createTimerController({
