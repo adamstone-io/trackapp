@@ -1,12 +1,14 @@
 import { Moment } from "../domain/moment.js";
 import { TimeEntry } from "../domain/time-entry.js";
 import { Task } from "../domain/task.js";
+import { PrimeItem } from "../domain/prime-item.js";
 
 const STORAGE_KEYS = {
     moments: "moments",
     timeEntries: "timeEntries",
     tasks: "tasks",
     activeTimer: "activeTimer",
+    primeItems: "primeItems",
 };
 
 // ========== MOMENTS ==========
@@ -130,6 +132,7 @@ export function exportAllData() {
         moments: JSON.parse(localStorage.getItem(STORAGE_KEYS.moments) || "[]"),
         tasks: JSON.parse(localStorage.getItem(STORAGE_KEYS.tasks) || "[]"),
         timeEntries: JSON.parse(localStorage.getItem(STORAGE_KEYS.timeEntries) || "[]"),
+        primeItems: JSON.parse(localStorage.getItem(STORAGE_KEYS.primeItems) || "[]"),
         exportedAt: new Date().toISOString(),
     };
 
@@ -162,6 +165,9 @@ export async function importAllData(file) {
         if (data.timeEntries) {
             localStorage.setItem(STORAGE_KEYS.timeEntries, JSON.stringify(data.timeEntries));
         }
+        if (data.primeItems) {
+            localStorage.setItem(STORAGE_KEYS.primeItems, JSON.stringify(data.primeItems));
+        }
 
         console.log("Data imported successfully");
         return true;
@@ -177,6 +183,7 @@ export function clearAllData() {
         localStorage.removeItem(STORAGE_KEYS.moments);
         localStorage.removeItem(STORAGE_KEYS.tasks);
         localStorage.removeItem(STORAGE_KEYS.timeEntries);
+        localStorage.removeItem(STORAGE_KEYS.primeItems);
         console.log("All data cleared");
         return true;
     }
@@ -210,6 +217,58 @@ export function deleteTimeEntry(id) {
 
     if (changed) {
         localStorage.setItem(STORAGE_KEYS.timeEntries, JSON.stringify(next));
+    }
+
+    return changed;
+}
+
+// ========== PRIME ITEMS ==========
+
+export function savePrimeItems(primeItems) {
+    const data = primeItems.map((p) => p.toJSON());
+    localStorage.setItem(STORAGE_KEYS.primeItems, JSON.stringify(data));
+}
+
+export function loadPrimeItems() {
+    const raw = localStorage.getItem(STORAGE_KEYS.primeItems);
+    if (!raw) return [];
+
+    try {
+        const data = JSON.parse(raw);
+        return data.map((item) => PrimeItem.fromJSON(item));
+    } catch (error) {
+        console.error("Failed to load prime items:", error);
+        return [];
+    }
+}
+
+export function updatePrimeItem(id, patch) {
+    const raw = localStorage.getItem(STORAGE_KEYS.primeItems);
+    const data = raw ? JSON.parse(raw) : [];
+
+    const index = data.findIndex((p) => p.id === id);
+    if (index === -1) return false;
+
+    const current = data[index];
+    data[index] = {
+        ...current,
+        ...patch,
+        id: current.id,
+    };
+
+    localStorage.setItem(STORAGE_KEYS.primeItems, JSON.stringify(data));
+    return true;
+}
+
+export function deletePrimeItem(id) {
+    const raw = localStorage.getItem(STORAGE_KEYS.primeItems);
+    const data = raw ? JSON.parse(raw) : [];
+
+    const next = data.filter((p) => p.id !== id);
+    const changed = next.length !== data.length;
+
+    if (changed) {
+        localStorage.setItem(STORAGE_KEYS.primeItems, JSON.stringify(next));
     }
 
     return changed;
