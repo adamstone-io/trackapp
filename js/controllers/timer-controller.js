@@ -153,6 +153,11 @@ export function createTimerController({ onEntryAdded }) {
       targetDuration = 0;
     }
 
+    // Hide countdown favorites when timer starts
+    if (isCountdownUiActive()) {
+      hideCountdownFavorites();
+    }
+
     activeEntry = new TimeEntry({
       taskId: task.id,
       taskTitle: task.title,
@@ -183,6 +188,11 @@ export function createTimerController({ onEntryAdded }) {
     currentTask.clearCurrentTask();
     CurrentTaskView.clearInputs();
     activeEntry = null;
+
+    // Show countdown favorites when timer stops
+    if (isCountdownUiActive()) {
+      showCountdownFavorites();
+    }
   }
 
   function getPauseDurationSeconds(snapshot, now = Date.now()) {
@@ -251,6 +261,30 @@ export function createTimerController({ onEntryAdded }) {
   function clearPauseTracking() {
     pauseStartMs = null;
     stopPauseTicker();
+  }
+
+  function hideCountdownFavorites() {
+    const addFavoriteBtn = document.getElementById("add-favorite-btn");
+    const favoritesList = document.getElementById("favorites-list");
+    
+    if (addFavoriteBtn) {
+      addFavoriteBtn.classList.add("hidden");
+    }
+    if (favoritesList) {
+      favoritesList.classList.add("hidden");
+    }
+  }
+
+  function showCountdownFavorites() {
+    const addFavoriteBtn = document.getElementById("add-favorite-btn");
+    const favoritesList = document.getElementById("favorites-list");
+    
+    if (addFavoriteBtn) {
+      addFavoriteBtn.classList.remove("hidden");
+    }
+    if (favoritesList) {
+      favoritesList.classList.remove("hidden");
+    }
   }
 
   /**
