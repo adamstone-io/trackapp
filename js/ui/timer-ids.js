@@ -7,7 +7,7 @@ const base = {
   startBtn: "start-btn",
   pauseBtn: "pause-btn",
   resumeBtn: "resume-btn",
-  saveBtn: "save-btn",
+  stopBtn: "stop-btn",
   cancelBtn: "cancel-btn",
 };
 
@@ -28,7 +28,7 @@ const modalTimerIds = {
   startBtn: `${base.startBtn}-modal`,
   pauseBtn: `${base.pauseBtn}-modal`,
   resumeBtn: `${base.resumeBtn}-modal`,
-  saveBtn: `${base.saveBtn}-modal`,
+  stopBtn: `${base.stopBtn}-modal`,
   cancelBtn: `${base.cancelBtn}-modal`,
 };
 

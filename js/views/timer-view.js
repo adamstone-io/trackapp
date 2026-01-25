@@ -11,7 +11,7 @@ export const TimerView = {
   pause: () => byId(timerIds.pauseBtn),
   resume: () => byId(timerIds.resumeBtn),
   logBreak: () => byId(timerIds.logBreakBtn),
-  save: () => byId(timerIds.saveBtn),
+  stop: () => byId(timerIds.stopBtn),
   cancel: () => byId(timerIds.cancelBtn),
   segmentControls: () => byId(timerIds.segmentControls),
   logMoment: () => byId(momentIds.logMomentBtn),
@@ -32,7 +32,7 @@ export const TimerView = {
     const pauseBtn = this.pause();
     const resumeBtn = this.resume();
     const logBreak = this.logBreak();
-    const saveBtn = this.save();
+    const stopBtn = this.stop();
     const cancelBtn = this.cancel();
     const segments = this.segmentControls();
     const logMoment = this.logMoment();
@@ -55,7 +55,7 @@ export const TimerView = {
       hide(pauseBtn);
       hide(resumeBtn);
       hide(logBreak);
-      hide(saveBtn);
+      hide(stopBtn);
       hide(cancelBtn);
       hide(segments);
       if (pauseDisplay) {
@@ -65,7 +65,7 @@ export const TimerView = {
     } else {
       hide(start);
       hide(logMoment);
-      show(saveBtn);
+      show(stopBtn);
       show(cancelBtn);
       show(segments);
       if (paused) {
@@ -96,7 +96,7 @@ export const TimerView = {
       onPause = noOperation,
       onResume = noOperation,
       onLogBreak = noOperation,
-      onSave = noOperation,
+      onStop = noOperation,
       onCancel = noOperation,
     } = handlers || {};
 
@@ -105,7 +105,7 @@ export const TimerView = {
       on(this.pause(), "click", onPause),
       on(this.resume(), "click", onResume),
       on(this.logBreak(), "click", onLogBreak),
-      on(this.save(), "click", onSave),
+      on(this.stop(), "click", onStop),
       on(this.cancel(), "click", onCancel),
     ];
     return () => unbinds.forEach((u) => u());

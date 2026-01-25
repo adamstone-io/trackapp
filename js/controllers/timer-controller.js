@@ -118,7 +118,7 @@ export function createTimerController({ onEntryAdded }) {
     onPause: handlePause,
     onResume: handleResume,
     onLogBreak: handleLogBreak,
-    onSave: handleStop,
+    onStop: handleStop,
   });
 
   function handlePause() {
