@@ -136,7 +136,7 @@ export function createPrimeController() {
 
     try {
       const text = await file.text();
-      const importedItems = parseImportFile(text);
+      const { items: importedItems, category } = parseImportFile(text);
       
       if (importedItems.length === 0) {
         alert("No prime items found. Make sure lines start with #### for titles.");
@@ -145,14 +145,22 @@ export function createPrimeController() {
 
       // Load current items and add imported ones
       const currentItems = loadPrimeItems();
-      const newItems = importedItems.map(title => new PrimeItem({ title }));
+      const newItems = importedItems.map(title => new PrimeItem({ title, category }));
       const combined = [...currentItems, ...newItems];
       
       savePrimeItems(combined);
       primeItems = loadPrimeItems();
+      
+      // Update category managers if a category was imported
+      if (category) {
+        quickAddCategoryManager.loadCategories(primeItems);
+        modalCategoryManager.loadCategories(primeItems);
+      }
+      
       renderList();
 
-      alert(`Successfully imported ${importedItems.length} prime item(s)!`);
+      const categoryMsg = category ? ` with category "${category}"` : "";
+      alert(`Successfully imported ${importedItems.length} prime item(s)${categoryMsg}!`);
       
       // Reset file input
       importPrimeFile.value = "";
@@ -303,15 +311,29 @@ export function createPrimeController() {
 
   /**
    * Parse import file and extract titles from lines starting with ####
+   * Optionally extract category from first line if it matches "Category: value" or "category: value"
    * @param {string} text - File contents
-   * @returns {string[]} - Array of prime item titles
+   * @returns {{ items: string[], category: string }} - Object with array of prime item titles and optional category
    */
   function parseImportFile(text) {
     const lines = text.split('\n');
     const titles = [];
+    let category = '';
+    let startIndex = 0;
 
-    for (const line of lines) {
-      const trimmed = line.trim();
+    // Check if first line declares a category (case-insensitive)
+    if (lines.length > 0) {
+      const firstLine = lines[0].trim();
+      const categoryMatch = firstLine.match(/^category:\s*(.+)$/i);
+      if (categoryMatch) {
+        category = categoryMatch[1].trim();
+        startIndex = 1; // Skip first line when processing items
+      }
+    }
+
+    // Process lines starting from the appropriate index
+    for (let i = startIndex; i < lines.length; i++) {
+      const trimmed = lines[i].trim();
       if (trimmed.startsWith('####')) {
         // Remove the #### prefix and any extra whitespace
         const title = trimmed.substring(4).trim();
@@ -321,7 +343,7 @@ export function createPrimeController() {
       }
     }
 
-    return titles;
+    return { items: titles, category };
   }
 
   // Return API for external use

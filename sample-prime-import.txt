@@ -1,8 +1,12 @@
+Category: Computer Science
 Sample Prime Items Import File
 ================================
 
 This file demonstrates the import format for the priming tracker.
 Lines starting with #### will be imported as prime item titles.
+
+Optional: The first line can declare a category (as shown above).
+All imported items will be assigned this category.
 
 Study Topics:
 #### Machine Learning Fundamentals
@@ -26,3 +30,4 @@ Mathematics:
 #### Graph Theory
 
 Note: Only lines starting with #### are imported. All other lines (like this one) are ignored.
+The category declaration (if present) must be on the first line in format: "Category: <name>" or "category: <name>"

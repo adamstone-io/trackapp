@@ -19,8 +19,35 @@ Lines starting with `####` (four hash symbols) will be imported as prime item ti
 #### Deep Learning
 ```
 
+### Optional Category Declaration
+
+You can optionally declare a category for all imported items by adding a category declaration on the first line:
+
+```
+Category: Machine Learning
+#### Machine Learning Fundamentals
+#### Neural Networks
+#### Deep Learning
+```
+
+or (case-insensitive):
+
+```
+category: Machine Learning
+#### Machine Learning Fundamentals
+#### Neural Networks
+#### Deep Learning
+```
+
+- The category declaration must be on the first line
+- Format: `Category: <category name>` or `category: <category name>`
+- All imported items will be assigned this category
+- If no category is specified, items are imported without a category
+
+### Format Rules
+
 - Only the text after `####` is used as the title
-- Lines without `####` are ignored
+- Lines without `####` are ignored (except for the optional first-line category)
 - Empty lines and whitespace are handled automatically
 
 ## Example
