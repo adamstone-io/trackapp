@@ -119,6 +119,7 @@ export function createTimerController({ onEntryAdded }) {
     onResume: handleResume,
     onLogBreak: handleLogBreak,
     onStop: handleStop,
+    onCancel: handleCancel,
   });
 
   function handlePause() {
@@ -138,6 +139,26 @@ export function createTimerController({ onEntryAdded }) {
   function handleLogBreak() {
     if (!timer.getSnapshot().isPaused) return;
     breakModal.open();
+  }
+
+  function handleCancel() {
+    clearPauseTracking();
+    timer.stop();
+    
+    currentTask.clearCurrentTask();
+    CurrentTaskView.clearInputs();
+    activeEntry = null;
+
+    // Update view to make inputs editable again
+    CurrentTaskView.render({
+      taskTitle: "",
+      running: false,
+    });
+
+    // Show countdown favorites when timer is cancelled
+    if (isCountdownUiActive()) {
+      showCountdownFavorites();
+    }
   }
 
   function handleStart() {
