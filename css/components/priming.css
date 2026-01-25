@@ -141,7 +141,7 @@
   width: 100%;
 }
 
-.priming-header__quick-add input {
+.priming-header__quick-add textarea {
   flex: 1;
   width: 100%;
   padding: 0.625rem 0.875rem;
@@ -152,14 +152,19 @@
   color: var(--color-text, #333);
   font-family: inherit;
   transition: border-color 0.2s ease;
+  resize: none;
+  overflow-y: hidden;
+  min-height: 2.5rem;
+  max-height: 12rem;
+  line-height: 1.4;
 }
 
-.priming-header__quick-add input:focus {
+.priming-header__quick-add textarea:focus {
   outline: none;
   border-color: var(--color-primary, #2563eb);
 }
 
-.priming-header__quick-add input::placeholder {
+.priming-header__quick-add textarea::placeholder {
   color: var(--color-text-muted, #999);
 }
 
@@ -255,7 +260,7 @@
     flex-direction: column;
   }
 
-  .priming-header__quick-add input {
+  .priming-header__quick-add textarea {
     width: 100%;
     min-width: 0;
   }

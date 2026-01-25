@@ -78,15 +78,25 @@ export function createPrimeController() {
 
     // Clear input and render
     quickAddInput.value = "";
+    quickAddInput.style.height = 'auto';
     quickAddInput.focus();
     renderList();
   };
 
   addPrimeBtn.addEventListener("click", handleQuickAdd);
   
-  // Allow Enter key to add prime item
-  quickAddInput.addEventListener("keypress", (e) => {
-    if (e.key === "Enter") {
+  // Auto-expand textarea as user types
+  const autoExpandTextarea = () => {
+    quickAddInput.style.height = 'auto';
+    quickAddInput.style.height = quickAddInput.scrollHeight + 'px';
+  };
+
+  quickAddInput.addEventListener('input', autoExpandTextarea);
+  
+  // Allow Ctrl/Cmd+Enter to add prime item, Enter alone for new lines
+  quickAddInput.addEventListener("keydown", (e) => {
+    if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) {
+      e.preventDefault();
       handleQuickAdd();
     }
   });
