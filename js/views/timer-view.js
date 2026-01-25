@@ -1,4 +1,5 @@
 import { byId, on, show, hide, toggle } from "../ui/ui-core.js";
+import { momentIds } from "../ui/moment-ids.js";
 import { timerIds } from "../ui/timer-ids.js";
 
 const noOperation = () => {};
@@ -12,6 +13,7 @@ export const TimerView = {
   stop: () => byId(timerIds.stopBtn),
   cancel: () => byId(timerIds.cancelBtn),
   segmentControls: () => byId(timerIds.segmentControls),
+  logMoment: () => byId(momentIds.logMomentBtn),
 
   render({ time, running, paused, taskTitle }) {
     const clock = this.clock();
@@ -32,6 +34,7 @@ export const TimerView = {
     const stopBtn = this.stop();
     const cancelBtn = this.cancel();
     const segments = this.segmentControls();
+    const logMoment = this.logMoment();
 
     if (clockDisplay && hoursDisplay && minutesDisplay && secondsDisplay) {
       const [hours = "00", minutes = "00", seconds = "00"] = String(time).split(
@@ -46,6 +49,7 @@ export const TimerView = {
 
     if (!running) {
       show(start);
+      show(logMoment);
       hide(pauseBtn);
       hide(resumeBtn);
       hide(logBreak);
@@ -54,6 +58,7 @@ export const TimerView = {
       hide(segments);
     } else {
       hide(start);
+      hide(logMoment);
       show(stopBtn);
       show(cancelBtn);
       show(segments);
