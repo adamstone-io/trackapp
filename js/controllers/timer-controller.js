@@ -193,6 +193,11 @@ export function createTimerController({ onEntryAdded }) {
   }
 
   function handleStop(reason = "manual") {
+    // Finalize any active pause before stopping
+    if (timer.getSnapshot().isPaused && pauseStartMs) {
+      finalizePause({ label: "Pause", createEntry: false });
+    }
+    
     clearPauseTracking();
     const duration = timer.stop();
 
