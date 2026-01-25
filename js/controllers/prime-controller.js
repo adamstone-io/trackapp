@@ -249,7 +249,13 @@ export function createPrimeController() {
     // Play the sound
     SoundManager.play("primeLogged");
 
-    // Show brief confirmation
+    // Add green border to the prime item container immediately
+    const primeItemContainer = document.querySelector(`.prime-item[data-id="${item.id}"]`);
+    if (primeItemContainer) {
+      primeItemContainer.classList.add("prime-item--logged");
+    }
+
+    // Show brief confirmation on button
     const btn = byId(`log-prime-${item.id}`);
     if (btn) {
       const originalText = btn.textContent;
@@ -262,8 +268,20 @@ export function createPrimeController() {
       }, 1000);
     }
 
-    // Re-render to update stats
-    renderList();
+    // Wait 1 second before re-rendering to move item and update stats
+    setTimeout(() => {
+      renderList();
+      
+      // Re-apply green border after render (item may have moved)
+      const newPrimeItemContainer = document.querySelector(`.prime-item[data-id="${item.id}"]`);
+      if (newPrimeItemContainer) {
+        newPrimeItemContainer.classList.add("prime-item--logged");
+        
+        setTimeout(() => {
+          newPrimeItemContainer.classList.remove("prime-item--logged");
+        }, 1000);
+      }
+    }, 1000);
   }
 
   function handleEdit(item) {
