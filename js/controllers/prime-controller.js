@@ -19,6 +19,8 @@ export function createPrimeController() {
 
   const addPrimeBtn = byId(primeIds.addPrimeBtn);
   const showArchivedBtn = byId(primeIds.showArchivedBtn);
+  const importPrimeBtn = byId(primeIds.importPrimeBtn);
+  const importPrimeFile = byId(primeIds.importPrimeFile);
 
   // Initial render
   renderList();
@@ -30,6 +32,48 @@ export function createPrimeController() {
   };
 
   addPrimeBtn.addEventListener("click", handleOpenCreate);
+
+  // Trigger file input when import button clicked
+  const handleImportClick = () => {
+    importPrimeFile.click();
+  };
+
+  importPrimeBtn.addEventListener("click", handleImportClick);
+
+  // Handle file selection and import
+  const handleFileImport = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    try {
+      const text = await file.text();
+      const importedItems = parseImportFile(text);
+      
+      if (importedItems.length === 0) {
+        alert("No prime items found. Make sure lines start with #### for titles.");
+        return;
+      }
+
+      // Load current items and add imported ones
+      const currentItems = loadPrimeItems();
+      const newItems = importedItems.map(title => new PrimeItem({ title }));
+      const combined = [...currentItems, ...newItems];
+      
+      savePrimeItems(combined);
+      primeItems = loadPrimeItems();
+      renderList();
+
+      alert(`Successfully imported ${importedItems.length} prime item(s)!`);
+      
+      // Reset file input
+      importPrimeFile.value = "";
+    } catch (error) {
+      console.error("Import failed:", error);
+      alert("Failed to import file. Please try again.");
+    }
+  };
+
+  importPrimeFile.addEventListener("change", handleFileImport);
 
   // Toggle archived items visibility
   const handleToggleArchived = () => {
@@ -162,6 +206,29 @@ export function createPrimeController() {
     }, showArchived);
   }
 
+  /**
+   * Parse import file and extract titles from lines starting with ####
+   * @param {string} text - File contents
+   * @returns {string[]} - Array of prime item titles
+   */
+  function parseImportFile(text) {
+    const lines = text.split('\n');
+    const titles = [];
+
+    for (const line of lines) {
+      const trimmed = line.trim();
+      if (trimmed.startsWith('####')) {
+        // Remove the #### prefix and any extra whitespace
+        const title = trimmed.substring(4).trim();
+        if (title) {
+          titles.push(title);
+        }
+      }
+    }
+
+    return titles;
+  }
+
   // Return API for external use
   return {
     getPrimeItems: () => [...primeItems],
@@ -170,6 +237,8 @@ export function createPrimeController() {
       unbindModal();
       addPrimeBtn.removeEventListener("click", handleOpenCreate);
       showArchivedBtn.removeEventListener("click", handleToggleArchived);
+      importPrimeBtn.removeEventListener("click", handleImportClick);
+      importPrimeFile.removeEventListener("change", handleFileImport);
     },
   };
 }

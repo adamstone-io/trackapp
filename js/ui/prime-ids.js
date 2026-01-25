@@ -14,6 +14,10 @@ export const primeIds = {
   // Archive toggle
   showArchivedBtn: "show-archived-btn",
   
+  // Import
+  importPrimeBtn: "import-prime-btn",
+  importPrimeFile: "import-prime-file",
+  
   // Modal
   primeModal: "prime-modal",
   primeModalTitle: "prime-modal-title",

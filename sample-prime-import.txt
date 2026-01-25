@@ -1,0 +1,28 @@
+Sample Prime Items Import File
+================================
+
+This file demonstrates the import format for the priming tracker.
+Lines starting with #### will be imported as prime item titles.
+
+Study Topics:
+#### Machine Learning Fundamentals
+#### Neural Network Architectures
+#### Gradient Descent Optimization
+#### Regularization Techniques
+#### Convolutional Neural Networks
+
+Programming Concepts:
+#### Functional Programming Paradigms
+#### Design Patterns
+#### Data Structures and Algorithms
+#### System Design Principles
+#### Concurrency and Parallelism
+
+Mathematics:
+#### Linear Algebra
+#### Calculus and Derivatives
+#### Probability Theory
+#### Statistical Methods
+#### Graph Theory
+
+Note: Only lines starting with #### are imported. All other lines (like this one) are ignored.

@@ -17,9 +17,12 @@ The Priming feature allows you to track how many times you "prime" your brain be
 2. **Log Prime**: Click "Log Prime" each time you prime that topic
    - Item automatically moves to the end of the list after logging
 3. **Track Progress**: View statistics for each item (Total, Today, This Week, Last primed)
-4. **Archive**: Click the archive icon to hide completed items
-5. **View Archived**: Click "Show Archived" to view/restore archived items
-6. **Edit/Delete**: Update or remove prime items as needed
+4. **Import from File**: Click "Import from File" to bulk import prime items from a text file
+   - File format: Lines starting with `####` will be imported as prime item titles
+   - Example: `#### Topic Name` becomes a prime item titled "Topic Name"
+5. **Archive**: Click the archive icon to hide completed items
+6. **View Archived**: Click "Show Archived" to view/restore archived items
+7. **Edit/Delete**: Update or remove prime items as needed
 
 ## Files Structure
 
@@ -78,3 +81,19 @@ Items are sorted by **least recently primed first**. This means:
 
 ## Why "Priming" vs "Review"?
 Priming occurs **before** studying material. It's about opening mental loops and creating curiosity. "Review" typically implies going over material you've already studied, so "priming" is a more accurate term for this pre-study technique.
+
+## Import File Format
+
+You can bulk import prime items from a text file (`.txt` or `.md`). The import feature looks for lines starting with `####` and creates a prime item for each one.
+
+### Example Import File
+
+```
+#### Neural Networks
+#### Backpropagation Algorithm
+#### Gradient Descent
+#### Loss Functions
+#### Activation Functions
+```
+
+Each line starting with `####` will create a new prime item with that title. Lines without `####` are ignored, so you can include other content in the file if needed.
