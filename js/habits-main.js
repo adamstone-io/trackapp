@@ -1,10 +1,9 @@
-// js/stats-main.js
-import { createStatsController } from "./controllers/stats-controller.js";
+// js/habits-main.js
 import { initNavigation } from "./controllers/nav-controller.js";
 
 document.addEventListener("DOMContentLoaded", () => {
     // Initialize navigation
     initNavigation();
     
-    createStatsController();
+    // Habits functionality will be added here in the future
 });

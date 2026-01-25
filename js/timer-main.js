@@ -6,8 +6,11 @@ import { createCountdownController } from "./controllers/countdown-controller.js
 import { createMainTimeEntryWindowController } from "./controllers/main-time-entry-window.js";
 import { createManualEntryController } from "./controllers/manual-time-entry-controller.js";
 import { SoundManager } from "./utils/sound-manager.js";
+import { initNavigation } from "./controllers/nav-controller.js";
 
 document.addEventListener("DOMContentLoaded", () => {
+  // Initialize navigation
+  initNavigation();
   SoundManager.register(
     "timerFinished",
     "../sounds/timer-finished/alert-04/alert-04-short.mp3",

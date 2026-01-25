@@ -1,8 +1,11 @@
 // priming-main.js
 import { createPrimeController } from "./controllers/prime-controller.js";
 import { SoundManager } from "./utils/sound-manager.js";
+import { initNavigation } from "./controllers/nav-controller.js";
 
 document.addEventListener("DOMContentLoaded", () => {
+  // Initialize navigation
+  initNavigation();
   SoundManager.register(
     "primeLogged",
     "../sounds/timer-finished/success-tone/success-tone.mp3",
