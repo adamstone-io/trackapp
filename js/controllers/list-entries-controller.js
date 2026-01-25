@@ -1,6 +1,6 @@
 // controllers/list-entries-controller.js
 import { EntriesView } from "../views/list-entries-view.js";
-import { loadTimeEntries, loadMoments, updateTimeEntry, deleteTimeEntry } from "../data/storage.js";
+import { loadTimeEntries, loadMoments, updateTimeEntry, deleteTimeEntry, deleteMoment } from "../data/storage.js";
 import { createDropdownMenu } from "../views/components/dropdown-menu.js";
 import { createTimeEntryModal } from "../views/components/time-entry-modal.js";
 
@@ -111,6 +111,13 @@ export function createEntriesController() {
                             if (typeof onEditMoment === "function") {
                                 onEditMoment(moment);
                             }
+                        },
+                    },
+                    {
+                        label: "Delete",
+                        onSelect: () => {
+                            deleteMoment(moment.id);
+                            refresh();
                         },
                     },
                 ],

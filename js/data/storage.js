@@ -47,6 +47,20 @@ export function updateMoment(id, patch) {
     return true;
 }
 
+export function deleteMoment(id) {
+    const raw = localStorage.getItem(STORAGE_KEYS.moments);
+    const data = raw ? JSON.parse(raw) : [];
+
+    const next = data.filter((m) => m.id !== id);
+    const changed = next.length !== data.length;
+
+    if (changed) {
+        localStorage.setItem(STORAGE_KEYS.moments, JSON.stringify(next));
+    }
+
+    return changed;
+}
+
 // ========== TASKS ==========
 
 export function saveTasks(tasks) {
