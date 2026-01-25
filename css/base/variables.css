@@ -17,6 +17,14 @@
     --color-bg-secondary: #f9f9f9;
     --color-border: #e0e0e0;
     
+    /* Aliases for compatibility */
+    --text-primary: var(--color-text);
+    --text-secondary: var(--color-text-muted);
+    --primary: var(--color-primary);
+    --border: var(--color-border);
+    --background: var(--color-bg);
+    --surface: var(--color-bg-secondary);
+    
     /* Spacing */
     --spacing-xs: 0.25rem;
     --spacing-sm: 0.5rem;

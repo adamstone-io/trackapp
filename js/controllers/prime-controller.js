@@ -4,6 +4,7 @@ import { PrimeView } from "../views/prime-view.js";
 import { byId } from "../ui/ui-core.js";
 import { primeIds } from "../ui/prime-ids.js";
 import { createDropdownMenu } from "../views/components/dropdown-menu.js";
+import { CategoryManager } from "../utils/category-manager.js";
 import {
   savePrimeItems,
   loadPrimeItems,
@@ -20,8 +21,27 @@ export function createPrimeController() {
 
   const addPrimeBtn = byId(primeIds.addPrimeBtn);
   const quickAddInput = byId(primeIds.quickAddPrimeInput);
+  const quickAddCategoryInput = byId(primeIds.quickAddCategoryInput);
+  const categoryDropdown = byId(primeIds.categoryDropdown);
+  const modalCategoryInput = byId(primeIds.primeCategory);
+  const modalCategoryDropdown = byId(primeIds.modalCategoryDropdown);
   const headerMenuBtn = byId(primeIds.headerMenuBtn);
   const importPrimeFile = byId(primeIds.importPrimeFile);
+
+  // Initialize category managers
+  const quickAddCategoryManager = new CategoryManager(
+    quickAddCategoryInput,
+    categoryDropdown,
+    null // No special action on select for quick add
+  );
+  quickAddCategoryManager.loadCategories(primeItems);
+
+  const modalCategoryManager = new CategoryManager(
+    modalCategoryInput,
+    modalCategoryDropdown,
+    null // No special action on select for modal
+  );
+  modalCategoryManager.loadCategories(primeItems);
 
   // Initial render
   renderList();
@@ -62,6 +82,7 @@ export function createPrimeController() {
   // Quick-add from input field
   const handleQuickAdd = () => {
     const title = quickAddInput.value.trim();
+    const category = quickAddCategoryInput.value.trim();
     
     if (!title) {
       alert("Please enter a title for this prime item");
@@ -70,14 +91,21 @@ export function createPrimeController() {
     }
 
     // Create new item
-    const item = new PrimeItem({ title });
+    const item = new PrimeItem({ title, category });
     const next = loadPrimeItems();
     next.push(item);
     savePrimeItems(next);
     primeItems = next;
 
-    // Clear input and render
+    // Update category manager with new category
+    if (category) {
+      quickAddCategoryManager.incrementCategory(category);
+      modalCategoryManager.incrementCategory(category);
+    }
+
+    // Clear inputs and render
     quickAddInput.value = "";
+    quickAddCategoryInput.value = "";
     quickAddInput.style.height = 'auto';
     quickAddInput.focus();
     renderList();
@@ -154,11 +182,19 @@ export function createPrimeController() {
       // Update existing item
       const success = updatePrimeItem(editingItemId, {
         title: data.title,
+        category: data.category,
         description: data.description,
       });
 
       if (success) {
         primeItems = loadPrimeItems();
+        
+        // Update category managers if category changed
+        if (data.category) {
+          quickAddCategoryManager.loadCategories(primeItems);
+          modalCategoryManager.loadCategories(primeItems);
+        }
+        
         renderList();
       }
 
@@ -167,6 +203,7 @@ export function createPrimeController() {
       // Create new item
       const item = new PrimeItem({
         title: data.title,
+        category: data.category,
         description: data.description,
       });
 
@@ -174,6 +211,12 @@ export function createPrimeController() {
       next.push(item);
       savePrimeItems(next);
       primeItems = next;
+
+      // Update category managers with new category
+      if (data.category) {
+        quickAddCategoryManager.incrementCategory(data.category);
+        modalCategoryManager.incrementCategory(data.category);
+      }
 
       renderList();
     }
@@ -290,6 +333,8 @@ export function createPrimeController() {
       addPrimeBtn.removeEventListener("click", handleQuickAdd);
       importPrimeFile.removeEventListener("change", handleFileImport);
       headerMenu?.dispose();
+      quickAddCategoryManager?.dispose();
+      modalCategoryManager?.dispose();
     },
   };
 }

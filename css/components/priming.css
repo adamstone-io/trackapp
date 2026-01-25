@@ -56,6 +56,17 @@
   line-height: 1.4;
 }
 
+.prime-item__category {
+  display: inline-block;
+  font-size: 0.75rem;
+  padding: 0.125rem 0.5rem;
+  background: var(--color-primary-light);
+  color: var(--color-primary);
+  border-radius: 3px;
+  margin-top: 0.25rem;
+  font-weight: 500;
+}
+
 .prime-item__description {
   color: var(--text-secondary);
   font-size: 0.813rem;
@@ -136,8 +147,8 @@
 
 .priming-header__quick-add {
   display: flex;
+  flex-direction: column;
   gap: 0.75rem;
-  align-items: center;
   width: 100%;
 }
 
@@ -166,6 +177,96 @@
 
 .priming-header__quick-add textarea::placeholder {
   color: var(--color-text-muted, #999);
+}
+
+/* Bottom row with category and button */
+.priming-header__bottom-row {
+  display: flex;
+  gap: 0.75rem;
+  align-items: flex-start;
+  width: 100%;
+}
+
+.priming-header__bottom-row button {
+  margin-left: auto;
+}
+
+/* Category input wrapper */
+.category-input-wrapper {
+  position: relative;
+  flex: 1;
+  max-width: 15rem; /* 350px */
+}
+
+.category-input-wrapper input {
+  width: 100%;
+  padding: 0.625rem 0.875rem;
+  font-size: 0.938rem;
+  border: 2px solid var(--color-border);
+  border-radius: 4px;
+  background: var(--color-bg);
+  color: var(--color-text);
+  font-family: inherit;
+  transition: border-color 0.2s ease;
+}
+
+.category-input-wrapper input:focus {
+  outline: none;
+  border-color: var(--color-primary);
+}
+
+.category-input-wrapper input::placeholder {
+  color: var(--color-text-muted);
+}
+
+/* Category dropdown */
+.category-dropdown {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  right: 0;
+  background: var(--color-bg);
+  border: 2px solid var(--color-border);
+  border-radius: 4px;
+  max-height: 200px;
+  overflow-y: auto;
+  z-index: 1000;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+.category-dropdown.hidden {
+  display: none;
+}
+
+.category-dropdown-item {
+  padding: 0.5rem 0.875rem;
+  cursor: pointer;
+  transition: background-color 0.15s ease;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 0.875rem;
+}
+
+.category-dropdown-item:hover {
+  background: var(--color-bg-secondary);
+}
+
+.category-dropdown-item--selected {
+  background: var(--color-primary-light);
+}
+
+.category-count {
+  font-size: 0.75rem;
+  color: var(--color-text-muted);
+  font-weight: 500;
+}
+
+.category-dropdown-empty {
+  padding: 0.75rem 0.875rem;
+  text-align: center;
+  color: var(--color-text-muted);
+  font-size: 0.875rem;
 }
 
 /* Modal form */
@@ -208,6 +309,76 @@
 .form-group textarea {
   resize: vertical;
   min-height: 80px;
+}
+
+/* Form group with category dropdown */
+.form-group .category-input-wrapper {
+  position: relative;
+}
+
+/* Button styles */
+.btn {
+  padding: 0.625rem 1.5rem;
+  border-radius: 6px;
+  font-size: 0.938rem;
+  font-weight: 500;
+  border: none;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+}
+
+.btn--primary {
+  background-color: var(--color-primary);
+  color: white;
+}
+
+.btn--primary:hover {
+  background-color: var(--color-primary-dark);
+  box-shadow: 0 2px 4px rgba(37, 99, 235, 0.3);
+}
+
+.btn--primary:active {
+  transform: translateY(1px);
+}
+
+.btn--outline {
+  background-color: transparent;
+  color: var(--color-text);
+  border: 2px solid var(--color-border);
+}
+
+.btn--outline:hover {
+  background-color: var(--color-bg-secondary);
+  border-color: var(--color-text-light);
+}
+
+.prime-item__log-btn {
+  padding: 0.5rem 1.25rem;
+  border-radius: 6px;
+  font-size: 0.875rem;
+  font-weight: 500;
+}
+
+.prime-item__log-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* Icon button */
+.icon-btn {
+  background: transparent;
+  border: none;
+  padding: 0.5rem;
+  cursor: pointer;
+  color: var(--color-text-muted);
+  transition: color 0.2s ease;
+  border-radius: 4px;
+}
+
+.icon-btn:hover {
+  color: var(--color-text);
+  background: var(--color-bg-secondary);
 }
 
 /* Responsive adjustments */
@@ -257,7 +428,6 @@
 
   .priming-header__quick-add {
     width: 100%;
-    flex-direction: column;
   }
 
   .priming-header__quick-add textarea {
@@ -265,7 +435,11 @@
     min-width: 0;
   }
 
-  .priming-header__quick-add button {
+  .priming-header__bottom-row {
+    flex-direction: column;
+  }
+
+  .priming-header__bottom-row button {
     width: 100%;
   }
 }

@@ -1,11 +1,15 @@
 export const primeIds = {
   // Quick add
   quickAddPrimeInput: "quick-add-prime-input",
+  quickAddCategoryInput: "quick-add-category-input",
+  categoryDropdown: "category-dropdown",
   addPrimeBtn: "add-prime-btn",
   
   // Form
   primeForm: "prime-form",
   primeTitle: "prime-title",
+  primeCategory: "prime-category",
+  modalCategoryDropdown: "modal-category-dropdown",
   primeDescription: "prime-description",
   primeCancelBtn: "prime-cancel-btn",
   primeSaveBtn: "prime-save-btn",

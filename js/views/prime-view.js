@@ -101,6 +101,11 @@ export class PrimeView {
           <div class="prime-item__header-content">
             <h3 class="prime-item__title">${this.escapeHtml(item.title)}</h3>
             ${
+              item.category
+                ? `<span class="prime-item__category">${this.escapeHtml(item.category)}</span>`
+                : ""
+            }
+            ${
               item.description
                 ? `<p class="prime-item__description">${this.escapeHtml(item.description)}</p>`
                 : ""
@@ -177,10 +182,12 @@ export class PrimeView {
     const modal = byId(primeIds.primeModal);
     const title = byId(primeIds.primeModalTitle);
     const titleInput = byId(primeIds.primeTitle);
+    const categoryInput = byId(primeIds.primeCategory);
     const descInput = byId(primeIds.primeDescription);
 
     title.textContent = "Add Prime Item";
     titleInput.value = "";
+    categoryInput.value = "";
     descInput.value = "";
 
     modal.classList.remove("hidden");
@@ -195,10 +202,12 @@ export class PrimeView {
     const modal = byId(primeIds.primeModal);
     const title = byId(primeIds.primeModalTitle);
     const titleInput = byId(primeIds.primeTitle);
+    const categoryInput = byId(primeIds.primeCategory);
     const descInput = byId(primeIds.primeDescription);
 
     title.textContent = "Edit Prime Item";
     titleInput.value = item.title;
+    categoryInput.value = item.category || "";
     descInput.value = item.description;
 
     modal.classList.remove("hidden");
@@ -218,10 +227,12 @@ export class PrimeView {
    */
   static readFormData() {
     const titleInput = byId(primeIds.primeTitle);
+    const categoryInput = byId(primeIds.primeCategory);
     const descInput = byId(primeIds.primeDescription);
 
     return {
       title: titleInput.value.trim(),
+      category: categoryInput.value.trim(),
       description: descInput.value.trim(),
     };
   }

@@ -9,6 +9,7 @@ export class PrimeItem {
    * @param {string} [data.id] - Unique identifier
    * @param {string} data.title - Name of the topic/concept to prime
    * @param {string} [data.description] - Additional notes or questions
+   * @param {string} [data.category] - Category for organizing prime items
    * @param {Array<number>} [data.primeTimestamps] - Array of timestamp (ms) when primed
    * @param {boolean} [data.archived] - Whether item is archived
    * @param {string} [data.createdAt] - ISO date string for creation time
@@ -17,6 +18,7 @@ export class PrimeItem {
     id,
     title,
     description = "",
+    category = "",
     primeTimestamps = [],
     archived = false,
     createdAt = null,
@@ -24,6 +26,7 @@ export class PrimeItem {
     this.id = id ?? crypto.randomUUID();
     this.title = title.trim();
     this.description = description.trim();
+    this.category = category.trim();
     this.primeTimestamps = [...primeTimestamps];
     this.archived = archived;
     this.createdAt = createdAt ?? new Date().toISOString();
@@ -160,9 +163,10 @@ export class PrimeItem {
   /**
    * Update item metadata.
    */
-  update({ title, description }) {
+  update({ title, description, category }) {
     if (title !== undefined) this.title = title.trim();
     if (description !== undefined) this.description = description.trim();
+    if (category !== undefined) this.category = category.trim();
   }
 
   /**
@@ -173,6 +177,7 @@ export class PrimeItem {
       id: this.id,
       title: this.title,
       description: this.description,
+      category: this.category,
       primeTimestamps: this.primeTimestamps,
       archived: this.archived,
       createdAt: this.createdAt,

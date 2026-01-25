@@ -63,13 +63,28 @@
           <div class="priming-header__quick-add">
             <textarea
               id="quick-add-prime-input"
-              placeholder="Enter prime item title..."
+              placeholder="What do you want to prime?"
               maxlength="500"
               rows="1"
             ></textarea>
-            <button id="add-prime-btn" class="btn btn--primary" type="button">
-              Add
-            </button>
+            <div class="priming-header__bottom-row">
+              <div class="category-input-wrapper">
+                <input
+                  id="quick-add-category-input"
+                  type="text"
+                  placeholder="Category (optional)"
+                  maxlength="50"
+                  autocomplete="off"
+                />
+                <div
+                  id="category-dropdown"
+                  class="category-dropdown hidden"
+                ></div>
+              </div>
+              <button id="add-prime-btn" class="btn btn--primary" type="button">
+                Add
+              </button>
+            </div>
           </div>
           <input
             type="file"
@@ -109,6 +124,23 @@
               maxlength="100"
               required
             />
+          </div>
+
+          <div class="form-group">
+            <label for="prime-category">Category</label>
+            <div class="category-input-wrapper">
+              <input
+                id="prime-category"
+                type="text"
+                placeholder="Optional: Categorize this prime item..."
+                maxlength="50"
+                autocomplete="off"
+              />
+              <div
+                id="modal-category-dropdown"
+                class="category-dropdown hidden"
+              ></div>
+            </div>
           </div>
 
           <div class="form-group">
