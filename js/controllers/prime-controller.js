@@ -5,6 +5,7 @@ import { byId } from "../ui/ui-core.js";
 import { primeIds } from "../ui/prime-ids.js";
 import { createDropdownMenu } from "../views/components/dropdown-menu.js";
 import { CategoryManager } from "../utils/category-manager.js";
+import { SoundManager } from "../utils/sound-manager.js";
 import {
   savePrimeItems,
   loadPrimeItems,
@@ -244,6 +245,9 @@ export function createPrimeController() {
 
     primeItems[itemIndex].logPrime();
     savePrimeItems(primeItems);
+
+    // Play the sound
+    SoundManager.play("primeLogged");
 
     // Show brief confirmation
     const btn = byId(`log-prime-${item.id}`);
