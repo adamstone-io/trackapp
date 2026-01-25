@@ -158,6 +158,12 @@ export function createTimerController({ onEntryAdded }) {
       hideCountdownFavorites();
     }
 
+    // Update view to make inputs readonly
+    CurrentTaskView.render({
+      taskTitle: task.title,
+      running: true,
+    });
+
     activeEntry = new TimeEntry({
       taskId: task.id,
       taskTitle: task.title,
@@ -188,6 +194,12 @@ export function createTimerController({ onEntryAdded }) {
     currentTask.clearCurrentTask();
     CurrentTaskView.clearInputs();
     activeEntry = null;
+
+    // Update view to make inputs editable again
+    CurrentTaskView.render({
+      taskTitle: "",
+      running: false,
+    });
 
     // Show countdown favorites when timer stops
     if (isCountdownUiActive()) {

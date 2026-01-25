@@ -156,9 +156,37 @@
   width: 100%;
   text-align: center;
 }
+
+#task-name[readonly] {
+  background-color: var(--color-bg-secondary, #f3f4f6);
+  cursor: not-allowed;
+  color: var(--color-text, #111827);
+  font-weight: 500;
+  pointer-events: none;
+}
+
+#task-name[readonly]:focus {
+  outline: none;
+  border: 1px solid var(--color-border, #a3a7ae);
+  box-shadow: none;
+}
+
 #task-category {
   max-width: 180px;
   color: var(--color-text, #111827);
+}
+
+#task-category:disabled {
+  background-color: var(--color-bg-secondary, #f3f4f6);
+  cursor: not-allowed;
+  opacity: 0.6;
+  pointer-events: none;
+}
+
+#task-category:disabled:focus {
+  outline: none;
+  border: 1px solid var(--color-border, #a3a7ae);
+  box-shadow: none;
 }
 
 #task-name {
@@ -222,4 +250,8 @@
 #log-break-btn {
   background-color: var(--color-warning);
   color: #1f2937;
+}
+
+#current-task-title {
+  text-align: center;
 }

@@ -2,18 +2,25 @@ import { byId, show, hide } from "../ui/ui-core.js";
 import { taskIds } from "../ui/task-ids.js";
 
 export const CurrentTaskView = {
-  title: () => byId(taskIds.currentTaskTitle),
   inputSection: () => byId(taskIds.taskInputSection),
   nameInput: () => byId(taskIds.taskNameInput),
   categorySelect: () => byId(taskIds.taskCategorySelect),
 
   /**
    * Render the current task section.
-   * Hides task input while the timer is running.
+   * Makes task name input readonly when timer is running.
    */
   render({ taskTitle, running }) {
-    this.title().textContent = taskTitle || "";
-    running ? hide(this.inputSection()) : show(this.inputSection());
+    const nameInput = this.nameInput();
+    const categorySelect = this.categorySelect();
+    
+    if (running) {
+      nameInput.setAttribute('readonly', 'readonly');
+      categorySelect.setAttribute('disabled', 'disabled');
+    } else {
+      nameInput.removeAttribute('readonly');
+      categorySelect.removeAttribute('disabled');
+    }
   },
 
   /**
