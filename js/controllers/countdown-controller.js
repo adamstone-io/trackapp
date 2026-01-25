@@ -18,7 +18,6 @@ export function createCountdownController() {
 
   // DOM elements
   const elements = {
-    modeStopwatch: document.getElementById("mode-stopwatch-btn"),
     modeCountdown: document.getElementById("mode-countdown-btn"),
     countdownSection: document.getElementById("countdown-section"),
     favoritesList: document.getElementById("favorites-list"),
@@ -40,7 +39,7 @@ export function createCountdownController() {
   function init() {
     bindEvents();
     renderFavorites();
-    setClockEditMode(false);
+    setMode(state.mode);
     updateClockInputs(state.targetDuration);
   }
 
@@ -48,8 +47,9 @@ export function createCountdownController() {
    * Bind all event listeners
    */
   function bindEvents() {
-    addListener(elements.modeStopwatch, "click", () => setMode("stopwatch"));
-    addListener(elements.modeCountdown, "click", () => setMode("countdown"));
+    addListener(elements.modeCountdown, "click", () => {
+      setMode(state.mode === "countdown" ? "stopwatch" : "countdown");
+    });
 
     addListener(elements.addFavoriteBtn, "click", handleAddFavorite);
     addListener(elements.clock, "click", handleClockClick);
@@ -72,6 +72,7 @@ export function createCountdownController() {
    * Add event listener and track for cleanup
    */
   function addListener(element, event, handler) {
+    if (!element) return;
     element.addEventListener(event, handler);
     listeners.push({ element, event, handler });
   }
@@ -84,10 +85,19 @@ export function createCountdownController() {
 
     // Update UI
     const isCountdown = mode === "countdown";
-    elements.modeStopwatch.classList.toggle("mode-btn--active", !isCountdown);
-    elements.modeCountdown.classList.toggle("mode-btn--active", isCountdown);
-    elements.countdownSection.classList.toggle("hidden", !isCountdown);
-    elements.clock.classList.toggle("timer__clock--editable", isCountdown);
+    if (elements.modeCountdown) {
+      elements.modeCountdown.classList.toggle("mode-btn--active", isCountdown);
+      elements.modeCountdown.setAttribute(
+        "aria-pressed",
+        isCountdown ? "true" : "false",
+      );
+    }
+    if (elements.countdownSection) {
+      elements.countdownSection.classList.toggle("hidden", !isCountdown);
+    }
+    if (elements.clock) {
+      elements.clock.classList.toggle("timer__clock--editable", isCountdown);
+    }
     setClockEditMode(false);
     if (!isCountdown) {
       setClockDisplay(formatTime(0));

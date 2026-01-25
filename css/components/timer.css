@@ -193,6 +193,15 @@
   background-color: var(--color-primary);
 }
 
+/* Countdown toggle states */
+#mode-countdown-btn.mode-btn--active,
+#mode-countdown-btn[aria-pressed="true"] {
+  background-color: var(--color-success, #16a34a);
+  box-shadow: 0 0 0 3px rgba(22, 163, 74, 0.25);
+  transform: translateY(-1px);
+}
+
+
 #log-break-btn {
   background-color: var(--color-warning);
   color: #1f2937;
