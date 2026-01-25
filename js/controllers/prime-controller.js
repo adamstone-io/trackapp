@@ -3,6 +3,7 @@ import { PrimeItem } from "../domain/prime-item.js";
 import { PrimeView } from "../views/prime-view.js";
 import { byId } from "../ui/ui-core.js";
 import { primeIds } from "../ui/prime-ids.js";
+import { createDropdownMenu } from "../views/components/dropdown-menu.js";
 import {
   savePrimeItems,
   loadPrimeItems,
@@ -18,27 +19,77 @@ export function createPrimeController() {
   let showArchived = false;
 
   const addPrimeBtn = byId(primeIds.addPrimeBtn);
-  const showArchivedBtn = byId(primeIds.showArchivedBtn);
-  const importPrimeBtn = byId(primeIds.importPrimeBtn);
+  const quickAddInput = byId(primeIds.quickAddPrimeInput);
+  const headerMenuBtn = byId(primeIds.headerMenuBtn);
   const importPrimeFile = byId(primeIds.importPrimeFile);
 
   // Initial render
   renderList();
 
-  // Open modal for creating new item
-  const handleOpenCreate = () => {
-    editingItemId = null;
-    PrimeView.openForCreate();
+  // Handler functions (defined before being used in menu)
+  // Toggle archived items visibility
+  const handleToggleArchived = () => {
+    showArchived = !showArchived;
+    renderList();
+    updateHeaderMenu();
   };
 
-  addPrimeBtn.addEventListener("click", handleOpenCreate);
-
-  // Trigger file input when import button clicked
+  // Trigger file input when import clicked
   const handleImportClick = () => {
     importPrimeFile.click();
   };
 
-  importPrimeBtn.addEventListener("click", handleImportClick);
+  // Create header dropdown menu
+  const getHeaderMenuLabel = () => showArchived ? "Hide Archived" : "Show Archived";
+  
+  const updateHeaderMenu = () => {
+    if (headerMenu) {
+      headerMenu.dispose();
+    }
+    
+    const menuItems = [
+      { label: getHeaderMenuLabel(), onSelect: handleToggleArchived },
+      { label: "Import from File", onSelect: handleImportClick },
+    ];
+    
+    headerMenu = createDropdownMenu({ items: menuItems });
+    headerMenu.attachTo(headerMenuBtn);
+  };
+  
+  let headerMenu = null;
+  updateHeaderMenu();
+
+  // Quick-add from input field
+  const handleQuickAdd = () => {
+    const title = quickAddInput.value.trim();
+    
+    if (!title) {
+      alert("Please enter a title for this prime item");
+      quickAddInput.focus();
+      return;
+    }
+
+    // Create new item
+    const item = new PrimeItem({ title });
+    const next = loadPrimeItems();
+    next.push(item);
+    savePrimeItems(next);
+    primeItems = next;
+
+    // Clear input and render
+    quickAddInput.value = "";
+    quickAddInput.focus();
+    renderList();
+  };
+
+  addPrimeBtn.addEventListener("click", handleQuickAdd);
+  
+  // Allow Enter key to add prime item
+  quickAddInput.addEventListener("keypress", (e) => {
+    if (e.key === "Enter") {
+      handleQuickAdd();
+    }
+  });
 
   // Handle file selection and import
   const handleFileImport = async (e) => {
@@ -74,15 +125,6 @@ export function createPrimeController() {
   };
 
   importPrimeFile.addEventListener("change", handleFileImport);
-
-  // Toggle archived items visibility
-  const handleToggleArchived = () => {
-    showArchived = !showArchived;
-    showArchivedBtn.textContent = showArchived ? "Hide Archived" : "Show Archived";
-    renderList();
-  };
-
-  showArchivedBtn.addEventListener("click", handleToggleArchived);
 
   // Bind modal form
   const unbindModal = PrimeView.bind({
@@ -235,10 +277,9 @@ export function createPrimeController() {
     refresh: renderList,
     dispose: () => {
       unbindModal();
-      addPrimeBtn.removeEventListener("click", handleOpenCreate);
-      showArchivedBtn.removeEventListener("click", handleToggleArchived);
-      importPrimeBtn.removeEventListener("click", handleImportClick);
+      addPrimeBtn.removeEventListener("click", handleQuickAdd);
       importPrimeFile.removeEventListener("change", handleFileImport);
+      headerMenu?.dispose();
     },
   };
 }

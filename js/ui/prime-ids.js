@@ -1,6 +1,9 @@
 export const primeIds = {
-  // Form
+  // Quick add
+  quickAddPrimeInput: "quick-add-prime-input",
   addPrimeBtn: "add-prime-btn",
+  
+  // Form
   primeForm: "prime-form",
   primeTitle: "prime-title",
   primeDescription: "prime-description",
@@ -11,7 +14,8 @@ export const primeIds = {
   primeList: "prime-list",
   primeListEmpty: "prime-list-empty",
   
-  // Archive toggle
+  // Header menu
+  headerMenuBtn: "header-menu-btn",
   showArchivedBtn: "show-archived-btn",
   
   // Import

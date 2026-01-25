@@ -39,26 +39,36 @@
     <div class="container">
       <main>
         <div class="priming-header">
-          <div>
+          <div class="priming-header__top">
             <h1 class="priming-header__title">Study Priming</h1>
-            <p class="priming-header__subtitle">
-              Open loops and ask questions before studying to enhance learning
-              effectiveness
-            </p>
-          </div>
-          <div class="priming-header__actions">
             <button
-              id="show-archived-btn"
-              class="btn btn--outline"
+              id="header-menu-btn"
+              class="icon-btn"
+              aria-label="More options"
               type="button"
             >
-              Show Archived
+              <svg
+                class="icon"
+                width="16"
+                height="16"
+                viewBox="0 0 16 16"
+                aria-hidden="true"
+              >
+                <circle cx="8" cy="2" r="1.5" />
+                <circle cx="8" cy="8" r="1.5" />
+                <circle cx="8" cy="14" r="1.5" />
+              </svg>
             </button>
-            <button id="import-prime-btn" class="btn btn--outline" type="button">
-              Import from File
-            </button>
+          </div>
+          <div class="priming-header__quick-add">
+            <input
+              id="quick-add-prime-input"
+              type="text"
+              placeholder="Enter prime item title..."
+              maxlength="100"
+            />
             <button id="add-prime-btn" class="btn btn--primary" type="button">
-              Add Prime Item
+              Add
             </button>
           </div>
           <input
