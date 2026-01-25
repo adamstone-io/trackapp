@@ -102,7 +102,7 @@ export class PrimeView {
             <h3 class="prime-item__title">${this.escapeHtml(item.title)}</h3>
             ${
               item.category
-                ? `<span class="prime-item__category">${this.escapeHtml(item.category)}</span>`
+                ? `<span class="prime-item__category">${this.escapeHtml(this.capitalize(item.category))}</span>`
                 : ""
             }
             ${
@@ -273,5 +273,13 @@ export class PrimeView {
     const div = document.createElement("div");
     div.textContent = text;
     return div.innerHTML;
+  }
+
+  /**
+   * Capitalize first letter of a string.
+   */
+  static capitalize(text) {
+    if (!text) return "";
+    return text.charAt(0).toUpperCase() + text.slice(1);
   }
 }

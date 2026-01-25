@@ -125,7 +125,7 @@ export class CategoryManager {
     
     const html = filtered.map(([category, count]) => `
       <div class="category-dropdown-item" data-category="${this.escapeHtml(category)}">
-        <span>${this.escapeHtml(category)}</span>
+        <span>${this.escapeHtml(this.capitalize(category))}</span>
         <span class="category-count">${count}</span>
       </div>
     `).join('');
@@ -179,6 +179,14 @@ export class CategoryManager {
     const div = document.createElement('div');
     div.textContent = text;
     return div.innerHTML;
+  }
+
+  /**
+   * Capitalize first letter of a string
+   */
+  capitalize(text) {
+    if (!text) return "";
+    return text.charAt(0).toUpperCase() + text.slice(1);
   }
 
   /**

@@ -31,7 +31,7 @@ export class Task {
 
       this.id = id ?? crypto.randomUUID();
       this.title = title.trim();
-      this.category = category;
+      this.category = category.trim().toLowerCase();
       this.notes = notes;
       this.plannedStart = plannedStart;
       this.plannedDuration = plannedDuration;
@@ -59,7 +59,7 @@ export class Task {
      */
     update({ title, category, notes, plannedStart, plannedDuration }) {
       if (title !== undefined) this.title = title.trim();
-      if (category !== undefined) this.category = category;
+      if (category !== undefined) this.category = category.trim().toLowerCase();
       if (notes !== undefined) this.notes = notes;
       if (plannedStart !== undefined) this.plannedStart = plannedStart;
       if (plannedDuration !== undefined) this.plannedDuration = plannedDuration;

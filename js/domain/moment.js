@@ -23,7 +23,7 @@ export class Moment {
   }) {
     this.id = id ?? crypto.randomUUID();
     this.description = description.trim();
-    this.category = category;
+    this.category = category.trim().toLowerCase();
     this.timestampMs = timestampMs;
     this.createdAt = createdAt ?? new Date().toISOString();
   }

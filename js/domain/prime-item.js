@@ -26,7 +26,7 @@ export class PrimeItem {
     this.id = id ?? crypto.randomUUID();
     this.title = title.trim();
     this.description = description.trim();
-    this.category = category.trim();
+    this.category = category.trim().toLowerCase();
     this.primeTimestamps = [...primeTimestamps];
     this.archived = archived;
     this.createdAt = createdAt ?? new Date().toISOString();
@@ -166,7 +166,7 @@ export class PrimeItem {
   update({ title, description, category }) {
     if (title !== undefined) this.title = title.trim();
     if (description !== undefined) this.description = description.trim();
-    if (category !== undefined) this.category = category.trim();
+    if (category !== undefined) this.category = category.trim().toLowerCase();
   }
 
   /**
