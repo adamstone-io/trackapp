@@ -3,6 +3,7 @@
 const base = {
   clock: "timer-clock",
   status: "timer-status",
+  pauseDisplay: "pause-duration-display",
   startBtn: "start-btn",
   pauseBtn: "pause-btn",
   resumeBtn: "resume-btn",
@@ -16,10 +17,7 @@ const timerIds = {
 
   // Segment controls
   segmentControls: "segment-controls",
-  nameSegmentBtn: "name-segment-btn",
   logBreakBtn: "log-break-btn",
-  newSegmentBtn: "new-segment-btn",
-  splitEntryBtn: "split-entry-btn",
   timerMenuTrigger: "timer-menu-trigger",
   timerMenuDropdown: "timer-menu-dropdown",
 };

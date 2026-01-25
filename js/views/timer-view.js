@@ -6,6 +6,7 @@ const noOperation = () => {};
 
 export const TimerView = {
   clock: () => byId(timerIds.clock),
+  pauseDisplay: () => byId(timerIds.pauseDisplay),
   start: () => byId(timerIds.startBtn),
   pause: () => byId(timerIds.pauseBtn),
   resume: () => byId(timerIds.resumeBtn),
@@ -15,7 +16,7 @@ export const TimerView = {
   segmentControls: () => byId(timerIds.segmentControls),
   logMoment: () => byId(momentIds.logMomentBtn),
 
-  render({ time, running, paused, taskTitle }) {
+  render({ time, running, paused, pauseDurationLabel }) {
     const clock = this.clock();
     const clockDisplay = clock?.querySelector("#timer-clock-display");
     const hoursDisplay = clockDisplay?.querySelector(
@@ -35,6 +36,7 @@ export const TimerView = {
     const cancelBtn = this.cancel();
     const segments = this.segmentControls();
     const logMoment = this.logMoment();
+    const pauseDisplay = this.pauseDisplay();
 
     if (clockDisplay && hoursDisplay && minutesDisplay && secondsDisplay) {
       const [hours = "00", minutes = "00", seconds = "00"] = String(time).split(
@@ -56,6 +58,10 @@ export const TimerView = {
       hide(saveBtn);
       hide(cancelBtn);
       hide(segments);
+      if (pauseDisplay) {
+        hide(pauseDisplay);
+        pauseDisplay.textContent = "";
+      }
     } else {
       hide(start);
       hide(logMoment);
@@ -66,10 +72,20 @@ export const TimerView = {
         hide(pauseBtn);
         show(resumeBtn);
         show(logBreak);
+        if (pauseDisplay) {
+          pauseDisplay.textContent = pauseDurationLabel
+            ? `Paused ${pauseDurationLabel}`
+            : "Paused";
+          show(pauseDisplay);
+        }
       } else {
         show(pauseBtn);
         hide(resumeBtn);
         hide(logBreak);
+        if (pauseDisplay) {
+          hide(pauseDisplay);
+          pauseDisplay.textContent = "";
+        }
       }
     }
   },
@@ -79,6 +95,7 @@ export const TimerView = {
       onStart = noOperation,
       onPause = noOperation,
       onResume = noOperation,
+      onLogBreak = noOperation,
       onSave = noOperation,
       onCancel = noOperation,
     } = handlers || {};
@@ -87,6 +104,7 @@ export const TimerView = {
       on(this.start(), "click", onStart),
       on(this.pause(), "click", onPause),
       on(this.resume(), "click", onResume),
+      on(this.logBreak(), "click", onLogBreak),
       on(this.save(), "click", onSave),
       on(this.cancel(), "click", onCancel),
     ];

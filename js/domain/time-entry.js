@@ -22,6 +22,7 @@ export class TimeEntry {
       endedAt = null,
       durationSeconds = 0,
       notes = "",
+      breaks = [],
     }) {
       if (!taskId) {
         throw new Error("TimeEntry requires a taskId");
@@ -37,6 +38,7 @@ export class TimeEntry {
       this.endedAt = endedAt;
       this.durationSeconds = durationSeconds;
       this.notes = notes;
+      this.breaks = Array.isArray(breaks) ? breaks : [];
       this.createdAt = new Date().toISOString();
     }
   
@@ -74,6 +76,17 @@ export class TimeEntry {
     addNotes(notes) {
       this.notes = notes;
     }
+
+    /**
+     * Add a break record to this entry.
+     */
+    addBreak(breakRecord) {
+      if (!breakRecord) return;
+      if (!Array.isArray(this.breaks)) {
+        this.breaks = [];
+      }
+      this.breaks.push(breakRecord);
+    }
   
     /**
      * Format duration as HH:MM:SS.
@@ -99,6 +112,7 @@ export class TimeEntry {
         endedAt: this.endedAt,
         durationSeconds: this.durationSeconds,
         notes: this.notes,
+        breaks: this.breaks,
         createdAt: this.createdAt,
       };
     }

@@ -8,15 +8,26 @@ import { CurrentTaskView } from "../views/current-task-view.js";
 import { EntriesView } from "../views/list-entries-view.js";
 import { formatTime } from "../utils/time.js";
 import { saveTimeEntries, loadTimeEntries } from "../data/storage.js";
+import { createBreakModal } from "../views/components/break-modal.js";
 
 let activeEntry = null;
 let timeEntries = [];
+let pauseStartMs = null;
+let pauseTickerId = null;
 
 export function createTimerController({ onEntryAdded }) {
   // Load existing time entries from storage
   timeEntries = loadTimeEntries();
 
   const timer = new Timer(); // ✅ create instance
+  const breakModal = createBreakModal({
+    onSave: ({ label }) => {
+      if (!timer.getSnapshot().isPaused) return;
+      finalizePause({ label, createEntry: true });
+      clearPauseTracking();
+      timer.resume();
+    },
+  });
 
   // Countdown state
   let countdownMode = false;
@@ -48,10 +59,21 @@ export function createTimerController({ onEntryAdded }) {
       }
     }
 
+    if (snapshot.isPaused && pauseStartMs === null) {
+      pauseStartMs = snapshot.pauseStartTimeMs ?? null;
+    }
+
+    const pauseDurationSeconds = snapshot.isPaused
+      ? getPauseDurationSeconds(snapshot)
+      : 0;
+
     TimerView.render({
       time: formatTime(displayTime),
       running: snapshot.isRunning,
       paused: snapshot.isPaused,
+      pauseDurationLabel: snapshot.isPaused
+        ? formatTime(pauseDurationSeconds)
+        : "",
     });
   };
 
@@ -92,10 +114,30 @@ export function createTimerController({ onEntryAdded }) {
   // Bind timer controls
   const unbind = TimerView.bind({
     onStart: handleStart,
-    onPause: () => timer.pause(),
-    onResume: () => timer.resume(),
+    onPause: handlePause,
+    onResume: handleResume,
+    onLogBreak: handleLogBreak,
     onSave: handleStop,
   });
+
+  function handlePause() {
+    if (!timer.getSnapshot().isRunning || timer.getSnapshot().isPaused) return;
+    timer.pause();
+    pauseStartMs = timer.getSnapshot().pauseStartTimeMs ?? Date.now();
+    startPauseTicker();
+  }
+
+  function handleResume() {
+    if (!timer.getSnapshot().isPaused) return;
+    finalizePause({ label: "Pause", createEntry: false });
+    clearPauseTracking();
+    timer.resume();
+  }
+
+  function handleLogBreak() {
+    if (!timer.getSnapshot().isPaused) return;
+    breakModal.open();
+  }
 
   function handleStart() {
     const taskData = CurrentTaskView.readTask();
@@ -103,6 +145,7 @@ export function createTimerController({ onEntryAdded }) {
     const task = new Task(taskData);
 
     currentTask.setCurrentTask(task);
+    clearPauseTracking();
     timer.start();
     if (!isCountdownUiActive()) {
       countdownMode = false;
@@ -117,6 +160,7 @@ export function createTimerController({ onEntryAdded }) {
   }
 
   function handleStop(reason = "manual") {
+    clearPauseTracking();
     const duration = timer.stop();
 
     activeEntry.finalize({
@@ -134,6 +178,74 @@ export function createTimerController({ onEntryAdded }) {
     currentTask.clearCurrentTask();
     CurrentTaskView.clearInputs();
     activeEntry = null;
+  }
+
+  function getPauseDurationSeconds(snapshot, now = Date.now()) {
+    const startMs =
+      pauseStartMs ?? snapshot?.pauseStartTimeMs ?? null;
+    if (!startMs) return 0;
+    return Math.max(0, Math.floor((now - startMs) / 1000));
+  }
+
+  function finalizePause({ label, createEntry }) {
+    if (!activeEntry || !pauseStartMs) return;
+
+    const startedAt = new Date(pauseStartMs).toISOString();
+    const endedAt = new Date().toISOString();
+    const durationSeconds = Math.max(
+      0,
+      Math.floor((Date.parse(endedAt) - pauseStartMs) / 1000),
+    );
+
+    let loggedEntryId = null;
+    if (createEntry) {
+      const breakTask = new Task({
+        title: label,
+        category: "",
+      });
+      const breakEntry = new TimeEntry({
+        taskId: breakTask.id,
+        taskTitle: breakTask.title,
+        startedAt,
+        endedAt,
+        durationSeconds,
+      });
+      loggedEntryId = breakEntry.id;
+      timeEntries.push(breakEntry);
+      saveTimeEntries(timeEntries);
+      if (typeof onEntryAdded === "function") {
+        onEntryAdded(breakEntry);
+      }
+    }
+
+    activeEntry.addBreak({
+      id: crypto.randomUUID(),
+      startedAt,
+      endedAt,
+      durationSeconds,
+      label,
+      loggedEntryId,
+    });
+  }
+
+  function startPauseTicker() {
+    stopPauseTicker();
+    pauseTickerId = setInterval(() => {
+      renderSnapshot(timer.getSnapshot());
+    }, 1000);
+    renderSnapshot(timer.getSnapshot());
+  }
+
+  function stopPauseTicker() {
+    if (pauseTickerId) {
+      clearInterval(pauseTickerId);
+      pauseTickerId = null;
+    }
+  }
+
+  function clearPauseTracking() {
+    pauseStartMs = null;
+    stopPauseTicker();
   }
 
   /**
