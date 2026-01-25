@@ -91,6 +91,8 @@ export class PrimeView {
     const totalCount = item.getTotalCount();
     const todayCount = item.getTodayCount();
     const weekCount = item.getThisWeekCount();
+    const monthCount = item.getThisMonthCount();
+    const firstPrimeText = item.getFirstPrimeTimeAgo();
     const lastPrimeText = item.getLastPrimeTimeAgo();
 
     return `
@@ -137,6 +139,14 @@ export class PrimeView {
             <div class="prime-stat">
               <span class="prime-stat__label">This Week</span>
               <span class="prime-stat__value">${weekCount}</span>
+            </div>
+            <div class="prime-stat">
+              <span class="prime-stat__label">This Month</span>
+              <span class="prime-stat__value">${monthCount}</span>
+            </div>
+            <div class="prime-stat">
+              <span class="prime-stat__label">First</span>
+              <span class="prime-stat__value">${firstPrimeText}</span>
             </div>
             <div class="prime-stat">
               <span class="prime-stat__label">Last</span>

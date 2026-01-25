@@ -68,6 +68,28 @@ export class PrimeItem {
   }
 
   /**
+   * Get count of primes this month.
+   */
+  getThisMonthCount() {
+    const now = new Date();
+    const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+    monthStart.setHours(0, 0, 0, 0);
+    const monthStartMs = monthStart.getTime();
+
+    return this.primeTimestamps.filter((ts) => ts >= monthStartMs).length;
+  }
+
+  /**
+   * Get the first time this item was primed.
+   * @returns {Date|null}
+   */
+  getFirstPrimeDate() {
+    if (this.primeTimestamps.length === 0) return null;
+    const firstTimestamp = Math.min(...this.primeTimestamps);
+    return new Date(firstTimestamp);
+  }
+
+  /**
    * Get the last time this item was primed.
    * @returns {Date|null}
    */
@@ -75,6 +97,28 @@ export class PrimeItem {
     if (this.primeTimestamps.length === 0) return null;
     const lastTimestamp = Math.max(...this.primeTimestamps);
     return new Date(lastTimestamp);
+  }
+
+  /**
+   * Get a human-readable "time ago" string for first prime.
+   */
+  getFirstPrimeTimeAgo() {
+    const firstDate = this.getFirstPrimeDate();
+    if (!firstDate) return "Never";
+
+    const now = Date.now();
+    const diff = now - firstDate.getTime();
+    const seconds = Math.floor(diff / 1000);
+    const minutes = Math.floor(seconds / 60);
+    const hours = Math.floor(minutes / 60);
+    const days = Math.floor(hours / 24);
+
+    if (seconds < 60) return "Just now";
+    if (minutes < 60) return `${minutes}m ago`;
+    if (hours < 24) return `${hours}h ago`;
+    if (days < 7) return `${days}d ago`;
+    if (days < 30) return `${Math.floor(days / 7)}w ago`;
+    return firstDate.toLocaleDateString();
   }
 
   /**
