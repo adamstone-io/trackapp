@@ -11,6 +11,7 @@ import {
   loadPrimeItems,
   updatePrimeItem,
   deletePrimeItem,
+  convertPrimeToReview,
 } from "../data/storage.js";
 
 let primeItems = [];
@@ -317,6 +318,18 @@ export function createPrimeController() {
     }
   }
 
+  function handleConvertToReview(item) {
+    if (!confirm(`Convert "${item.title}" to a review item? The original prime item will be archived.`)) return;
+
+    const reviewItem = convertPrimeToReview(item.id);
+    if (reviewItem) {
+      primeItems = loadPrimeItems();
+      renderList();
+    } else {
+      alert("Failed to convert prime item. Please try again.");
+    }
+  }
+
   function renderList() {
     // Filter items based on showArchived toggle
     const itemsToShow = showArchived 
@@ -328,6 +341,7 @@ export function createPrimeController() {
       onEdit: handleEdit,
       onDelete: handleDelete,
       onArchive: showArchived ? handleRestore : handleArchive,
+      onConvertToReview: handleConvertToReview,
     }, showArchived);
   }
 

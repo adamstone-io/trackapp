@@ -264,6 +264,53 @@ export function deleteReviewItem(id) {
     return changed;
 }
 
+// ========== CONVERSION UTILITIES ==========
+
+/**
+ * Convert a prime item to a review item.
+ * Creates a new review item and archives the original prime item.
+ * @param {string} primeItemId - ID of the prime item to convert
+ * @returns {Object|null} - The created review item or null if failed
+ */
+export function convertPrimeToReview(primeItemId) {
+    // Load prime items
+    const primeRaw = localStorage.getItem(STORAGE_KEYS.primeItems);
+    const primeData = primeRaw ? JSON.parse(primeRaw) : [];
+    
+    // Find the prime item
+    const primeItem = primeData.find(p => p.id === primeItemId);
+    if (!primeItem) return null;
+    
+    // Create new review item with data from prime item
+    const reviewItem = {
+        id: crypto.randomUUID(),
+        title: primeItem.title,
+        description: primeItem.description || "",
+        category: primeItem.category || "",
+        reviewTimestamps: [...(primeItem.primeTimestamps || [])], // Transfer timestamps
+        firstStudiedAt: primeItem.primeTimestamps && primeItem.primeTimestamps.length > 0 
+            ? Math.min(...primeItem.primeTimestamps) 
+            : null,
+        archived: false,
+        createdAt: new Date().toISOString(),
+    };
+    
+    // Add to review items
+    const reviewRaw = localStorage.getItem(STORAGE_KEYS.reviewItems);
+    const reviewData = reviewRaw ? JSON.parse(reviewRaw) : [];
+    reviewData.push(reviewItem);
+    localStorage.setItem(STORAGE_KEYS.reviewItems, JSON.stringify(reviewData));
+    
+    // Archive the original prime item
+    const primeIndex = primeData.findIndex(p => p.id === primeItemId);
+    if (primeIndex !== -1) {
+        primeData[primeIndex].archived = true;
+        localStorage.setItem(STORAGE_KEYS.primeItems, JSON.stringify(primeData));
+    }
+    
+    return reviewItem;
+}
+
 // ========== EXPORT ==========
 
 export function exportAllData() {

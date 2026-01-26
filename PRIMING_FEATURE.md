@@ -20,9 +20,14 @@ The Priming feature allows you to track how many times you "prime" your brain be
 4. **Import from File**: Click "Import from File" to bulk import prime items from a text file
    - File format: Lines starting with `####` will be imported as prime item titles
    - Example: `#### Topic Name` becomes a prime item titled "Topic Name"
-5. **Archive**: Click the archive icon to hide completed items
-6. **View Archived**: Click "Show Archived" to view/restore archived items
-7. **Edit/Delete**: Update or remove prime items as needed
+5. **Convert to Review**: When ready to actively study a primed topic, convert it to a review item
+   - Click the three-dot menu on any prime item
+   - Select "Convert to Review"
+   - Creates a new review item with all priming data transferred
+   - Original prime item is automatically archived for reference
+6. **Archive**: Click the archive icon to hide completed items
+7. **View Archived**: Click "Show Archived" to view/restore archived items
+8. **Edit/Delete**: Update or remove prime items as needed
 
 ## Files Structure
 
@@ -40,7 +45,7 @@ The Priming feature allows you to track how many times you "prime" your brain be
 - `css/components/priming.css` - Styling for priming components
 
 ### Storage
-- `js/data/storage.js` - Includes savePrimeItems, loadPrimeItems, updatePrimeItem, deletePrimeItem
+- `js/data/storage.js` - Includes savePrimeItems, loadPrimeItems, updatePrimeItem, deletePrimeItem, convertPrimeToReview
 
 ### Page
 - `html/priming.html` - Main priming page
@@ -72,6 +77,16 @@ Items are sorted by **least recently primed first**. This means:
 - **Toggle View**: Switch between active and archived items
 - **Restore**: Bring archived items back to active list
 - **Data Preserved**: All priming history is kept when archiving
+
+### Convert to Review
+When you're ready to transition from priming a topic to actively studying it:
+- **Seamless Workflow**: Convert prime items to review items with one click
+- **Data Transfer**: All priming timestamps are transferred as review timestamps
+- **History Preservation**: The first prime timestamp becomes the "first studied" date
+- **Automatic Archiving**: Original prime item is archived (not deleted) for reference
+- **Category & Notes**: Title, description, and category are all preserved
+
+This feature supports the natural progression from curiosity (priming) to active learning (reviewing).
 
 ## Statistics Calculated
 - **Total**: Total count of all priming sessions

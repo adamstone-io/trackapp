@@ -14,11 +14,12 @@ export class PrimeView {
    * @param {Function} onEdit - Callback when edit button clicked
    * @param {Function} onDelete - Callback when delete button clicked
    * @param {Function} onArchive - Callback when archive button clicked
+   * @param {Function} onConvertToReview - Callback when convert to review clicked
    * @param {boolean} showArchived - Whether showing archived items
    */
   static renderList(
     primeItems,
-    { onLogPrime, onEdit, onDelete, onArchive },
+    { onLogPrime, onEdit, onDelete, onArchive, onConvertToReview },
     showArchived = false,
   ) {
     const listEl = byId(primeIds.primeList);
@@ -70,6 +71,7 @@ export class PrimeView {
               { label: "Delete", onSelect: () => onDelete(item) },
             ]
           : [
+              { label: "Convert to Review", onSelect: () => onConvertToReview(item) },
               { label: "Archive", onSelect: () => onArchive(item) },
               { label: "Edit", onSelect: () => onEdit(item) },
               { label: "Delete", onSelect: () => onDelete(item) },
