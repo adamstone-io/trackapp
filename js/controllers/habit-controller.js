@@ -1,6 +1,7 @@
 // controllers/habit-controller.js
 import { Habit } from "../domain/habit.js";
 import { HabitView } from "../views/habit-view.js";
+import { SoundManager } from "../utils/sound-manager.js";
 
 const STORAGE_KEY = "habits";
 const RESET_TIMESTAMPS_KEY = "habit-reset-timestamps";
@@ -79,6 +80,10 @@ export class HabitController {
     
     habit.increment(1);
     this.saveHabits();
+    
+    // Play success sound
+    SoundManager.play("habitLogged");
+    
     this.render();
   }
 
