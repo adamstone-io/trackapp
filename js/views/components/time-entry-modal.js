@@ -1,4 +1,5 @@
     // ui/time-entry-modal.js
+    import { loadProjects } from "../../data/storage.js";
 
     export function createTimeEntryModal({ onSave } = {}) {
         let root = null;
@@ -7,10 +8,12 @@
         let headingEl = null;
 
         let titleInput = null;
+        let projectSelect = null;
         let startInput = null;
         let endInput = null;
 
         let editingId = null;
+        let editingTaskId = null;
 
         function toLocalDateTimeValue(date) {
             const pad = (n) => String(n).padStart(2, "0");
@@ -56,6 +59,11 @@
                     <label for="time-entry-title">Task title</label>
                     <input id="time-entry-title" type="text" placeholder="What'd you work on?" />
 
+                    <label for="time-entry-project">Project</label>
+                    <select id="time-entry-project" data-project>
+                        <option value="">No project</option>
+                    </select>
+
                     <div class="time-row">
                         <label class="field">
                             Start time
@@ -84,13 +92,14 @@
 
             headingEl = root.querySelector("#time-entry-modal-title");
             titleInput = root.querySelector("#time-entry-title");
+            projectSelect = root.querySelector("[data-project]");
             startInput = root.querySelector("[data-start]");
             endInput = root.querySelector("[data-end]");
 
             const cancelBtn = root.querySelector("[data-cancel]");
             const saveBtn = root.querySelector("[data-save]");
 
-            if (!headingEl || !titleInput || !startInput || !endInput || !cancelBtn || !saveBtn) {
+            if (!headingEl || !titleInput || !projectSelect || !startInput || !endInput || !cancelBtn || !saveBtn) {
                 throw new Error("TimeEntryModal: expected elements not found.");
             }
 
@@ -98,6 +107,23 @@
             saveBtn.addEventListener("click", handleSave);
             backdrop.addEventListener("click", close);
             document.addEventListener("keydown", handleEscape);
+        }
+
+        function populateProjects(selectedProjectId = null) {
+            if (!projectSelect) return;
+
+            const projects = loadProjects().filter(p => !p.archived);
+            
+            projectSelect.innerHTML = `<option value="">No project</option>` +
+                projects.map(p => 
+                    `<option value="${p.id}"${p.id === selectedProjectId ? ' selected' : ''}>${escapeHtml(p.name)}</option>`
+                ).join("");
+        }
+
+        function escapeHtml(text) {
+            const div = document.createElement("div");
+            div.textContent = text;
+            return div.innerHTML;
         }
 
         function openBase() {
@@ -114,12 +140,14 @@
             ensureCreated();
 
             editingId = null;
+            editingTaskId = null;
             if (headingEl) headingEl.textContent = "Add time entry";
 
             const now = new Date();
             const thirtyMinAgo = new Date(now.getTime() - 30 * 60 * 1000);
 
             titleInput.value = "";
+            populateProjects(null);
             startInput.value = toLocalDateTimeValue(thirtyMinAgo);
             endInput.value = toLocalDateTimeValue(now);
 
@@ -130,10 +158,13 @@
             ensureCreated();
 
             editingId = entry.id;
+            editingTaskId = entry.taskId || null;
             if (headingEl) headingEl.textContent = "Edit time entry";
 
             // supports either `taskTitle` or older `title`
             titleInput.value = entry.taskTitle ?? entry.title ?? "";
+            // Populate projects and select the current one if available
+            populateProjects(entry.projectId || null);
             startInput.value = toLocalDateTimeValue(new Date(entry.startedAt));
             endInput.value = toLocalDateTimeValue(new Date(entry.endedAt));
 
@@ -150,11 +181,13 @@
 
         function resetForm() {
             if (titleInput) titleInput.value = "";
+            if (projectSelect) projectSelect.value = "";
             editingId = null;
+            editingTaskId = null;
         }
 
         function handleSave() {
-            if (!titleInput || !startInput || !endInput) return;
+            if (!titleInput || !projectSelect || !startInput || !endInput) return;
 
             const taskTitle = titleInput.value.trim();
             if (!taskTitle) {
@@ -175,10 +208,14 @@
                 return;
             }
 
+            const projectId = projectSelect.value || null;
+
             if (typeof onSave === "function") {
                 onSave({
                     id: editingId, // null => create, string => update
+                    taskId: editingTaskId,
                     taskTitle,
+                    projectId,
                     startedAt: startDate.toISOString(),
                     endedAt: endDate.toISOString(),
                 });
@@ -202,9 +239,11 @@
             root = null;
             headingEl = null;
             titleInput = null;
+            projectSelect = null;
             startInput = null;
             endInput = null;
             editingId = null;
+            editingTaskId = null;
         }
 
         return {

@@ -73,11 +73,16 @@ function renderEntry(entry) {
 
     const durationLabel = formatDurationLabel(durationSeconds);
     const timeRange = formatTimeRange(entry);
+    const projectName = entry.projectName || null;
+    const projectColor = entry.projectColor || "#6366f1";
 
     return `
         <div class="entry-card" data-entry-id="${escapeHtml(entry.id ?? "")}">
             <div class="entry-card__header">
-                <span class="entry-card__title">${escapeHtml(title)}</span>
+                <div class="entry-card__title-row">
+                    <span class="entry-card__title">${escapeHtml(title)}</span>
+                    ${projectName ? `<span class="entry-card__project" style="--project-color: ${escapeHtml(projectColor)}">${escapeHtml(projectName)}</span>` : ""}
+                </div>
             <div class="entry-card__meta">
                 ${timeRange ? `<span class="entry-card__time">${escapeHtml(timeRange)}</span>` : ""}
                 <span>

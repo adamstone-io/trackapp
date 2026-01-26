@@ -56,11 +56,31 @@
     display: flex;
   }
   
+  .entry-card__title-row {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+  }
+
   .entry-card__title {
     font-size: var(--font-size-base);
     font-weight: 600;
     color: var(--color-text);
     white-space: nowrap;
+  }
+
+  .entry-card__project {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+    font-size: 0.75rem;
+    font-weight: 500;
+    padding: 0.125rem 0.5rem;
+    border-radius: 3px;
+    background: color-mix(in srgb, var(--project-color, #6366f1) 15%, transparent);
+    color: var(--project-color, #6366f1);
+    border-left: 2px solid var(--project-color, #6366f1);
   }
   
   .entry-card__duration {
