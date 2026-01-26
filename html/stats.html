@@ -36,21 +36,66 @@
     <div class="container">
       <main class="timer-main">
         <section class="today-entries">
-          <div class="entry-card">
-            <div class="entry-card__header">
-              <span class="entry-card__title">Today</span>
-              <span id="stats-total-today" class="entry-card__duration">0m</span>
+          <!-- Summary Cards -->
+          <div class="stats-summary-cards">
+            <div class="entry-card">
+              <div class="entry-card__header">
+                <span class="entry-card__title">Primes Logged Today</span>
+                <span id="stats-primes-today" class="entry-card__duration">0</span>
+              </div>
+              <div class="entry-card__meta">
+                <span id="stats-primes-today-summary" class="entry-card__time"></span>
+              </div>
             </div>
 
-            <div class="entry-card__meta">
-              <span id="stats-summary" class="entry-card__time"></span>
-              <button id="stats-refresh-btn" class="btn btn--outline" type="button">
-                Refresh
-              </button>
+            <div class="entry-card">
+              <div class="entry-card__header">
+                <span class="entry-card__title">Primes Logged Yesterday</span>
+                <span id="stats-primes-yesterday" class="entry-card__duration">0</span>
+              </div>
+              <div class="entry-card__meta">
+                <span id="stats-primes-yesterday-summary" class="entry-card__time"></span>
+              </div>
+            </div>
+
+            <div class="entry-card">
+              <div class="entry-card__header">
+                <span class="entry-card__title">Primes Logged This Week</span>
+                <span id="stats-primes-week" class="entry-card__duration">0</span>
+              </div>
+              <div class="entry-card__meta">
+                <span id="stats-primes-week-summary" class="entry-card__time"></span>
+              </div>
+            </div>
+
+            <div class="entry-card">
+              <div class="entry-card__header">
+                <span class="entry-card__title">Primes Logged Last Week</span>
+                <span id="stats-primes-last-week" class="entry-card__duration">0</span>
+              </div>
+              <div class="entry-card__meta">
+                <span id="stats-primes-last-week-summary" class="entry-card__time"></span>
+              </div>
+            </div>
+
+            <div class="entry-card">
+              <div class="entry-card__header">
+                <span class="entry-card__title">Time Logged Today</span>
+                <span id="stats-total-today" class="entry-card__duration">0m</span>
+              </div>
+              <div class="entry-card__meta">
+                <span id="stats-summary" class="entry-card__time"></span>
+              </div>
             </div>
           </div>
 
-          <h2 class="today-entries__title" style="margin-top: var(--spacing-lg);">
+          <div class="stats-actions">
+            <button id="stats-refresh-btn" class="btn btn--outline" type="button">
+              Refresh
+            </button>
+          </div>
+
+          <h2 class="today-entries__title">
             Time by Task (Today)
           </h2>
 

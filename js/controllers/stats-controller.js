@@ -1,5 +1,5 @@
 // js/controllers/stats-controller.js
-import { loadTimeEntries } from "../data/storage.js";
+import { loadTimeEntries, loadPrimeItems } from "../data/storage.js";
 import { StatsView } from "../views/stats-view.js";
 
 export function createStatsController() {
@@ -73,10 +73,37 @@ export function createStatsController() {
         const byTask = Array.from(groups.values())
             .sort((a, b) => b.totalSeconds - a.totalSeconds);
 
+        // Calculate prime item statistics
+        const primeItems = loadPrimeItems();
+        let totalPrimes = 0;
+        let todayPrimes = 0;
+        let yesterdayPrimes = 0;
+        let weekPrimes = 0;
+        let lastWeekPrimes = 0;
+
+        for (const item of primeItems) {
+            const total = item.getTotalCount();
+            const today = item.getTodayCount();
+            const yesterday = item.getYesterdayCount();
+            const week = item.getThisWeekCount();
+            const lastWeek = item.getLastWeekCount();
+            
+            totalPrimes += total;
+            todayPrimes += today;
+            yesterdayPrimes += yesterday;
+            weekPrimes += week;
+            lastWeekPrimes += lastWeek;
+        }
+
         StatsView.render({
             totalSeconds,
             entryCount: entries.length,
             byTask,
+            totalPrimes,
+            todayPrimes,
+            yesterdayPrimes,
+            weekPrimes,
+            lastWeekPrimes,
         });
     }
 

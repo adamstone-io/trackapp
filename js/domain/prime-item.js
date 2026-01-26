@@ -58,6 +58,21 @@ export class PrimeItem {
   }
 
   /**
+   * Get count of primes yesterday.
+   */
+  getYesterdayCount() {
+    const todayStart = new Date();
+    todayStart.setHours(0, 0, 0, 0);
+    const todayMs = todayStart.getTime();
+
+    const yesterdayStart = new Date(todayStart);
+    yesterdayStart.setDate(yesterdayStart.getDate() - 1);
+    const yesterdayMs = yesterdayStart.getTime();
+
+    return this.primeTimestamps.filter((ts) => ts >= yesterdayMs && ts < todayMs).length;
+  }
+
+  /**
    * Get count of primes this week (week starts on Sunday).
    */
   getThisWeekCount() {
@@ -68,6 +83,23 @@ export class PrimeItem {
     const weekStartMs = weekStart.getTime();
 
     return this.primeTimestamps.filter((ts) => ts >= weekStartMs).length;
+  }
+
+  /**
+   * Get count of primes last week (week starts on Sunday).
+   */
+  getLastWeekCount() {
+    const now = new Date();
+    const thisWeekStart = new Date(now);
+    thisWeekStart.setDate(now.getDate() - now.getDay());
+    thisWeekStart.setHours(0, 0, 0, 0);
+    const thisWeekStartMs = thisWeekStart.getTime();
+
+    const lastWeekStart = new Date(thisWeekStart);
+    lastWeekStart.setDate(lastWeekStart.getDate() - 7);
+    const lastWeekStartMs = lastWeekStart.getTime();
+
+    return this.primeTimestamps.filter((ts) => ts >= lastWeekStartMs && ts < thisWeekStartMs).length;
   }
 
   /**

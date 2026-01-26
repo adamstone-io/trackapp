@@ -13,7 +13,7 @@
     margin-bottom: var(--spacing-md);
     font-size: var(--font-size-xl);
     color: var(--color-text);
-    margin-bottom: 0.5rem;
+    margin-top: var(--spacing-lg);
   }
   
   .today-entries__list {
@@ -27,6 +27,20 @@
     text-align: center;
     color: var(--color-text-muted);
     font-style: italic;
+  }
+
+  /* Stats Summary Cards */
+  .stats-summary-cards {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: var(--spacing-md);
+    margin-bottom: var(--spacing-lg);
+  }
+
+  .stats-actions {
+    display: flex;
+    justify-content: flex-end;
+    margin-bottom: var(--spacing-md);
   }
   
   /* Component: Entry Card */

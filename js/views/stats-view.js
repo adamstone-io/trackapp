@@ -2,6 +2,14 @@
 export const StatsView = {
     totalTodayEl: () => document.getElementById("stats-total-today"),
     summaryEl: () => document.getElementById("stats-summary"),
+    primesTodayEl: () => document.getElementById("stats-primes-today"),
+    primesTodaySummaryEl: () => document.getElementById("stats-primes-today-summary"),
+    primesYesterdayEl: () => document.getElementById("stats-primes-yesterday"),
+    primesYesterdaySummaryEl: () => document.getElementById("stats-primes-yesterday-summary"),
+    primesWeekEl: () => document.getElementById("stats-primes-week"),
+    primesWeekSummaryEl: () => document.getElementById("stats-primes-week-summary"),
+    primesLastWeekEl: () => document.getElementById("stats-primes-last-week"),
+    primesLastWeekSummaryEl: () => document.getElementById("stats-primes-last-week-summary"),
     listEl: () => document.getElementById("stats-by-task-list"),
     emptyEl: () => document.getElementById("stats-empty"),
     refreshBtn: () => document.getElementById("stats-refresh-btn"),
@@ -20,18 +28,40 @@ export const StatsView = {
         };
     },
 
-    render({ totalSeconds, entryCount, byTask }) {
+    render({ totalSeconds, entryCount, byTask, todayPrimes, yesterdayPrimes, weekPrimes, lastWeekPrimes, totalPrimes }) {
         const totalTodayEl = this.totalTodayEl();
         const summaryEl = this.summaryEl();
+        const primesTodayEl = this.primesTodayEl();
+        const primesTodaySummaryEl = this.primesTodaySummaryEl();
+        const primesYesterdayEl = this.primesYesterdayEl();
+        const primesYesterdaySummaryEl = this.primesYesterdaySummaryEl();
+        const primesWeekEl = this.primesWeekEl();
+        const primesWeekSummaryEl = this.primesWeekSummaryEl();
+        const primesLastWeekEl = this.primesLastWeekEl();
+        const primesLastWeekSummaryEl = this.primesLastWeekSummaryEl();
         const listEl = this.listEl();
         const emptyEl = this.emptyEl();
 
-        if (!totalTodayEl || !summaryEl || !listEl || !emptyEl) {
+        if (!totalTodayEl || !summaryEl || !primesTodayEl || !primesTodaySummaryEl || !primesYesterdayEl || !primesYesterdaySummaryEl || !primesWeekEl || !primesWeekSummaryEl || !primesLastWeekEl || !primesLastWeekSummaryEl || !listEl || !emptyEl) {
             throw new Error("StatsView: missing required DOM elements");
         }
 
+        // Update time stats
         totalTodayEl.textContent = this.formatDuration(totalSeconds);
-        summaryEl.textContent = `${entryCount} entr${entryCount === 1 ? "y" : "ies"} today`;
+        summaryEl.textContent = `${entryCount} entr${entryCount === 1 ? "y" : "ies"}`;
+
+        // Update primes stats
+        primesTodayEl.textContent = todayPrimes.toString();
+        primesTodaySummaryEl.textContent = '';
+        
+        primesYesterdayEl.textContent = yesterdayPrimes.toString();
+        primesYesterdaySummaryEl.textContent = '';
+        
+        primesWeekEl.textContent = weekPrimes.toString();
+        primesWeekSummaryEl.textContent = '';
+        
+        primesLastWeekEl.textContent = lastWeekPrimes.toString();
+        primesLastWeekSummaryEl.textContent = '';
 
         if (!byTask.length) {
             listEl.innerHTML = "";
