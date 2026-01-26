@@ -1,6 +1,7 @@
 import { Moment } from "../domain/moment.js";
 import { TimeEntry } from "../domain/time-entry.js";
 import { Task } from "../domain/task.js";
+import { Project } from "../domain/project.js";
 import { PrimeItem } from "../domain/prime-item.js";
 import { ReviewItem } from "../domain/review-item.js";
 
@@ -8,6 +9,7 @@ const STORAGE_KEYS = {
     moments: "moments",
     timeEntries: "timeEntries",
     tasks: "tasks",
+    projects: "projects",
     activeTimer: "activeTimer",
     primeItems: "primeItems",
     reviewItems: "reviewItems",
@@ -83,6 +85,58 @@ export function loadTasks() {
         console.error("Failed to load tasks:", error);
         return [];
     }
+}
+
+// ========== PROJECTS ==========
+
+export function saveProjects(projects) {
+    const data = projects.map((p) => p.toJSON());
+    localStorage.setItem(STORAGE_KEYS.projects, JSON.stringify(data));
+}
+
+export function loadProjects() {
+    const raw = localStorage.getItem(STORAGE_KEYS.projects);
+    if (!raw) return [];
+
+    try {
+        const data = JSON.parse(raw);
+        return data.map((item) => Project.fromJSON(item));
+    } catch (error) {
+        console.error("Failed to load projects:", error);
+        return [];
+    }
+}
+
+export function updateProject(id, patch) {
+    const raw = localStorage.getItem(STORAGE_KEYS.projects);
+    const data = raw ? JSON.parse(raw) : [];
+
+    const index = data.findIndex((p) => p.id === id);
+    if (index === -1) return false;
+
+    const current = data[index];
+    data[index] = {
+        ...current,
+        ...patch,
+        id: current.id,
+    };
+
+    localStorage.setItem(STORAGE_KEYS.projects, JSON.stringify(data));
+    return true;
+}
+
+export function deleteProject(id) {
+    const raw = localStorage.getItem(STORAGE_KEYS.projects);
+    const data = raw ? JSON.parse(raw) : [];
+
+    const next = data.filter((p) => p.id !== id);
+    const changed = next.length !== data.length;
+
+    if (changed) {
+        localStorage.setItem(STORAGE_KEYS.projects, JSON.stringify(next));
+    }
+
+    return changed;
 }
 
 // ========== TIME ENTRIES ==========
@@ -317,6 +371,7 @@ export function exportAllData() {
     const data = {
         moments: JSON.parse(localStorage.getItem(STORAGE_KEYS.moments) || "[]"),
         tasks: JSON.parse(localStorage.getItem(STORAGE_KEYS.tasks) || "[]"),
+        projects: JSON.parse(localStorage.getItem(STORAGE_KEYS.projects) || "[]"),
         timeEntries: JSON.parse(localStorage.getItem(STORAGE_KEYS.timeEntries) || "[]"),
         primeItems: JSON.parse(localStorage.getItem(STORAGE_KEYS.primeItems) || "[]"),
         reviewItems: JSON.parse(localStorage.getItem(STORAGE_KEYS.reviewItems) || "[]"),
@@ -349,6 +404,9 @@ export async function importAllData(file) {
         if (data.tasks) {
             localStorage.setItem(STORAGE_KEYS.tasks, JSON.stringify(data.tasks));
         }
+        if (data.projects) {
+            localStorage.setItem(STORAGE_KEYS.projects, JSON.stringify(data.projects));
+        }
         if (data.timeEntries) {
             localStorage.setItem(STORAGE_KEYS.timeEntries, JSON.stringify(data.timeEntries));
         }
@@ -372,6 +430,7 @@ export function clearAllData() {
     if (confirm("Clear all data? This cannot be undone.")) {
         localStorage.removeItem(STORAGE_KEYS.moments);
         localStorage.removeItem(STORAGE_KEYS.tasks);
+        localStorage.removeItem(STORAGE_KEYS.projects);
         localStorage.removeItem(STORAGE_KEYS.timeEntries);
         localStorage.removeItem(STORAGE_KEYS.primeItems);
         localStorage.removeItem(STORAGE_KEYS.reviewItems);

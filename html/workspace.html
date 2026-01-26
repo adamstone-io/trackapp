@@ -1,0 +1,233 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+    <title>TempoTrack - Workspace</title>
+    <link rel="stylesheet" href="../css/main.css" />
+  </head>
+  <body>
+    <!-- Header stays full-width -->
+    <header>
+      <nav class="nav">
+        <div class="nav__content">
+          <h1 class="nav__title">TEMPO TRACK</h1>
+          <p class="nav__tagline">"What gets measured gets managed."</p>
+        </div>
+
+        <ul class="nav__links">
+          <li class="nav__item">
+            <a class="nav__link" href="habits.html">Habits</a>
+          </li>
+          <li class="nav__item">
+            <a class="nav__link" href="timer.html">Time</a>
+          </li>
+          <li class="nav__item">
+            <a class="nav__link nav__link--active" href="workspace.html">Workspace</a>
+          </li>
+          <li class="nav__item">
+            <a class="nav__link" href="stats.html">Stats</a>
+          </li>
+          <li class="nav__item">
+            <a class="nav__link" href="priming.html">Priming</a>
+          </li>
+          <li class="nav__item">
+            <a class="nav__link" href="reviews.html">Reviews</a>
+          </li>
+        </ul>
+      </nav>
+    </header>
+
+    <!-- Container centers main content -->
+    <div class="container">
+      <main>
+        <!-- Projects Section -->
+        <section class="workspace-section">
+          <div class="workspace-header">
+            <div class="workspace-header__top">
+              <h1 class="workspace-header__title">Projects</h1>
+              <button
+                id="add-project-btn"
+                class="btn btn--primary"
+                type="button"
+              >
+                New Project
+              </button>
+            </div>
+          </div>
+
+          <div id="project-list" class="project-list">
+            <!-- Projects populated by JS -->
+          </div>
+          <div
+            id="project-list-empty"
+            class="workspace-list-empty"
+            style="display: none"
+          >
+            No projects yet. Click "New Project" to get started.
+          </div>
+        </section>
+
+        <!-- Scheduled Tasks Section -->
+        <section class="workspace-section">
+          <div class="workspace-header">
+            <div class="workspace-header__top">
+              <h2 class="workspace-header__title">Scheduled Tasks</h2>
+              <button
+                id="add-task-btn"
+                class="btn btn--primary"
+                type="button"
+              >
+                New Task
+              </button>
+            </div>
+          </div>
+
+          <div id="task-list" class="task-list">
+            <!-- Tasks populated by JS -->
+          </div>
+          <div
+            id="task-list-empty"
+            class="workspace-list-empty"
+            style="display: none"
+          >
+            No scheduled tasks. Click "New Task" to plan ahead.
+          </div>
+        </section>
+      </main>
+    </div>
+
+    <!-- Modal for adding/editing projects -->
+    <div id="project-modal" class="modal hidden">
+      <div class="modal__content">
+        <h2 id="project-modal-title">New Project</h2>
+
+        <form id="project-form" class="workspace-form">
+          <div class="form-group">
+            <label for="project-name">Name *</label>
+            <input
+              id="project-name"
+              type="text"
+              placeholder="Project name"
+              maxlength="100"
+              required
+            />
+          </div>
+
+          <div class="form-group">
+            <label for="project-description">Description</label>
+            <textarea
+              id="project-description"
+              placeholder="Optional: Describe this project..."
+              maxlength="500"
+            ></textarea>
+          </div>
+
+          <div class="form-group">
+            <label for="project-color">Color</label>
+            <input
+              id="project-color"
+              type="color"
+              value="#6366f1"
+            />
+          </div>
+
+          <div class="modal__actions">
+            <button type="submit" id="project-save-btn" class="btn btn--primary">
+              Save
+            </button>
+            <button
+              type="button"
+              id="project-cancel-btn"
+              class="btn btn--outline"
+            >
+              Cancel
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <!-- Modal for adding/editing tasks -->
+    <div id="task-modal" class="modal hidden">
+      <div class="modal__content">
+        <h2 id="task-modal-title">New Task</h2>
+
+        <form id="task-form" class="workspace-form">
+          <div class="form-group">
+            <label for="task-title">Title *</label>
+            <input
+              id="task-title"
+              type="text"
+              placeholder="What needs to be done?"
+              maxlength="200"
+              required
+            />
+          </div>
+
+          <div class="form-group">
+            <label for="task-project">Project</label>
+            <select id="task-project">
+              <option value="">No project (one-off task)</option>
+              <!-- Projects populated by JS -->
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label for="task-category">Category</label>
+            <input
+              id="task-category"
+              type="text"
+              placeholder="Optional: Tag this task..."
+              maxlength="50"
+            />
+          </div>
+
+          <div class="form-group">
+            <label for="task-notes">Notes</label>
+            <textarea
+              id="task-notes"
+              placeholder="Optional: Add notes or details..."
+              maxlength="500"
+            ></textarea>
+          </div>
+
+          <div class="form-group">
+            <label for="task-planned-start">Planned Start</label>
+            <input
+              id="task-planned-start"
+              type="datetime-local"
+            />
+          </div>
+
+          <div class="form-group">
+            <label for="task-planned-duration">Planned Duration (minutes)</label>
+            <input
+              id="task-planned-duration"
+              type="number"
+              min="1"
+              max="480"
+              placeholder="e.g. 30"
+            />
+          </div>
+
+          <div class="modal__actions">
+            <button type="submit" id="task-save-btn" class="btn btn--primary">
+              Save
+            </button>
+            <button
+              type="button"
+              id="task-cancel-btn"
+              class="btn btn--outline"
+            >
+              Cancel
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <script type="module" src="../js/workspace-main.js"></script>
+  </body>
+</html>
