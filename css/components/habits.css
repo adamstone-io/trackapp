@@ -35,6 +35,8 @@
   gap: var(--spacing-md);
   box-shadow: var(--shadow-sm);
   transition: box-shadow 0.2s ease;
+  justify-content: space-between;
+  min-height: 240px;
 }
 
 .habit-card:hover {
