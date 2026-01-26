@@ -2,6 +2,7 @@ import { Moment } from "../domain/moment.js";
 import { TimeEntry } from "../domain/time-entry.js";
 import { Task } from "../domain/task.js";
 import { PrimeItem } from "../domain/prime-item.js";
+import { ReviewItem } from "../domain/review-item.js";
 
 const STORAGE_KEYS = {
     moments: "moments",
@@ -9,6 +10,7 @@ const STORAGE_KEYS = {
     tasks: "tasks",
     activeTimer: "activeTimer",
     primeItems: "primeItems",
+    reviewItems: "reviewItems",
 };
 
 // ========== MOMENTS ==========
@@ -103,92 +105,6 @@ export function loadTimeEntries() {
     }
 }
 
-// ========== ACTIVE TIMER ==========
-
-export function saveActiveTimer(payload) {
-    localStorage.setItem(STORAGE_KEYS.activeTimer, JSON.stringify(payload));
-}
-
-export function loadActiveTimer() {
-    const raw = localStorage.getItem(STORAGE_KEYS.activeTimer);
-    if (!raw) return null;
-
-    try {
-        return JSON.parse(raw);
-    } catch (error) {
-        console.error("Failed to load active timer:", error);
-        return null;
-    }
-}
-
-export function clearActiveTimer() {
-    localStorage.removeItem(STORAGE_KEYS.activeTimer);
-}
-
-// ========== EXPORT ==========
-
-export function exportAllData() {
-    const data = {
-        moments: JSON.parse(localStorage.getItem(STORAGE_KEYS.moments) || "[]"),
-        tasks: JSON.parse(localStorage.getItem(STORAGE_KEYS.tasks) || "[]"),
-        timeEntries: JSON.parse(localStorage.getItem(STORAGE_KEYS.timeEntries) || "[]"),
-        primeItems: JSON.parse(localStorage.getItem(STORAGE_KEYS.primeItems) || "[]"),
-        exportedAt: new Date().toISOString(),
-    };
-
-    const blob = new Blob([JSON.stringify(data, null, 2)], {
-        type: "application/json",
-    });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement("a");
-
-    const timestamp = new Date().toISOString().split("T")[0];
-    link.href = url;
-    link.download = `timer-backup-${timestamp}.json`;
-    link.click();
-
-    URL.revokeObjectURL(url);
-    console.log("Data exported");
-}
-
-export async function importAllData(file) {
-    try {
-        const text = await file.text();
-        const data = JSON.parse(text);
-
-        if (data.moments) {
-            localStorage.setItem(STORAGE_KEYS.moments, JSON.stringify(data.moments));
-        }
-        if (data.tasks) {
-            localStorage.setItem(STORAGE_KEYS.tasks, JSON.stringify(data.tasks));
-        }
-        if (data.timeEntries) {
-            localStorage.setItem(STORAGE_KEYS.timeEntries, JSON.stringify(data.timeEntries));
-        }
-        if (data.primeItems) {
-            localStorage.setItem(STORAGE_KEYS.primeItems, JSON.stringify(data.primeItems));
-        }
-
-        console.log("Data imported successfully");
-        return true;
-    } catch (error) {
-        console.error("Failed to import data:", error);
-        alert("Import failed. Make sure the file is a valid backup.");
-        return false;
-    }
-}
-
-export function clearAllData() {
-    if (confirm("Clear all data? This cannot be undone.")) {
-        localStorage.removeItem(STORAGE_KEYS.moments);
-        localStorage.removeItem(STORAGE_KEYS.tasks);
-        localStorage.removeItem(STORAGE_KEYS.timeEntries);
-        localStorage.removeItem(STORAGE_KEYS.primeItems);
-        console.log("All data cleared");
-        return true;
-    }
-    return false;
-}
 export function updateTimeEntry(id, patch) {
     const raw = localStorage.getItem(STORAGE_KEYS.timeEntries);
     const data = raw ? JSON.parse(raw) : [];
@@ -220,6 +136,28 @@ export function deleteTimeEntry(id) {
     }
 
     return changed;
+}
+
+// ========== ACTIVE TIMER ==========
+
+export function saveActiveTimer(payload) {
+    localStorage.setItem(STORAGE_KEYS.activeTimer, JSON.stringify(payload));
+}
+
+export function loadActiveTimer() {
+    const raw = localStorage.getItem(STORAGE_KEYS.activeTimer);
+    if (!raw) return null;
+
+    try {
+        return JSON.parse(raw);
+    } catch (error) {
+        console.error("Failed to load active timer:", error);
+        return null;
+    }
+}
+
+export function clearActiveTimer() {
+    localStorage.removeItem(STORAGE_KEYS.activeTimer);
 }
 
 // ========== PRIME ITEMS ==========
@@ -272,4 +210,126 @@ export function deletePrimeItem(id) {
     }
 
     return changed;
+}
+
+// ========== REVIEW ITEMS ==========
+
+export function saveReviewItems(reviewItems) {
+    const data = reviewItems.map((r) => r.toJSON ? r.toJSON() : r);
+    localStorage.setItem(STORAGE_KEYS.reviewItems, JSON.stringify(data));
+}
+
+export function loadReviewItems() {
+    const raw = localStorage.getItem(STORAGE_KEYS.reviewItems);
+    if (!raw) return [];
+
+    try {
+        const data = JSON.parse(raw);
+        return data.map((item) => ReviewItem.fromJSON(item));
+    } catch (error) {
+        console.error("Failed to load review items:", error);
+        return [];
+    }
+}
+
+export function updateReviewItem(id, patch) {
+    const raw = localStorage.getItem(STORAGE_KEYS.reviewItems);
+    const data = raw ? JSON.parse(raw) : [];
+
+    const index = data.findIndex((r) => r.id === id);
+    if (index === -1) return false;
+
+    const current = data[index];
+    data[index] = {
+        ...current,
+        ...patch,
+        id: current.id,
+    };
+
+    localStorage.setItem(STORAGE_KEYS.reviewItems, JSON.stringify(data));
+    return true;
+}
+
+export function deleteReviewItem(id) {
+    const raw = localStorage.getItem(STORAGE_KEYS.reviewItems);
+    const data = raw ? JSON.parse(raw) : [];
+
+    const next = data.filter((r) => r.id !== id);
+    const changed = next.length !== data.length;
+
+    if (changed) {
+        localStorage.setItem(STORAGE_KEYS.reviewItems, JSON.stringify(next));
+    }
+
+    return changed;
+}
+
+// ========== EXPORT ==========
+
+export function exportAllData() {
+    const data = {
+        moments: JSON.parse(localStorage.getItem(STORAGE_KEYS.moments) || "[]"),
+        tasks: JSON.parse(localStorage.getItem(STORAGE_KEYS.tasks) || "[]"),
+        timeEntries: JSON.parse(localStorage.getItem(STORAGE_KEYS.timeEntries) || "[]"),
+        primeItems: JSON.parse(localStorage.getItem(STORAGE_KEYS.primeItems) || "[]"),
+        reviewItems: JSON.parse(localStorage.getItem(STORAGE_KEYS.reviewItems) || "[]"),
+        exportedAt: new Date().toISOString(),
+    };
+
+    const blob = new Blob([JSON.stringify(data, null, 2)], {
+        type: "application/json",
+    });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+
+    const timestamp = new Date().toISOString().split("T")[0];
+    link.href = url;
+    link.download = `timer-backup-${timestamp}.json`;
+    link.click();
+
+    URL.revokeObjectURL(url);
+    console.log("Data exported");
+}
+
+export async function importAllData(file) {
+    try {
+        const text = await file.text();
+        const data = JSON.parse(text);
+
+        if (data.moments) {
+            localStorage.setItem(STORAGE_KEYS.moments, JSON.stringify(data.moments));
+        }
+        if (data.tasks) {
+            localStorage.setItem(STORAGE_KEYS.tasks, JSON.stringify(data.tasks));
+        }
+        if (data.timeEntries) {
+            localStorage.setItem(STORAGE_KEYS.timeEntries, JSON.stringify(data.timeEntries));
+        }
+        if (data.primeItems) {
+            localStorage.setItem(STORAGE_KEYS.primeItems, JSON.stringify(data.primeItems));
+        }
+        if (data.reviewItems) {
+            localStorage.setItem(STORAGE_KEYS.reviewItems, JSON.stringify(data.reviewItems));
+        }
+
+        console.log("Data imported successfully");
+        return true;
+    } catch (error) {
+        console.error("Failed to import data:", error);
+        alert("Import failed. Make sure the file is a valid backup.");
+        return false;
+    }
+}
+
+export function clearAllData() {
+    if (confirm("Clear all data? This cannot be undone.")) {
+        localStorage.removeItem(STORAGE_KEYS.moments);
+        localStorage.removeItem(STORAGE_KEYS.tasks);
+        localStorage.removeItem(STORAGE_KEYS.timeEntries);
+        localStorage.removeItem(STORAGE_KEYS.primeItems);
+        localStorage.removeItem(STORAGE_KEYS.reviewItems);
+        console.log("All data cleared");
+        return true;
+    }
+    return false;
 }

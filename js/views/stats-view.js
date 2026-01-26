@@ -10,6 +10,12 @@ export const StatsView = {
     primesWeekSummaryEl: () => document.getElementById("stats-primes-week-summary"),
     primesLastWeekEl: () => document.getElementById("stats-primes-last-week"),
     primesLastWeekSummaryEl: () => document.getElementById("stats-primes-last-week-summary"),
+    reviewsTodayEl: () => document.getElementById("stats-reviews-today"),
+    reviewsTodaySummaryEl: () => document.getElementById("stats-reviews-today-summary"),
+    reviewsWeekEl: () => document.getElementById("stats-reviews-week"),
+    reviewsWeekSummaryEl: () => document.getElementById("stats-reviews-week-summary"),
+    reviewsMonthEl: () => document.getElementById("stats-reviews-month"),
+    reviewsMonthSummaryEl: () => document.getElementById("stats-reviews-month-summary"),
     listEl: () => document.getElementById("stats-by-task-list"),
     emptyEl: () => document.getElementById("stats-empty"),
     refreshBtn: () => document.getElementById("stats-refresh-btn"),
@@ -28,7 +34,7 @@ export const StatsView = {
         };
     },
 
-    render({ totalSeconds, entryCount, byTask, todayPrimes, yesterdayPrimes, weekPrimes, lastWeekPrimes, totalPrimes }) {
+    render({ totalSeconds, entryCount, byTask, todayPrimes, yesterdayPrimes, weekPrimes, lastWeekPrimes, totalPrimes, todayReviews, weekReviews, monthReviews, totalReviews }) {
         const totalTodayEl = this.totalTodayEl();
         const summaryEl = this.summaryEl();
         const primesTodayEl = this.primesTodayEl();
@@ -39,6 +45,12 @@ export const StatsView = {
         const primesWeekSummaryEl = this.primesWeekSummaryEl();
         const primesLastWeekEl = this.primesLastWeekEl();
         const primesLastWeekSummaryEl = this.primesLastWeekSummaryEl();
+        const reviewsTodayEl = this.reviewsTodayEl();
+        const reviewsTodaySummaryEl = this.reviewsTodaySummaryEl();
+        const reviewsWeekEl = this.reviewsWeekEl();
+        const reviewsWeekSummaryEl = this.reviewsWeekSummaryEl();
+        const reviewsMonthEl = this.reviewsMonthEl();
+        const reviewsMonthSummaryEl = this.reviewsMonthSummaryEl();
         const listEl = this.listEl();
         const emptyEl = this.emptyEl();
 
@@ -62,6 +74,22 @@ export const StatsView = {
         
         primesLastWeekEl.textContent = lastWeekPrimes.toString();
         primesLastWeekSummaryEl.textContent = '';
+
+        // Update reviews stats
+        if (reviewsTodayEl) {
+            reviewsTodayEl.textContent = todayReviews?.toString() || '0';
+            if (reviewsTodaySummaryEl) reviewsTodaySummaryEl.textContent = '';
+        }
+        
+        if (reviewsWeekEl) {
+            reviewsWeekEl.textContent = weekReviews?.toString() || '0';
+            if (reviewsWeekSummaryEl) reviewsWeekSummaryEl.textContent = '';
+        }
+        
+        if (reviewsMonthEl) {
+            reviewsMonthEl.textContent = monthReviews?.toString() || '0';
+            if (reviewsMonthSummaryEl) reviewsMonthSummaryEl.textContent = '';
+        }
 
         if (!byTask.length) {
             listEl.innerHTML = "";

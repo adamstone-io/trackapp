@@ -4,7 +4,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 
-    <title>TempoTrack - Priming</title>
+    <title>TempoTrack - Reviews</title>
     <link rel="stylesheet" href="../css/main.css" />
   </head>
   <body>
@@ -27,12 +27,12 @@
             <a class="nav__link" href="stats.html">Stats</a>
           </li>
           <li class="nav__item">
-            <a class="nav__link nav__link--active" href="priming.html"
-              >Priming</a
-            >
+            <a class="nav__link" href="priming.html">Priming</a>
           </li>
           <li class="nav__item">
-            <a class="nav__link" href="reviews.html">Reviews</a>
+            <a class="nav__link nav__link--active" href="reviews.html"
+              >Reviews</a
+            >
           </li>
         </ul>
       </nav>
@@ -41,9 +41,9 @@
     <!-- Container centers main content -->
     <div class="container">
       <main>
-        <div class="priming-header">
-          <div class="priming-header__top">
-            <h1 class="priming-header__title">Study Priming</h1>
+        <div class="review-header">
+          <div class="review-header__top">
+            <h1 class="review-header__title">Study Reviews</h1>
             <button
               id="header-menu-btn"
               class="icon-btn"
@@ -63,14 +63,14 @@
               </svg>
             </button>
           </div>
-          <div class="priming-header__quick-add">
+          <div class="review-header__quick-add">
             <textarea
-              id="quick-add-prime-input"
-              placeholder="What do you want to prime?"
+              id="quick-add-review-input"
+              placeholder="What do you want to review?"
               maxlength="500"
               rows="1"
             ></textarea>
-            <div class="priming-header__bottom-row">
+            <div class="review-header__bottom-row">
               <div class="category-input-wrapper">
                 <input
                   id="quick-add-category-input"
@@ -84,58 +84,58 @@
                   class="category-dropdown hidden"
                 ></div>
               </div>
-              <button id="add-prime-btn" class="btn btn--primary" type="button">
+              <button id="add-review-btn" class="btn btn--primary" type="button">
                 Add
               </button>
             </div>
           </div>
           <input
             type="file"
-            id="import-prime-file"
+            id="import-review-file"
             accept=".txt,.md"
             style="display: none"
           />
         </div>
 
         <section>
-          <div id="prime-list" class="prime-list">
-            <!-- Prime items populated by JS -->
+          <div id="review-list" class="review-list">
+            <!-- Review items populated by JS -->
           </div>
           <div
-            id="prime-list-empty"
-            class="prime-list-empty"
+            id="review-list-empty"
+            class="review-list-empty"
             style="display: none"
           >
-            No prime items yet. Click "Add Prime Item" to get started.
+            No review items yet. Click "Add Review Item" to get started.
           </div>
         </section>
       </main>
     </div>
 
-    <!-- Modal for adding/editing prime items -->
-    <div id="prime-modal" class="modal hidden">
+    <!-- Modal for adding/editing review items -->
+    <div id="review-modal" class="modal hidden">
       <div class="modal__content">
-        <h2 id="prime-modal-title">Add Prime Item</h2>
+        <h2 id="review-modal-title">Add Review Item</h2>
 
-        <form id="prime-form" class="prime-form">
+        <form id="review-form" class="review-form">
           <div class="form-group">
-            <label for="prime-title">Title *</label>
+            <label for="review-title">Title *</label>
             <input
-              id="prime-title"
+              id="review-title"
               type="text"
-              placeholder="What topic are you priming?"
+              placeholder="What topic are you reviewing?"
               maxlength="100"
               required
             />
           </div>
 
           <div class="form-group">
-            <label for="prime-category">Category</label>
+            <label for="review-category">Category</label>
             <div class="category-input-wrapper">
               <input
-                id="prime-category"
+                id="review-category"
                 type="text"
-                placeholder="Optional: Categorize this prime item..."
+                placeholder="Optional: Categorize this review item..."
                 maxlength="50"
                 autocomplete="off"
               />
@@ -147,21 +147,21 @@
           </div>
 
           <div class="form-group">
-            <label for="prime-description">Description / Questions</label>
+            <label for="review-description">Description / Notes</label>
             <textarea
-              id="prime-description"
-              placeholder="Optional: Add notes or questions to ask yourself during priming..."
+              id="review-description"
+              placeholder="Optional: Add notes or details about this topic..."
               maxlength="500"
             ></textarea>
           </div>
 
           <div class="modal__actions">
-            <button type="submit" id="prime-save-btn" class="btn btn--primary">
+            <button type="submit" id="review-save-btn" class="btn btn--primary">
               Save
             </button>
             <button
               type="button"
-              id="prime-cancel-btn"
+              id="review-cancel-btn"
               class="btn btn--outline"
             >
               Cancel
@@ -171,6 +171,6 @@
       </div>
     </div>
 
-    <script type="module" src="../js/priming-main.js"></script>
+    <script type="module" src="../js/reviews-main.js"></script>
   </body>
 </html>

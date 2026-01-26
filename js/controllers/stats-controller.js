@@ -1,5 +1,5 @@
 // js/controllers/stats-controller.js
-import { loadTimeEntries, loadPrimeItems } from "../data/storage.js";
+import { loadTimeEntries, loadPrimeItems, loadReviewItems } from "../data/storage.js";
 import { StatsView } from "../views/stats-view.js";
 
 export function createStatsController() {
@@ -95,6 +95,25 @@ export function createStatsController() {
             lastWeekPrimes += lastWeek;
         }
 
+        // Calculate review item statistics
+        const reviewItems = loadReviewItems();
+        let totalReviews = 0;
+        let todayReviews = 0;
+        let weekReviews = 0;
+        let monthReviews = 0;
+
+        for (const item of reviewItems) {
+            const total = item.getTotalCount();
+            const today = item.getTodayCount();
+            const week = item.getThisWeekCount();
+            const month = item.getThisMonthCount();
+            
+            totalReviews += total;
+            todayReviews += today;
+            weekReviews += week;
+            monthReviews += month;
+        }
+
         StatsView.render({
             totalSeconds,
             entryCount: entries.length,
@@ -104,6 +123,10 @@ export function createStatsController() {
             yesterdayPrimes,
             weekPrimes,
             lastWeekPrimes,
+            totalReviews,
+            todayReviews,
+            weekReviews,
+            monthReviews,
         });
     }
 
