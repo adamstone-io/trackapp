@@ -7,7 +7,7 @@ import { TimerView } from "../views/timer-view.js";
 import { CurrentTaskView } from "../views/current-task-view.js";
 import { EntriesView } from "../views/list-entries-view.js";
 import { formatTime } from "../utils/time.js";
-import { saveTimeEntries, loadTimeEntries } from "../data/storage.js";
+import { saveTimeEntries, loadTimeEntries, saveTasks, loadTasks } from "../data/storage.js";
 import { createBreakModal } from "../views/components/break-modal.js";
 import { SoundManager } from "../utils/sound-manager.js";
 
@@ -166,6 +166,14 @@ export function createTimerController({ onEntryAdded }) {
 
     const task = new Task(taskData);
 
+    // Save task to storage so it can be found later for category/project linking
+    const existingTasks = loadTasks();
+    const taskExists = existingTasks.some(t => t.id === task.id);
+    if (!taskExists) {
+      existingTasks.push(task);
+      saveTasks(existingTasks);
+    }
+
     currentTask.setCurrentTask(task);
     clearPauseTracking();
     timer.start();
@@ -256,6 +264,12 @@ export function createTimerController({ onEntryAdded }) {
         title: label,
         category: "",
       });
+
+      // Save break task to storage
+      const existingTasks = loadTasks();
+      existingTasks.push(breakTask);
+      saveTasks(existingTasks);
+
       const breakEntry = new TimeEntry({
         taskId: breakTask.id,
         taskTitle: breakTask.title,
