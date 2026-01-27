@@ -45,8 +45,23 @@ export function createEntriesController() {
             saveTasks(tasks);
           } else {
             const task = tasks[taskIndex];
+            let needsSave = false;
+
+            if (task.title !== payload.taskTitle) {
+              task.update({ title: payload.taskTitle });
+              needsSave = true;
+            }
+            if (task.category !== payload.category) {
+              task.update({ category: payload.category });
+              needsSave = true;
+            }
+
             if (task.projectId !== payload.projectId) {
               task.update({ projectId: payload.projectId });
+              saveTasks(tasks);
+            }
+
+            if (needsSave) {
               saveTasks(tasks);
             }
           }
