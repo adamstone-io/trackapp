@@ -1,2 +1,8 @@
 all files/
 frontend/data/
+**/.venv/
+**/__pycache__/
+**/*.py[cod]
+**/*.sqlite3
+.env.*
+**/.DS_Store
