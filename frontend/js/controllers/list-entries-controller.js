@@ -165,7 +165,7 @@ export function createEntriesController() {
           {
             label: "Delete",
             onSelect: async () => {
-              deleteMoment(moment.id);
+              await deleteMoment(moment.id);
               await refresh();
             },
           },
@@ -186,7 +186,8 @@ export function createEntriesController() {
       return ms >= startMs && ms < endMs;
     });
 
-    const todayMoments = loadMoments().filter(
+    const allMoments = await loadMoments();
+    const todayMoments = allMoments.filter(
       (moment) => moment.timestampMs >= startMs && moment.timestampMs < endMs,
     );
 

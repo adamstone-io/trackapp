@@ -36,54 +36,77 @@ async function apiRequest(path, options = {}) {
 
 // ========== MOMENTS ==========
 
-export function saveMoments(moments) {
-  const data = moments.map((m) => m.toJSON());
-  localStorage.setItem(STORAGE_KEYS.moments, JSON.stringify(data));
-}
+function normalizeMomentPayload(payload) {
+  if (!payload || typeof payload !== "object") return payload;
 
-export function loadMoments() {
-  const raw = localStorage.getItem(STORAGE_KEYS.moments);
-  if (!raw) return [];
+  const timestamp = payload.timestamp ?? payload.timestampMs;
+  const task = payload.task ?? payload.taskId;
+  const task_title = payload.task_title ?? payload.taskTitle;
+  const is_milestone = payload.is_milestone ?? payload.isMilestone;
 
-  try {
-    const data = JSON.parse(raw);
-    return data.map((item) => Moment.fromJSON(item));
-  } catch (error) {
-    console.error("Failed to load moments:", error);
-    return [];
+  const normalized = { ...payload };
+  delete normalized.timestampMs;
+  delete normalized.taskId;
+  delete normalized.taskTitle;
+  delete normalized.isMilestone;
+
+  if (timestamp !== undefined) {
+    let normalizedTimestamp = timestamp;
+    if (typeof normalizedTimestamp === "number") {
+      normalizedTimestamp = new Date(normalizedTimestamp).toISOString();
+    } else if (normalizedTimestamp instanceof Date) {
+      normalizedTimestamp = normalizedTimestamp.toISOString();
+    }
+    normalized.timestamp = normalizedTimestamp;
   }
+
+  if (task !== undefined) normalized.task = task;
+  if (task_title !== undefined) normalized.task_title = task_title;
+  if (is_milestone !== undefined) normalized.is_milestone = is_milestone;
+
+  return normalized;
 }
 
-export function updateMoment(id, patch) {
-  const raw = localStorage.getItem(STORAGE_KEYS.moments);
-  const data = raw ? JSON.parse(raw) : [];
+function normalizeMomentFromApi(item) {
+  if (!item || typeof item !== "object") return item;
 
-  const index = data.findIndex((m) => m.id === id);
-  if (index === -1) return false;
+  const timestampSource = item.timestamp ?? item.timestampMs ?? null;
+  const timestampMs = timestampSource
+    ? new Date(timestampSource).getTime()
+    : null;
 
-  const current = data[index];
-  data[index] = {
-    ...current,
-    ...patch,
-    id: current.id,
+  return {
+    ...item,
+    timestampMs: timestampMs ?? item.timestampMs ?? Date.now(),
+    taskId: item.taskId ?? item.task ?? null,
+    taskTitle: item.taskTitle ?? item.task_title ?? null,
+    isMilestone: item.isMilestone ?? item.is_milestone ?? false,
+    createdAt: item.createdAt ?? item.created_at ?? null,
   };
-
-  localStorage.setItem(STORAGE_KEYS.moments, JSON.stringify(data));
-  return true;
 }
 
-export function deleteMoment(id) {
-  const raw = localStorage.getItem(STORAGE_KEYS.moments);
-  const data = raw ? JSON.parse(raw) : [];
+export async function createMoment(payload) {
+  return apiRequest("/moments/", {
+    method: "POST",
+    body: JSON.stringify(normalizeMomentPayload(payload)),
+  });
+}
 
-  const next = data.filter((m) => m.id !== id);
-  const changed = next.length !== data.length;
+export async function loadMoments() {
+  const data = await apiRequest("/moments/");
+  const items = data.results ?? data;
+  return items.map((item) => Moment.fromJSON(normalizeMomentFromApi(item)));
+}
 
-  if (changed) {
-    localStorage.setItem(STORAGE_KEYS.moments, JSON.stringify(next));
-  }
+export async function updateMoment(id, patch) {
+  return apiRequest(`/moments/${id}/`, {
+    method: "PATCH",
+    body: JSON.stringify(normalizeMomentPayload(patch)),
+  });
+}
 
-  return changed;
+export async function deleteMoment(id) {
+  return apiRequest(`/moments/${id}/`, { method: "DELETE" });
 }
 
 // ========== HABITS ==========
