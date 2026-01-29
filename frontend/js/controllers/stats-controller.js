@@ -44,7 +44,10 @@ export function createStatsController() {
   async function refresh() {
     const { startMs, endMs } = getTodayWindowMs();
 
-    const allEntries = await loadTimeEntries();
+    const [allEntries, primeItems] = await Promise.all([
+      loadTimeEntries(),
+      loadPrimeItems(),
+    ]);
     const entries = allEntries.filter((entry) => {
       const ms = new Date(entry.startedAt ?? entry.started_at).getTime();
       return ms >= startMs && ms < endMs;
@@ -84,7 +87,6 @@ export function createStatsController() {
     );
 
     // Calculate prime item statistics
-    const primeItems = loadPrimeItems();
     let totalPrimes = 0;
     let todayPrimes = 0;
     let yesterdayPrimes = 0;

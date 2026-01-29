@@ -207,54 +207,57 @@ export function clearActiveTimer() {
 
 // ========== PRIME ITEMS ==========
 
-export function savePrimeItems(primeItems) {
-  const data = primeItems.map((p) => p.toJSON());
-  localStorage.setItem(STORAGE_KEYS.primeItems, JSON.stringify(data));
+function normalizePrimeItemPayload(payload) {
+  if (!payload || typeof payload !== "object") return payload;
+
+  const prime_timestamps = payload.prime_timestamps ?? payload.primeTimestamps;
+  const created_at = payload.created_at ?? payload.createdAt;
+
+  const normalized = { ...payload };
+  delete normalized.primeTimestamps;
+  delete normalized.createdAt;
+
+  if (prime_timestamps !== undefined)
+    normalized.prime_timestamps = prime_timestamps;
+  if (created_at !== undefined) normalized.created_at = created_at;
+
+  return normalized;
 }
 
-export function loadPrimeItems() {
-  const raw = localStorage.getItem(STORAGE_KEYS.primeItems);
-  if (!raw) return [];
+function normalizePrimeItemFromApi(item) {
+  if (!item || typeof item !== "object") return item;
 
-  try {
-    const data = JSON.parse(raw);
-    return data.map((item) => PrimeItem.fromJSON(item));
-  } catch (error) {
-    console.error("Failed to load prime items:", error);
-    return [];
-  }
-}
-
-export function updatePrimeItem(id, patch) {
-  const raw = localStorage.getItem(STORAGE_KEYS.primeItems);
-  const data = raw ? JSON.parse(raw) : [];
-
-  const index = data.findIndex((p) => p.id === id);
-  if (index === -1) return false;
-
-  const current = data[index];
-  data[index] = {
-    ...current,
-    ...patch,
-    id: current.id,
+  return {
+    ...item,
+    primeTimestamps: item.primeTimestamps ?? item.prime_timestamps ?? [],
+    createdAt: item.createdAt ?? item.created_at ?? null,
   };
-
-  localStorage.setItem(STORAGE_KEYS.primeItems, JSON.stringify(data));
-  return true;
 }
 
-export function deletePrimeItem(id) {
-  const raw = localStorage.getItem(STORAGE_KEYS.primeItems);
-  const data = raw ? JSON.parse(raw) : [];
+export async function createPrimeItem(payload) {
+  return apiRequest("/prime-items/", {
+    method: "POST",
+    body: JSON.stringify(normalizePrimeItemPayload(payload)),
+  });
+}
 
-  const next = data.filter((p) => p.id !== id);
-  const changed = next.length !== data.length;
+export async function loadPrimeItems() {
+  const data = await apiRequest("/prime-items/");
+  const items = data.results ?? data;
+  return items.map((item) =>
+    PrimeItem.fromJSON(normalizePrimeItemFromApi(item)),
+  );
+}
 
-  if (changed) {
-    localStorage.setItem(STORAGE_KEYS.primeItems, JSON.stringify(next));
-  }
+export async function updatePrimeItem(id, patch) {
+  return apiRequest(`/prime-items/${id}/`, {
+    method: "PATCH",
+    body: JSON.stringify(normalizePrimeItemPayload(patch)),
+  });
+}
 
-  return changed;
+export async function deletePrimeItem(id) {
+  return apiRequest(`/prime-items/${id}/`, { method: "DELETE" });
 }
 
 // ========== REVIEW ITEMS ==========
@@ -317,44 +320,37 @@ export function deleteReviewItem(id) {
  * @param {string} primeItemId - ID of the prime item to convert
  * @returns {Object|null} - The created review item or null if failed
  */
-export function convertPrimeToReview(primeItemId) {
-  // Load prime items
-  const primeRaw = localStorage.getItem(STORAGE_KEYS.primeItems);
-  const primeData = primeRaw ? JSON.parse(primeRaw) : [];
+export async function convertPrimeToReview(primeItemId) {
+  try {
+    const primeItems = await loadPrimeItems();
+    const primeItem = primeItems.find((p) => p.id === primeItemId);
+    if (!primeItem) return null;
 
-  // Find the prime item
-  const primeItem = primeData.find((p) => p.id === primeItemId);
-  if (!primeItem) return null;
+    const reviewItem = {
+      id: crypto.randomUUID(),
+      title: primeItem.title,
+      description: primeItem.description || "",
+      category: primeItem.category || "",
+      reviewTimestamps: [...(primeItem.primeTimestamps || [])],
+      firstStudiedAt:
+        primeItem.primeTimestamps && primeItem.primeTimestamps.length > 0
+          ? Math.min(...primeItem.primeTimestamps)
+          : null,
+      archived: false,
+      createdAt: new Date().toISOString(),
+    };
 
-  // Create new review item with data from prime item
-  const reviewItem = {
-    id: crypto.randomUUID(),
-    title: primeItem.title,
-    description: primeItem.description || "",
-    category: primeItem.category || "",
-    reviewTimestamps: [...(primeItem.primeTimestamps || [])], // Transfer timestamps
-    firstStudiedAt:
-      primeItem.primeTimestamps && primeItem.primeTimestamps.length > 0
-        ? Math.min(...primeItem.primeTimestamps)
-        : null,
-    archived: false,
-    createdAt: new Date().toISOString(),
-  };
+    const reviewRaw = localStorage.getItem(STORAGE_KEYS.reviewItems);
+    const reviewData = reviewRaw ? JSON.parse(reviewRaw) : [];
+    reviewData.push(reviewItem);
+    localStorage.setItem(STORAGE_KEYS.reviewItems, JSON.stringify(reviewData));
 
-  // Add to review items
-  const reviewRaw = localStorage.getItem(STORAGE_KEYS.reviewItems);
-  const reviewData = reviewRaw ? JSON.parse(reviewRaw) : [];
-  reviewData.push(reviewItem);
-  localStorage.setItem(STORAGE_KEYS.reviewItems, JSON.stringify(reviewData));
-
-  // Archive the original prime item
-  const primeIndex = primeData.findIndex((p) => p.id === primeItemId);
-  if (primeIndex !== -1) {
-    primeData[primeIndex].archived = true;
-    localStorage.setItem(STORAGE_KEYS.primeItems, JSON.stringify(primeData));
+    await updatePrimeItem(primeItemId, { archived: true });
+    return reviewItem;
+  } catch (error) {
+    console.error("Failed to convert prime item to review:", error);
+    return null;
   }
-
-  return reviewItem;
 }
 
 // ========== EXPORT ==========

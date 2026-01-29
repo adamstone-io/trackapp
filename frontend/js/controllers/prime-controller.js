@@ -7,7 +7,7 @@ import { createDropdownMenu } from "../views/components/dropdown-menu.js";
 import { CategoryManager } from "../utils/category-manager.js";
 import { SoundManager } from "../utils/sound-manager.js";
 import {
-  savePrimeItems,
+  createPrimeItem,
   loadPrimeItems,
   updatePrimeItem,
   deletePrimeItem,
@@ -17,7 +17,7 @@ import {
 let primeItems = [];
 
 export function createPrimeController() {
-  primeItems = loadPrimeItems();
+  primeItems = [];
   let editingItemId = null;
   let showArchived = false;
 
@@ -34,19 +34,35 @@ export function createPrimeController() {
   const quickAddCategoryManager = new CategoryManager(
     quickAddCategoryInput,
     categoryDropdown,
-    null // No special action on select for quick add
+    null, // No special action on select for quick add
   );
   quickAddCategoryManager.loadCategories(primeItems);
 
   const modalCategoryManager = new CategoryManager(
     modalCategoryInput,
     modalCategoryDropdown,
-    null // No special action on select for modal
+    null, // No special action on select for modal
   );
   modalCategoryManager.loadCategories(primeItems);
 
-  // Initial render
-  renderList();
+  async function refreshPrimeItems({ refreshCategories = true } = {}) {
+    try {
+      primeItems = await loadPrimeItems();
+    } catch (error) {
+      console.error("Failed to load prime items:", error);
+      primeItems = [];
+    }
+
+    if (refreshCategories) {
+      quickAddCategoryManager.loadCategories(primeItems);
+      modalCategoryManager.loadCategories(primeItems);
+    }
+
+    renderList();
+  }
+
+  // Initial load
+  void refreshPrimeItems();
 
   // Handler functions (defined before being used in menu)
   // Toggle archived items visibility
@@ -62,67 +78,65 @@ export function createPrimeController() {
   };
 
   // Create header dropdown menu
-  const getHeaderMenuLabel = () => showArchived ? "Hide Archived" : "Show Archived";
-  
+  const getHeaderMenuLabel = () =>
+    showArchived ? "Hide Archived" : "Show Archived";
+
   const updateHeaderMenu = () => {
     if (headerMenu) {
       headerMenu.dispose();
     }
-    
+
     const menuItems = [
       { label: getHeaderMenuLabel(), onSelect: handleToggleArchived },
       { label: "Import from File", onSelect: handleImportClick },
     ];
-    
+
     headerMenu = createDropdownMenu({ items: menuItems });
     headerMenu.attachTo(headerMenuBtn);
   };
-  
+
   let headerMenu = null;
   updateHeaderMenu();
 
   // Quick-add from input field
-  const handleQuickAdd = () => {
+  const handleQuickAdd = async () => {
     const title = quickAddInput.value.trim();
     const category = quickAddCategoryInput.value.trim();
-    
+
     if (!title) {
       alert("Please enter a title for this prime item");
       quickAddInput.focus();
       return;
     }
 
-    // Create new item
     const item = new PrimeItem({ title, category });
-    const next = loadPrimeItems();
-    next.push(item);
-    savePrimeItems(next);
-    primeItems = next;
 
-    // Update category manager with new category
-    if (category) {
-      quickAddCategoryManager.incrementCategory(category);
-      modalCategoryManager.incrementCategory(category);
+    try {
+      await createPrimeItem(item.toJSON());
+      await refreshPrimeItems({ refreshCategories: true });
+    } catch (error) {
+      console.error("Failed to add prime item:", error);
+      alert("Failed to add prime item. Please try again.");
+      return;
     }
 
     // Clear inputs and render
     quickAddInput.value = "";
     quickAddCategoryInput.value = "";
-    quickAddInput.style.height = 'auto';
+    quickAddInput.style.height = "auto";
     quickAddInput.focus();
-    renderList();
   };
 
   addPrimeBtn.addEventListener("click", handleQuickAdd);
-  
+
   // Auto-expand textarea as user types
   const autoExpandTextarea = () => {
-    quickAddInput.style.height = 'auto';
-    quickAddInput.style.height = quickAddInput.scrollHeight + 'px';
+    quickAddInput.style.height = "auto";
+    quickAddInput.style.height = quickAddInput.scrollHeight + "px";
   };
 
-  quickAddInput.addEventListener('input', autoExpandTextarea);
-  
+  quickAddInput.addEventListener("input", autoExpandTextarea);
+
   // Allow Ctrl/Cmd+Enter to add prime item, Enter alone for new lines
   quickAddInput.addEventListener("keydown", (e) => {
     if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) {
@@ -139,31 +153,25 @@ export function createPrimeController() {
     try {
       const text = await file.text();
       const { items: importedItems, category } = parseImportFile(text);
-      
+
       if (importedItems.length === 0) {
-        alert("No prime items found. Make sure lines start with #### for titles.");
+        alert(
+          "No prime items found. Make sure lines start with #### for titles.",
+        );
         return;
       }
 
-      // Load current items and add imported ones
-      const currentItems = loadPrimeItems();
-      const newItems = importedItems.map(title => new PrimeItem({ title, category }));
-      const combined = [...currentItems, ...newItems];
-      
-      savePrimeItems(combined);
-      primeItems = loadPrimeItems();
-      
-      // Update category managers if a category was imported
-      if (category) {
-        quickAddCategoryManager.loadCategories(primeItems);
-        modalCategoryManager.loadCategories(primeItems);
-      }
-      
-      renderList();
+      const newItems = importedItems.map(
+        (title) => new PrimeItem({ title, category }),
+      );
+      await Promise.all(newItems.map((item) => createPrimeItem(item.toJSON())));
+      await refreshPrimeItems({ refreshCategories: true });
 
       const categoryMsg = category ? ` with category "${category}"` : "";
-      alert(`Successfully imported ${importedItems.length} prime item(s)${categoryMsg}!`);
-      
+      alert(
+        `Successfully imported ${importedItems.length} prime item(s)${categoryMsg}!`,
+      );
+
       // Reset file input
       importPrimeFile.value = "";
     } catch (error) {
@@ -180,7 +188,7 @@ export function createPrimeController() {
     onCancel: handleCancel,
   });
 
-  function handleSave() {
+  async function handleSave() {
     const data = PrimeView.readFormData();
 
     if (!data.title) {
@@ -189,46 +197,34 @@ export function createPrimeController() {
     }
 
     if (editingItemId) {
-      // Update existing item
-      const success = updatePrimeItem(editingItemId, {
-        title: data.title,
-        category: data.category,
-        description: data.description,
-      });
-
-      if (success) {
-        primeItems = loadPrimeItems();
-        
-        // Update category managers if category changed
-        if (data.category) {
-          quickAddCategoryManager.loadCategories(primeItems);
-          modalCategoryManager.loadCategories(primeItems);
-        }
-        
-        renderList();
+      try {
+        await updatePrimeItem(editingItemId, {
+          title: data.title,
+          category: data.category,
+          description: data.description,
+        });
+        editingItemId = null;
+        await refreshPrimeItems({ refreshCategories: true });
+      } catch (error) {
+        console.error("Failed to update prime item:", error);
+        alert("Failed to update prime item. Please try again.");
+        return;
       }
-
-      editingItemId = null;
     } else {
-      // Create new item
       const item = new PrimeItem({
         title: data.title,
         category: data.category,
         description: data.description,
       });
 
-      const next = loadPrimeItems();
-      next.push(item);
-      savePrimeItems(next);
-      primeItems = next;
-
-      // Update category managers with new category
-      if (data.category) {
-        quickAddCategoryManager.incrementCategory(data.category);
-        modalCategoryManager.incrementCategory(data.category);
+      try {
+        await createPrimeItem(item.toJSON());
+        await refreshPrimeItems({ refreshCategories: true });
+      } catch (error) {
+        console.error("Failed to create prime item:", error);
+        alert("Failed to create prime item. Please try again.");
+        return;
       }
-
-      renderList();
     }
 
     PrimeView.close();
@@ -239,19 +235,31 @@ export function createPrimeController() {
     PrimeView.close();
   }
 
-  function handleLogPrime(item) {
-    // Find the item and log a prime
+  async function handleLogPrime(item) {
     const itemIndex = primeItems.findIndex((p) => p.id === item.id);
     if (itemIndex === -1) return;
 
-    primeItems[itemIndex].logPrime();
-    savePrimeItems(primeItems);
+    const nextTimestamps = [
+      ...(primeItems[itemIndex].primeTimestamps || []),
+      Date.now(),
+    ];
+
+    try {
+      await updatePrimeItem(item.id, { primeTimestamps: nextTimestamps });
+      primeItems[itemIndex].primeTimestamps = nextTimestamps;
+    } catch (error) {
+      console.error("Failed to log prime:", error);
+      alert("Failed to log prime. Please try again.");
+      return;
+    }
 
     // Play the sound
     SoundManager.play("primeLogged");
 
     // Add green border to the prime item container immediately
-    const primeItemContainer = document.querySelector(`.prime-item[data-id="${item.id}"]`);
+    const primeItemContainer = document.querySelector(
+      `.prime-item[data-id="${item.id}"]`,
+    );
     if (primeItemContainer) {
       primeItemContainer.classList.add("prime-item--logged");
     }
@@ -272,12 +280,14 @@ export function createPrimeController() {
     // Wait 1 second before re-rendering to move item and update stats
     setTimeout(() => {
       renderList();
-      
+
       // Re-apply green border after render (item may have moved)
-      const newPrimeItemContainer = document.querySelector(`.prime-item[data-id="${item.id}"]`);
+      const newPrimeItemContainer = document.querySelector(
+        `.prime-item[data-id="${item.id}"]`,
+      );
       if (newPrimeItemContainer) {
         newPrimeItemContainer.classList.add("prime-item--logged");
-        
+
         setTimeout(() => {
           newPrimeItemContainer.classList.remove("prime-item--logged");
         }, 1000);
@@ -290,41 +300,53 @@ export function createPrimeController() {
     PrimeView.openForEdit(item);
   }
 
-  function handleDelete(item) {
+  async function handleDelete(item) {
     if (!confirm(`Delete "${item.title}"?`)) return;
-
-    const success = deletePrimeItem(item.id);
-    if (success) {
-      primeItems = loadPrimeItems();
-      renderList();
+    try {
+      await deletePrimeItem(item.id);
+      await refreshPrimeItems({ refreshCategories: true });
+    } catch (error) {
+      console.error("Failed to delete prime item:", error);
+      alert("Failed to delete prime item. Please try again.");
     }
   }
 
-  function handleArchive(item) {
-    if (!confirm(`Archive "${item.title}"? You can restore it later from archived items.`)) return;
-
-    const success = updatePrimeItem(item.id, { archived: true });
-    if (success) {
-      primeItems = loadPrimeItems();
-      renderList();
+  async function handleArchive(item) {
+    if (
+      !confirm(
+        `Archive "${item.title}"? You can restore it later from archived items.`,
+      )
+    )
+      return;
+    try {
+      await updatePrimeItem(item.id, { archived: true });
+      await refreshPrimeItems({ refreshCategories: true });
+    } catch (error) {
+      console.error("Failed to archive prime item:", error);
+      alert("Failed to archive prime item. Please try again.");
     }
   }
 
-  function handleRestore(item) {
-    const success = updatePrimeItem(item.id, { archived: false });
-    if (success) {
-      primeItems = loadPrimeItems();
-      renderList();
+  async function handleRestore(item) {
+    try {
+      await updatePrimeItem(item.id, { archived: false });
+      await refreshPrimeItems({ refreshCategories: true });
+    } catch (error) {
+      console.error("Failed to restore prime item:", error);
+      alert("Failed to restore prime item. Please try again.");
     }
   }
 
-  function handleConvertToReview(item) {
-    if (!confirm(`Convert "${item.title}" to a review item? The original prime item will be archived.`)) return;
-
-    const reviewItem = convertPrimeToReview(item.id);
+  async function handleConvertToReview(item) {
+    if (
+      !confirm(
+        `Convert "${item.title}" to a review item? The original prime item will be archived.`,
+      )
+    )
+      return;
+    const reviewItem = await convertPrimeToReview(item.id);
     if (reviewItem) {
-      primeItems = loadPrimeItems();
-      renderList();
+      await refreshPrimeItems({ refreshCategories: true });
     } else {
       alert("Failed to convert prime item. Please try again.");
     }
@@ -332,17 +354,21 @@ export function createPrimeController() {
 
   function renderList() {
     // Filter items based on showArchived toggle
-    const itemsToShow = showArchived 
-      ? primeItems.filter(item => item.archived)
-      : primeItems.filter(item => !item.archived);
-    
-    PrimeView.renderList(itemsToShow, {
-      onLogPrime: handleLogPrime,
-      onEdit: handleEdit,
-      onDelete: handleDelete,
-      onArchive: showArchived ? handleRestore : handleArchive,
-      onConvertToReview: handleConvertToReview,
-    }, showArchived);
+    const itemsToShow = showArchived
+      ? primeItems.filter((item) => item.archived)
+      : primeItems.filter((item) => !item.archived);
+
+    PrimeView.renderList(
+      itemsToShow,
+      {
+        onLogPrime: handleLogPrime,
+        onEdit: handleEdit,
+        onDelete: handleDelete,
+        onArchive: showArchived ? handleRestore : handleArchive,
+        onConvertToReview: handleConvertToReview,
+      },
+      showArchived,
+    );
   }
 
   /**
@@ -352,9 +378,9 @@ export function createPrimeController() {
    * @returns {{ items: string[], category: string }} - Object with array of prime item titles and optional category
    */
   function parseImportFile(text) {
-    const lines = text.split('\n');
+    const lines = text.split("\n");
     const titles = [];
-    let category = '';
+    let category = "";
     let startIndex = 0;
 
     // Check if first line declares a category (case-insensitive)
@@ -370,7 +396,7 @@ export function createPrimeController() {
     // Process lines starting from the appropriate index
     for (let i = startIndex; i < lines.length; i++) {
       const trimmed = lines[i].trim();
-      if (trimmed.startsWith('####')) {
+      if (trimmed.startsWith("####")) {
         // Remove the #### prefix and any extra whitespace
         const title = trimmed.substring(4).trim();
         if (title) {
