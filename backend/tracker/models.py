@@ -1,8 +1,16 @@
 from django.db import models
+from django.conf import settings
 from uuid import uuid4
 
 class Project(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid4, editable=False)
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        null=True,
+        blank=True,
+        on_delete=models.CASCADE,
+        related_name='projects',
+    )
     name = models.CharField(max_length=255)
     description = models.TextField(blank=True)
     color = models.CharField(max_length=7, default="#6366f1")
@@ -14,6 +22,13 @@ class Project(models.Model):
 
 class Task(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid4, editable=False)
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        null=True,
+        blank=True,
+        on_delete=models.CASCADE,
+        related_name='tasks',
+    )
     title = models.CharField(max_length=255)
     category = models.CharField(max_length=100, default='other')
     project = models.ForeignKey(
@@ -33,6 +48,13 @@ class Task(models.Model):
 
 class TimeEntry(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid4, editable=False)
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        null=True,
+        blank=True,
+        on_delete=models.CASCADE,
+        related_name='time_entries',
+    )
     task = models.ForeignKey(Task, on_delete=models.CASCADE, related_name='time_entries')
     task_title = models.CharField(max_length=255)
     started_at = models.DateTimeField()
@@ -52,6 +74,13 @@ class TimeEntry(models.Model):
 
 class Moment(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid4, editable=False)
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        null=True,
+        blank=True,
+        on_delete=models.CASCADE,
+        related_name='moments',
+    )
     description = models.TextField()
     category = models.CharField(max_length=100, default="general")
     timestamp = models.DateTimeField()
@@ -72,6 +101,13 @@ class Moment(models.Model):
 
 class Habit(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid4, editable=False)
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        null=True,
+        blank=True,
+        on_delete=models.CASCADE,
+        related_name='habits',
+    )
     name = models.CharField(max_length=200)
 
     daily_target = models.IntegerField(default=0)
@@ -91,6 +127,13 @@ class Habit(models.Model):
 
 class PrimeItem(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid4, editable=False)
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        null=True,
+        blank=True,
+        on_delete=models.CASCADE,
+        related_name='prime_items',
+    )
     title = models.CharField(max_length=200)
     description = models.TextField(blank=True)
     category = models.CharField(max_length=100, blank=True)
@@ -104,6 +147,13 @@ class PrimeItem(models.Model):
 
 class ReviewItem(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid4, editable=False)
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        null=True,
+        blank=True,
+        on_delete=models.CASCADE,
+        related_name='review_items',
+    )
     title = models.CharField(max_length=200)
     description = models.TextField(blank=True)
     category = models.CharField(max_length=100, blank=True)

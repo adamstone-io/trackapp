@@ -7,8 +7,10 @@ import { createMainTimeEntryWindowController } from "./controllers/main-time-ent
 import { createManualEntryController } from "./controllers/manual-time-entry-controller.js";
 import { SoundManager } from "./utils/sound-manager.js";
 import { initNavigation } from "./controllers/nav-controller.js";
+import { ensureAuthenticated } from "./data/storage.js";
 
-document.addEventListener("DOMContentLoaded", () => {
+document.addEventListener("DOMContentLoaded", async () => {
+  if (!(await ensureAuthenticated())) return;
   // Initialize navigation
   initNavigation();
   SoundManager.register(

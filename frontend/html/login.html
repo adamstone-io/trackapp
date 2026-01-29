@@ -1,0 +1,51 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Login | Time Tracker</title>
+    <link rel="stylesheet" href="../css/main.css" />
+  </head>
+  <body>
+    <main
+      class="container"
+      style="max-width: 420px; margin: 0 auto; padding: 48px 24px"
+    >
+      <h1 style="margin-bottom: 16px">Sign in</h1>
+      <p id="auth-message" style="margin-bottom: 16px; color: #9ca3af"></p>
+
+      <form id="auth-form">
+        <label class="input-label" for="auth-username">Username</label>
+        <input
+          id="auth-username"
+          name="username"
+          type="text"
+          autocomplete="username"
+          required
+        />
+
+        <label class="input-label" for="auth-password" style="margin-top: 12px">
+          Password
+        </label>
+        <input
+          id="auth-password"
+          name="password"
+          type="password"
+          autocomplete="current-password"
+          required
+        />
+
+        <button
+          id="auth-submit"
+          type="submit"
+          class="btn btn--primary"
+          style="margin-top: 16px; width: 100%"
+        >
+          Log In
+        </button>
+      </form>
+    </main>
+
+    <script type="module" src="../js/login-main.js"></script>
+  </body>
+</html>

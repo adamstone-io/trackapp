@@ -1,5 +1,6 @@
 from django.urls import include, path
 from rest_framework.routers import DefaultRouter
+from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
 
 from .views import (
     HabitViewSet,
@@ -7,6 +8,7 @@ from .views import (
     PrimeItemViewSet,
     ProjectViewSet,
     ReviewItemViewSet,
+    RegisterView,
     TaskViewSet,
     TimeEntryViewSet,
 )
@@ -22,4 +24,7 @@ router.register(r"review-items", ReviewItemViewSet)
 
 urlpatterns = [
     path("api/", include(router.urls)),
+    path("api/auth/register/", RegisterView.as_view(), name="auth-register"),
+    path("api/auth/token/", TokenObtainPairView.as_view(), name="token-obtain"),
+    path("api/auth/token/refresh/", TokenRefreshView.as_view(), name="token-refresh"),
 ]

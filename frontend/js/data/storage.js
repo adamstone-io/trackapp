@@ -17,15 +17,103 @@ const STORAGE_KEYS = {
 };
 
 const API_BASE = "http://127.0.0.1:8000/api";
+const AUTH_KEYS = {
+  access: "authAccessToken",
+  refresh: "authRefreshToken",
+};
 
-async function apiRequest(path, options = {}) {
-  const response = await fetch(`${API_BASE}${path}`, {
+const LOGIN_PAGE = "login.html";
+
+export function getAccessToken() {
+  return localStorage.getItem(AUTH_KEYS.access);
+}
+
+function getRefreshToken() {
+  return localStorage.getItem(AUTH_KEYS.refresh);
+}
+
+export function setAuthTokens({ access, refresh } = {}) {
+  if (access) {
+    localStorage.setItem(AUTH_KEYS.access, access);
+  }
+  if (refresh) {
+    localStorage.setItem(AUTH_KEYS.refresh, refresh);
+  }
+}
+
+export function clearAuthTokens() {
+  localStorage.removeItem(AUTH_KEYS.access);
+  localStorage.removeItem(AUTH_KEYS.refresh);
+}
+
+export function isAuthenticated() {
+  return Boolean(getAccessToken());
+}
+
+function isLoginPage() {
+  return window.location.pathname.endsWith(`/${LOGIN_PAGE}`);
+}
+
+function redirectToLogin() {
+  if (isLoginPage()) return;
+  const next = encodeURIComponent(window.location.pathname.split("/").pop());
+  window.location.href = `${LOGIN_PAGE}?next=${next}`;
+}
+
+async function refreshAccessToken() {
+  const refresh = getRefreshToken();
+  if (!refresh) return false;
+
+  const response = await fetch(`${API_BASE}/auth/token/refresh/`, {
+    method: "POST",
     headers: {
       "Content-Type": "application/json",
-      ...(options.headers || {}),
     },
+    body: JSON.stringify({ refresh }),
+  });
+
+  if (!response.ok) {
+    clearAuthTokens();
+    return false;
+  }
+
+  const data = await response.json();
+  if (!data?.access) return false;
+  setAuthTokens({ access: data.access, refresh: data.refresh ?? refresh });
+  return true;
+}
+
+function buildHeaders(options = {}, skipAuth = false) {
+  const headers = {
+    "Content-Type": "application/json",
+    ...(options.headers || {}),
+  };
+
+  if (!skipAuth) {
+    const token = getAccessToken();
+    if (token) {
+      headers.Authorization = `Bearer ${token}`;
+    }
+  }
+
+  return headers;
+}
+
+async function requestUrl(url, options = {}, config = {}) {
+  const { skipAuth = false, retry = true } = config;
+  const response = await fetch(url, {
+    headers: buildHeaders(options, skipAuth),
     ...options,
   });
+
+  if (response.status === 401 && !skipAuth && retry) {
+    const refreshed = await refreshAccessToken();
+    if (refreshed) {
+      return requestUrl(url, options, { skipAuth, retry: false });
+    }
+    clearAuthTokens();
+    redirectToLogin();
+  }
 
   if (!response.ok) {
     const text = await response.text();
@@ -34,20 +122,12 @@ async function apiRequest(path, options = {}) {
   return response.status === 204 ? null : response.json();
 }
 
-async function apiRequestUrl(url, options = {}) {
-  const response = await fetch(url, {
-    headers: {
-      "Content-Type": "application/json",
-      ...(options.headers || {}),
-    },
-    ...options,
-  });
+async function apiRequest(path, options = {}, config = {}) {
+  return requestUrl(`${API_BASE}${path}`, options, config);
+}
 
-  if (!response.ok) {
-    const text = await response.text();
-    throw new Error(`API ${response.status}: ${text}`);
-  }
-  return response.status === 204 ? null : response.json();
+async function apiRequestUrl(url, options = {}, config = {}) {
+  return requestUrl(url, options, config);
 }
 
 async function fetchAllPages(path) {
@@ -68,6 +148,42 @@ async function fetchAllPages(path) {
   }
 
   return results;
+}
+
+export async function registerUser({ username, password }) {
+  return apiRequest(
+    "/auth/register/",
+    {
+      method: "POST",
+      body: JSON.stringify({ username, password }),
+    },
+    { skipAuth: true, retry: false },
+  );
+}
+
+export async function loginUser({ username, password }) {
+  const data = await apiRequest(
+    "/auth/token/",
+    {
+      method: "POST",
+      body: JSON.stringify({ username, password }),
+    },
+    { skipAuth: true, retry: false },
+  );
+
+  setAuthTokens({ access: data.access, refresh: data.refresh });
+  return data;
+}
+
+export async function ensureAuthenticated() {
+  if (isLoginPage()) return true;
+  if (getAccessToken()) return true;
+  const refreshed = await refreshAccessToken();
+  if (!refreshed) {
+    redirectToLogin();
+    return false;
+  }
+  return true;
 }
 
 // ========== MOMENTS ==========
