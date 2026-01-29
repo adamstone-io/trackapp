@@ -34,6 +34,42 @@ async function apiRequest(path, options = {}) {
   return response.status === 204 ? null : response.json();
 }
 
+async function apiRequestUrl(url, options = {}) {
+  const response = await fetch(url, {
+    headers: {
+      "Content-Type": "application/json",
+      ...(options.headers || {}),
+    },
+    ...options,
+  });
+
+  if (!response.ok) {
+    const text = await response.text();
+    throw new Error(`API ${response.status}: ${text}`);
+  }
+  return response.status === 204 ? null : response.json();
+}
+
+async function fetchAllPages(path) {
+  let url = `${API_BASE}${path}`;
+  const results = [];
+
+  while (url) {
+    const data = await apiRequestUrl(url);
+    if (data && Array.isArray(data.results)) {
+      results.push(...data.results);
+      url = data.next;
+    } else if (Array.isArray(data)) {
+      results.push(...data);
+      url = null;
+    } else {
+      url = null;
+    }
+  }
+
+  return results;
+}
+
 // ========== MOMENTS ==========
 
 function normalizeMomentPayload(payload) {
@@ -93,8 +129,7 @@ export async function createMoment(payload) {
 }
 
 export async function loadMoments() {
-  const data = await apiRequest("/moments/");
-  const items = data.results ?? data;
+  const items = await fetchAllPages("/moments/");
   return items.map((item) => Moment.fromJSON(normalizeMomentFromApi(item)));
 }
 
@@ -185,10 +220,8 @@ export async function createHabit(payload) {
 }
 
 export async function loadHabits() {
-  const data = await apiRequest("/habits/");
-  return (data.results ?? data).map((item) =>
-    Habit.fromJSON(normalizeHabitFromApi(item)),
-  );
+  const items = await fetchAllPages("/habits/");
+  return items.map((item) => Habit.fromJSON(normalizeHabitFromApi(item)));
 }
 
 export async function updateHabit(id, patch) {
@@ -212,8 +245,7 @@ export async function createTask(payload) {
 }
 
 export async function loadTasks() {
-  const data = await apiRequest("/tasks/");
-  return data.results ?? data;
+  return fetchAllPages("/tasks/");
 }
 
 export async function updateTask(id, patch) {
@@ -237,8 +269,7 @@ export async function createProject(payload) {
 }
 
 export async function loadProjects() {
-  const data = await apiRequest("/projects/");
-  return data.results ?? data;
+  return fetchAllPages("/projects/");
 }
 
 export async function updateProject(id, patch) {
@@ -285,8 +316,7 @@ export async function createTimeEntry(payload) {
 }
 
 export async function loadTimeEntries() {
-  const data = await apiRequest("/time-entries/");
-  return data.results ?? data;
+  return fetchAllPages("/time-entries/");
 }
 
 export async function updateTimeEntry(id, patch) {
@@ -359,8 +389,7 @@ export async function createPrimeItem(payload) {
 }
 
 export async function loadPrimeItems() {
-  const data = await apiRequest("/prime-items/");
-  const items = data.results ?? data;
+  const items = await fetchAllPages("/prime-items/");
   return items.map((item) =>
     PrimeItem.fromJSON(normalizePrimeItemFromApi(item)),
   );
@@ -431,8 +460,7 @@ export async function createReviewItem(payload) {
 }
 
 export async function loadReviewItems() {
-  const data = await apiRequest("/review-items/");
-  const items = data.results ?? data;
+  const items = await fetchAllPages("/review-items/");
   return items.map((item) =>
     ReviewItem.fromJSON(normalizeReviewItemFromApi(item)),
   );
