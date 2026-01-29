@@ -137,55 +137,50 @@ export async function deleteProject(id) {
 
 // ========== TIME ENTRIES ==========
 
-export function saveTimeEntries(entries) {
-  const data = entries.map((e) => e.toJSON());
-  localStorage.setItem(STORAGE_KEYS.timeEntries, JSON.stringify(data));
+function normalizeTimeEntryPayload(payload) {
+  if (!payload || typeof payload !== "object") return payload;
+
+  const task_title = payload.task_title ?? payload.taskTitle;
+  const started_at = payload.started_at ?? payload.startedAt;
+  const ended_at = payload.ended_at ?? payload.endedAt;
+  const duration_seconds = payload.duration_seconds ?? payload.durationSeconds;
+
+  const normalized = { ...payload };
+  delete normalized.taskTitle;
+  delete normalized.startedAt;
+  delete normalized.endedAt;
+  delete normalized.durationSeconds;
+
+  if (task_title !== undefined) normalized.task_title = task_title;
+  if (started_at !== undefined) normalized.started_at = started_at;
+  if (ended_at !== undefined) normalized.ended_at = ended_at;
+  if (duration_seconds !== undefined)
+    normalized.duration_seconds = duration_seconds;
+
+  return normalized;
 }
 
-export function loadTimeEntries() {
-  const raw = localStorage.getItem(STORAGE_KEYS.timeEntries);
-  if (!raw) return [];
-
-  try {
-    const data = JSON.parse(raw);
-    return data.map((item) => TimeEntry.fromJSON(item));
-  } catch (error) {
-    console.error("Failed to load time entries:", error);
-    return [];
-  }
+export async function createTimeEntry(payload) {
+  return apiRequest("/time-entries/", {
+    method: "POST",
+    body: JSON.stringify(normalizeTimeEntryPayload(payload)),
+  });
 }
 
-export function updateTimeEntry(id, patch) {
-  const raw = localStorage.getItem(STORAGE_KEYS.timeEntries);
-  const data = raw ? JSON.parse(raw) : [];
-
-  const index = data.findIndex((e) => e.id === id);
-  if (index === -1) return false;
-
-  // Do not allow patch to replace id
-  const current = data[index];
-  data[index] = {
-    ...current,
-    ...patch,
-    id: current.id,
-  };
-
-  localStorage.setItem(STORAGE_KEYS.timeEntries, JSON.stringify(data));
-  return true;
+export async function loadTimeEntries() {
+  const data = await apiRequest("/time-entries/");
+  return data.results ?? data;
 }
 
-export function deleteTimeEntry(id) {
-  const raw = localStorage.getItem(STORAGE_KEYS.timeEntries);
-  const data = raw ? JSON.parse(raw) : [];
+export async function updateTimeEntry(id, patch) {
+  return apiRequest(`/time-entries/${id}/`, {
+    method: "PATCH",
+    body: JSON.stringify(normalizeTimeEntryPayload(patch)),
+  });
+}
 
-  const next = data.filter((e) => e.id !== id);
-  const changed = next.length !== data.length;
-
-  if (changed) {
-    localStorage.setItem(STORAGE_KEYS.timeEntries, JSON.stringify(next));
-  }
-
-  return changed;
+export async function deleteTimeEntry(id) {
+  return apiRequest(`/time-entries/${id}/`, { method: "DELETE" });
 }
 
 // ========== ACTIVE TIMER ==========

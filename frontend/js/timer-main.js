@@ -20,14 +20,14 @@ document.addEventListener("DOMContentLoaded", () => {
   const entriesController = createEntriesController();
   const countdownDispose = createCountdownController();
   const timerDispose = createTimerController({
-    onEntryAdded: () => {
-      entriesController.refresh();
+    onEntryAdded: async () => {
+      await entriesController.refresh();
     },
   });
 
   const momentController = createMomentController({
-    onMomentsChanged: () => {
-      entriesController.refresh();
+    onMomentsChanged: async () => {
+      await entriesController.refresh();
     },
   });
 
@@ -36,23 +36,24 @@ document.addEventListener("DOMContentLoaded", () => {
   );
 
   const manualEntryController = createManualEntryController({
-    onEntryAdded: () => {
-      entriesController.refresh();
+    onEntryAdded: async () => {
+      await entriesController.refresh();
     },
   });
 
   createMainTimeEntryWindowController({
-    onManualEntrySaved: (manualEntry) => {
-      manualEntryController.addManualEntry(manualEntry);
+    onManualEntrySaved: async (manualEntry) => {
+      await manualEntryController.addManualEntry(manualEntry);
     },
   });
 
   if (window.location.hostname === "localhost") {
     window.debug = {
       timerDispose,
-      dataDispose,
       countdownDispose,
       momentController,
+      entriesController,
+      manualEntryController,
     };
   }
 });

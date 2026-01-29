@@ -5,10 +5,11 @@ import {
   loadMoments,
   loadTasks,
   loadProjects,
-  saveTasks,
   updateTimeEntry,
   deleteTimeEntry,
   deleteMoment,
+  updateTask,
+  createTask,
 } from "../data/storage.js";
 import { createDropdownMenu } from "../views/components/dropdown-menu.js";
 import { createTimeEntryModal } from "../views/components/time-entry-modal.js";
@@ -16,13 +17,13 @@ import { Task } from "../domain/task.js";
 
 export function createEntriesController() {
   const modal = createTimeEntryModal({
-    onSave: (payload) => {
+    onSave: async (payload) => {
       if (payload.id) {
         const durationSeconds = Math.round(
           (new Date(payload.endedAt) - new Date(payload.startedAt)) / 1000,
         );
 
-        updateTimeEntry(payload.id, {
+        await updateTimeEntry(payload.id, {
           taskTitle: payload.taskTitle,
           startedAt: payload.startedAt,
           endedAt: payload.endedAt,
@@ -31,38 +32,38 @@ export function createEntriesController() {
 
         // Update the task's projectId if changed
         if (payload.taskId && payload.projectId !== undefined) {
-          const tasks = loadTasks();
-          let taskIndex = tasks.findIndex((t) => t.id === payload.taskId);
+          const tasks = await loadTasks();
+          const existingTask = tasks.find((t) => t.id === payload.taskId);
 
           // If task doesn't exist, create it from the entry data
-          if (taskIndex === -1) {
+          if (!existingTask) {
             const newTask = new Task({
               id: payload.taskId,
               title: payload.taskTitle,
               projectId: payload.projectId,
             });
-            tasks.push(newTask);
-            saveTasks(tasks);
+            const taskPayload = {
+              ...newTask.toJSON(),
+              project: newTask.projectId ?? null,
+            };
+            delete taskPayload.projectId;
+            await createTask(taskPayload);
           } else {
-            const task = tasks[taskIndex];
-            let needsSave = false;
+            // Build patch for any changed fields
+            const patch = {};
 
-            if (task.title !== payload.taskTitle) {
-              task.update({ title: payload.taskTitle });
-              needsSave = true;
+            if (existingTask.title !== payload.taskTitle) {
+              patch.title = payload.taskTitle;
             }
-            if (task.category !== payload.category) {
-              task.update({ category: payload.category });
-              needsSave = true;
+            if (existingTask.category !== payload.category) {
+              patch.category = payload.category;
             }
-
-            if (task.projectId !== payload.projectId) {
-              task.update({ projectId: payload.projectId });
-              saveTasks(tasks);
+            if (existingTask.projectId !== payload.projectId) {
+              patch.project = payload.projectId ?? null;
             }
 
-            if (needsSave) {
-              saveTasks(tasks);
+            if (Object.keys(patch).length > 0) {
+              await updateTask(payload.taskId, patch);
             }
           }
         }
@@ -71,7 +72,7 @@ export function createEntriesController() {
         console.warn("Create flow not wired in this controller yet:", payload);
       }
 
-      refresh();
+      await refresh();
     },
   });
 
@@ -124,9 +125,9 @@ export function createEntriesController() {
           },
           {
             label: "Delete",
-            onSelect: () => {
-              deleteTimeEntry(entry.id);
-              refresh();
+            onSelect: async () => {
+              await deleteTimeEntry(entry.id);
+              await refresh();
             },
           },
         ],
@@ -163,9 +164,9 @@ export function createEntriesController() {
           },
           {
             label: "Delete",
-            onSelect: () => {
+            onSelect: async () => {
               deleteMoment(moment.id);
-              refresh();
+              await refresh();
             },
           },
         ],
@@ -176,11 +177,12 @@ export function createEntriesController() {
     });
   }
 
-  function refresh() {
+  async function refresh() {
     const { startMs, endMs } = getTodayWindowMs();
 
-    const todayEntries = loadTimeEntries().filter((entry) => {
-      const ms = new Date(entry.startedAt).getTime();
+    const allEntries = await loadTimeEntries();
+    const todayEntries = allEntries.filter((entry) => {
+      const ms = new Date(entry.startedAt ?? entry.started_at).getTime();
       return ms >= startMs && ms < endMs;
     });
 
@@ -189,22 +191,25 @@ export function createEntriesController() {
     );
 
     // Load tasks and projects to resolve project names for entries
-    const tasks = loadTasks();
-    const projects = loadProjects();
+    const tasks = await loadTasks();
+    const projects = await loadProjects();
     const taskMap = new Map(tasks.map((t) => [t.id, t]));
     const projectMap = new Map(projects.map((p) => [p.id, p]));
 
     // Add project info to entries
     // Use toJSON() to get a plain object that spreads correctly
     const entriesWithProject = todayEntries.map((entry) => {
-      const task = taskMap.get(entry.taskId);
-      const project = task?.projectId ? projectMap.get(task.projectId) : null;
+      const taskId = entry.taskId ?? entry.task;
+      const task = taskMap.get(taskId);
+      const projectId = task?.projectId ?? task?.project;
+      const project = projectId ? projectMap.get(projectId) : null;
       const plainEntry =
         typeof entry.toJSON === "function" ? entry.toJSON() : entry;
       return {
         ...plainEntry,
+        taskId: taskId,
         category: task?.category || null,
-        projectId: task?.projectId || null,
+        projectId: projectId || null,
         projectName: project?.name || null,
         projectColor: project?.color || null,
       };
@@ -213,7 +218,7 @@ export function createEntriesController() {
     const items = [
       ...entriesWithProject.map((entry) => ({
         kind: "entry",
-        atMs: new Date(entry.startedAt).getTime(),
+        atMs: new Date(entry.startedAt ?? entry.started_at).getTime(),
         entry,
       })),
       ...todayMoments.map((moment) => ({

@@ -7,24 +7,28 @@ import { TimerView } from "../views/timer-view.js";
 import { CurrentTaskView } from "../views/current-task-view.js";
 import { EntriesView } from "../views/list-entries-view.js";
 import { formatTime } from "../utils/time.js";
-import { saveTimeEntries, loadTimeEntries, saveTasks, loadTasks } from "../data/storage.js";
+import {
+  loadTasks,
+  loadTimeEntries,
+  createTask,
+  createTimeEntry,
+} from "../data/storage.js";
 import { createBreakModal } from "../views/components/break-modal.js";
 import { SoundManager } from "../utils/sound-manager.js";
 
 let activeEntry = null;
+let activeTask = null;
 let timeEntries = [];
 let pauseStartMs = null;
 let pauseTickerId = null;
+let isStarting = false; // Guard against double-clicks
 
 export function createTimerController({ onEntryAdded }) {
-  // Load existing time entries from storage
-  timeEntries = loadTimeEntries();
-
   const timer = new Timer(); // ✅ create instance
   const breakModal = createBreakModal({
-    onSave: ({ label }) => {
+    onSave: async ({ label }) => {
       if (!timer.getSnapshot().isPaused) return;
-      finalizePause({ label, createEntry: true });
+      await finalizePause({ label, createEntry: true });
       clearPauseTracking();
       timer.resume();
     },
@@ -129,9 +133,9 @@ export function createTimerController({ onEntryAdded }) {
     startPauseTicker();
   }
 
-  function handleResume() {
+  async function handleResume() {
     if (!timer.getSnapshot().isPaused) return;
-    finalizePause({ label: "Pause", createEntry: false });
+    await finalizePause({ label: "Pause", createEntry: false });
     clearPauseTracking();
     timer.resume();
   }
@@ -144,10 +148,11 @@ export function createTimerController({ onEntryAdded }) {
   function handleCancel() {
     clearPauseTracking();
     timer.stop();
-    
+
     currentTask.clearCurrentTask();
     CurrentTaskView.clearInputs();
     activeEntry = null;
+    activeTask = null;
 
     // Update view to make inputs editable again
     CurrentTaskView.render({
@@ -161,51 +166,106 @@ export function createTimerController({ onEntryAdded }) {
     }
   }
 
-  function handleStart() {
-    const taskData = CurrentTaskView.readTask();
-
-    const task = new Task(taskData);
-
-    // Save task to storage so it can be found later for category/project linking
-    const existingTasks = loadTasks();
-    const taskExists = existingTasks.some(t => t.id === task.id);
-    if (!taskExists) {
-      existingTasks.push(task);
-      saveTasks(existingTasks);
+  async function handleStart() {
+    // Prevent double-clicks while async operations are in progress
+    if (isStarting || timer.getSnapshot().isRunning) {
+      return;
     }
+    isStarting = true;
 
-    currentTask.setCurrentTask(task);
-    clearPauseTracking();
-    timer.start();
-    if (!isCountdownUiActive()) {
-      countdownMode = false;
-      targetDuration = 0;
+    try {
+      const taskData = CurrentTaskView.readTask();
+
+      // Use default title if empty (API requires non-blank title)
+      if (!taskData.title || !taskData.title.trim()) {
+        taskData.title = "Untitled";
+      }
+
+      const task = new Task(taskData);
+
+      currentTask.setCurrentTask(task);
+      clearPauseTracking();
+      timer.start();
+
+      if (!isCountdownUiActive()) {
+        countdownMode = false;
+        targetDuration = 0;
+      }
+
+      if (isCountdownUiActive()) {
+        hideCountdownFavorites();
+      }
+
+      CurrentTaskView.render({
+        taskTitle: task.title,
+        running: true,
+      });
+
+      activeTask = task;
+      activeEntry = new TimeEntry({
+        taskId: task.id,
+        taskTitle: task.title,
+        startedAt: new Date().toISOString(),
+      });
+    } catch (err) {
+      console.error("Failed to start timer:", err);
+
+      clearPauseTracking();
+      timer.reset();
+      currentTask.clearCurrentTask();
+      CurrentTaskView.clearInputs();
+      activeEntry = null;
+      activeTask = null;
+
+      CurrentTaskView.render({
+        taskTitle: "",
+        running: false,
+      });
+    } finally {
+      isStarting = false;
     }
-
-    // Hide countdown favorites when timer starts
-    if (isCountdownUiActive()) {
-      hideCountdownFavorites();
-    }
-
-    // Update view to make inputs readonly
-    CurrentTaskView.render({
-      taskTitle: task.title,
-      running: true,
-    });
-
-    activeEntry = new TimeEntry({
-      taskId: task.id,
-      taskTitle: task.title,
-      startedAt: new Date().toISOString(),
-    });
   }
 
-  function handleStop(reason = "manual") {
-    // Finalize any active pause before stopping
+  async function ensureTaskExists(task) {
+    if (!task) return null;
+    const existingTasks = await loadTasks();
+    const normalizedTitle = task.title.trim().toLowerCase();
+    const normalizedCategory = task.category?.trim().toLowerCase() || "";
+    const normalizedProjectId = task.projectId ?? null;
+
+    const byId = existingTasks.find((t) => t.id === task.id);
+    if (byId) return byId.id;
+
+    const byMatch = existingTasks.find((t) => {
+      const title = String(t.title || "")
+        .trim()
+        .toLowerCase();
+      const category = String(t.category || "")
+        .trim()
+        .toLowerCase();
+      const projectId = t.projectId ?? t.project ?? null;
+      return (
+        title === normalizedTitle &&
+        category === normalizedCategory &&
+        projectId === normalizedProjectId
+      );
+    });
+    if (byMatch) return byMatch.id;
+
+    const payload = {
+      ...task.toJSON(),
+      project: task.projectId ?? null, // FK
+    };
+    delete payload.projectId;
+    const saved = await createTask(payload);
+    return saved?.id ?? task.id;
+  }
+
+  async function handleStop(reason = "manual") {
     if (timer.getSnapshot().isPaused && pauseStartMs) {
-      finalizePause({ label: "Pause", createEntry: false });
+      await finalizePause({ label: "Pause", createEntry: false });
     }
-    
+
     clearPauseTracking();
     const duration = timer.stop();
 
@@ -213,42 +273,71 @@ export function createTimerController({ onEntryAdded }) {
       SoundManager.play("timerFinished");
     }
 
-    activeEntry.finalize({
-      endedAt: new Date().toISOString(),
-      durationSeconds: duration,
-    });
-
-    // Add the completed entry to our collection and save to storage
-    timeEntries.push(activeEntry);
-    saveTimeEntries(timeEntries);
-
-    if (typeof onEntryAdded === "function") {
-      onEntryAdded(activeEntry);
+    if (!activeEntry || !activeTask) {
+      currentTask.clearCurrentTask();
+      CurrentTaskView.clearInputs();
+      activeEntry = null;
+      activeTask = null;
+      CurrentTaskView.render({ taskTitle: "", running: false });
+      if (isCountdownUiActive()) showCountdownFavorites();
+      return;
     }
+
+    try {
+      const ensuredTaskId = await ensureTaskExists(activeTask);
+      if (ensuredTaskId) {
+        activeEntry.taskId = ensuredTaskId;
+      }
+
+      activeEntry.finalize({
+        endedAt: new Date().toISOString(),
+        durationSeconds: duration,
+      });
+
+      const payload = {
+        task: activeEntry.taskId,
+        taskTitle: activeEntry.taskTitle,
+        startedAt: activeEntry.startedAt,
+        endedAt: activeEntry.endedAt,
+        durationSeconds: activeEntry.durationSeconds,
+        notes: activeEntry.notes,
+        breaks: activeEntry.breaks,
+      };
+      const savedEntry = await createTimeEntry(payload);
+
+      if (typeof onEntryAdded === "function") {
+        onEntryAdded(savedEntry);
+      }
+    } catch (err) {
+      console.error("Failed to save time entry to API:", err);
+      alert(
+        `Could not save time entry: ${err.message || "Network or server error"}. Check console and that the backend is running at ${"http://127.0.0.1:8000"}.`,
+      );
+      return;
+    }
+
     currentTask.clearCurrentTask();
     CurrentTaskView.clearInputs();
     activeEntry = null;
+    activeTask = null;
 
-    // Update view to make inputs editable again
     CurrentTaskView.render({
       taskTitle: "",
       running: false,
     });
 
-    // Show countdown favorites when timer stops
     if (isCountdownUiActive()) {
       showCountdownFavorites();
     }
   }
 
   function getPauseDurationSeconds(snapshot, now = Date.now()) {
-    const startMs =
-      pauseStartMs ?? snapshot?.pauseStartTimeMs ?? null;
+    const startMs = pauseStartMs ?? snapshot?.pauseStartTimeMs ?? null;
     if (!startMs) return 0;
     return Math.max(0, Math.floor((now - startMs) / 1000));
   }
 
-  function finalizePause({ label, createEntry }) {
+  async function finalizePause({ label, createEntry }) {
     if (!activeEntry || !pauseStartMs) return;
 
     const startedAt = new Date(pauseStartMs).toISOString();
@@ -260,28 +349,41 @@ export function createTimerController({ onEntryAdded }) {
 
     let loggedEntryId = null;
     if (createEntry) {
-      const breakTask = new Task({
-        title: label,
-        category: "",
-      });
+      try {
+        const breakTask = new Task({
+          title: label,
+          category: "",
+        });
 
-      // Save break task to storage
-      const existingTasks = loadTasks();
-      existingTasks.push(breakTask);
-      saveTasks(existingTasks);
+        const taskPayload = {
+          ...breakTask.toJSON(),
+          project: breakTask.projectId ?? null,
+        };
+        delete taskPayload.projectId;
 
-      const breakEntry = new TimeEntry({
-        taskId: breakTask.id,
-        taskTitle: breakTask.title,
-        startedAt,
-        endedAt,
-        durationSeconds,
-      });
-      loggedEntryId = breakEntry.id;
-      timeEntries.push(breakEntry);
-      saveTimeEntries(timeEntries);
-      if (typeof onEntryAdded === "function") {
-        onEntryAdded(breakEntry);
+        const savedTask = await createTask(taskPayload);
+
+        const breakEntryPayload = {
+          task: savedTask.id,
+          taskTitle: breakTask.title,
+          startedAt,
+          endedAt,
+          durationSeconds,
+          notes: "",
+          breaks: [],
+        };
+
+        const savedEntry = await createTimeEntry(breakEntryPayload);
+        loggedEntryId = savedEntry.id;
+
+        if (typeof onEntryAdded === "function") {
+          onEntryAdded(savedEntry);
+        }
+      } catch (err) {
+        console.error("Failed to save break entry to API:", err);
+        alert(
+          `Could not save break: ${err.message || "Network or server error"}.`,
+        );
       }
     }
 
@@ -318,7 +420,7 @@ export function createTimerController({ onEntryAdded }) {
   function hideCountdownFavorites() {
     const addFavoriteBtn = document.getElementById("add-favorite-btn");
     const favoritesList = document.getElementById("favorites-list");
-    
+
     if (addFavoriteBtn) {
       addFavoriteBtn.classList.add("hidden");
     }
@@ -330,7 +432,7 @@ export function createTimerController({ onEntryAdded }) {
   function showCountdownFavorites() {
     const addFavoriteBtn = document.getElementById("add-favorite-btn");
     const favoritesList = document.getElementById("favorites-list");
-    
+
     if (addFavoriteBtn) {
       addFavoriteBtn.classList.remove("hidden");
     }
@@ -342,8 +444,8 @@ export function createTimerController({ onEntryAdded }) {
   /**
    * Refresh the today's entries list.
    */
-  function refreshEntriesList() {
-    const entries = loadTimeEntries();
+  async function refreshEntriesList() {
+    const entries = await loadTimeEntries();
     const today = new Date();
     today.setHours(0, 0, 0, 0);
 

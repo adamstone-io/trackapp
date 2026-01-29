@@ -29,20 +29,25 @@ function isTimelineItem(value) {
 function computeDurationSeconds(entry) {
   if (!entry) return 0;
 
-  if (Number.isFinite(entry.durationSeconds)) return entry.durationSeconds;
+  const duration = entry.durationSeconds ?? entry.duration_seconds;
+  if (Number.isFinite(duration)) return duration;
 
-  if (!entry.startedAt || !entry.endedAt) return 0;
+  const startedAt = entry.startedAt ?? entry.started_at;
+  const endedAt = entry.endedAt ?? entry.ended_at;
+  if (!startedAt || !endedAt) return 0;
 
-  const start = new Date(entry.startedAt).getTime();
-  const end = new Date(entry.endedAt).getTime();
+  const start = new Date(startedAt).getTime();
+  const end = new Date(endedAt).getTime();
   const diff = Math.round((end - start) / 1000);
 
   return Number.isFinite(diff) && diff > 0 ? diff : 0;
 }
 
 function formatTimeRange(entry) {
-  const start = entry?.startedAt ? new Date(entry.startedAt) : null;
-  const end = entry?.endedAt ? new Date(entry.endedAt) : null;
+  const startedAt = entry?.startedAt ?? entry?.started_at;
+  const endedAt = entry?.endedAt ?? entry?.ended_at;
+  const start = startedAt ? new Date(startedAt) : null;
+  const end = endedAt ? new Date(endedAt) : null;
 
   if (!start) return "";
 
@@ -68,7 +73,9 @@ function escapeHtml(text) {
 function renderEntry(entry) {
   if (!entry) return "";
 
-  const title = (entry.taskTitle ?? "Untitled Task").trim() || "Untitled Task";
+  const title =
+    (entry.taskTitle ?? entry.task_title ?? "Untitled Task").trim() ||
+    "Untitled Task";
   const durationSeconds = computeDurationSeconds(entry);
 
   const durationLabel = formatDurationLabel(durationSeconds);

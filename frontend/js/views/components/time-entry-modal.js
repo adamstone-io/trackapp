@@ -130,10 +130,11 @@ export function createTimeEntryModal({ onSave } = {}) {
     document.addEventListener("keydown", handleEscape);
   }
 
-  function populateProjects(selectedProjectId = null) {
+  async function populateProjects(selectedProjectId = null) {
     if (!projectSelect) return;
 
-    const projects = loadProjects().filter((p) => !p.archived);
+    const allProjects = await loadProjects();
+    const projects = allProjects.filter((p) => !p.archived);
 
     projectSelect.innerHTML =
       `<option value="">No project</option>` +
@@ -161,7 +162,7 @@ export function createTimeEntryModal({ onSave } = {}) {
     if (titleInput) titleInput.focus();
   }
 
-  function openCreate() {
+  async function openCreate() {
     ensureCreated();
 
     editingId = null;
@@ -172,26 +173,30 @@ export function createTimeEntryModal({ onSave } = {}) {
     const thirtyMinAgo = new Date(now.getTime() - 30 * 60 * 1000);
 
     titleInput.value = "";
-    populateProjects(null);
+    await populateProjects(null);
     startInput.value = toLocalDateTimeValue(thirtyMinAgo);
     endInput.value = toLocalDateTimeValue(now);
     categorySelect.value = "Other";
     openBase();
   }
 
-  function openEdit(entry) {
+  async function openEdit(entry) {
     ensureCreated();
 
     editingId = entry.id;
-    editingTaskId = entry.taskId || null;
+    editingTaskId = entry.taskId ?? entry.task ?? null;
     if (headingEl) headingEl.textContent = "Edit time entry";
 
-    // supports either `taskTitle` or older `title`
-    titleInput.value = entry.taskTitle ?? entry.title ?? "";
+    // supports taskTitle (frontend), task_title (API), or older title
+    titleInput.value = entry.taskTitle ?? entry.task_title ?? entry.title ?? "";
     // Populate projects and select the current one if available
-    populateProjects(entry.projectId || null);
-    startInput.value = toLocalDateTimeValue(new Date(entry.startedAt));
-    endInput.value = toLocalDateTimeValue(new Date(entry.endedAt));
+    await populateProjects(entry.projectId ?? entry.project ?? null);
+    const startedAt = entry.startedAt ?? entry.started_at;
+    const endedAt = entry.endedAt ?? entry.ended_at;
+    startInput.value = startedAt
+      ? toLocalDateTimeValue(new Date(startedAt))
+      : "";
+    endInput.value = endedAt ? toLocalDateTimeValue(new Date(endedAt)) : "";
     categorySelect.value = entry.category || "Other";
     openBase();
   }
