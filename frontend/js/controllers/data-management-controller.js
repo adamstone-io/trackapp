@@ -31,9 +31,11 @@ export function createDataManagementMenu(options = {}) {
   const items = [
     {
       label: "Export data",
-      onSelect: () => {
-        exportAllData();
-        console.log("Data exported");
+      onSelect: async () => {
+        const success = await exportAllData();
+        if (success) {
+          console.log("Data exported");
+        }
       },
     },
     {

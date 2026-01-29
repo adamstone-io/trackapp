@@ -488,36 +488,56 @@ export async function convertPrimeToReview(primeItemId) {
 
 // ========== EXPORT ==========
 
-export function exportAllData() {
-  const data = {
-    moments: JSON.parse(localStorage.getItem(STORAGE_KEYS.moments) || "[]"),
-    tasks: JSON.parse(localStorage.getItem(STORAGE_KEYS.tasks) || "[]"),
-    projects: JSON.parse(localStorage.getItem(STORAGE_KEYS.projects) || "[]"),
-    timeEntries: JSON.parse(
-      localStorage.getItem(STORAGE_KEYS.timeEntries) || "[]",
-    ),
-    primeItems: JSON.parse(
-      localStorage.getItem(STORAGE_KEYS.primeItems) || "[]",
-    ),
-    reviewItems: JSON.parse(
-      localStorage.getItem(STORAGE_KEYS.reviewItems) || "[]",
-    ),
-    exportedAt: new Date().toISOString(),
-  };
+export async function exportAllData() {
+  try {
+    const [
+      moments,
+      tasks,
+      projects,
+      timeEntries,
+      primeItems,
+      reviewItems,
+      habits,
+    ] = await Promise.all([
+      loadMoments(),
+      loadTasks(),
+      loadProjects(),
+      loadTimeEntries(),
+      loadPrimeItems(),
+      loadReviewItems(),
+      loadHabits(),
+    ]);
 
-  const blob = new Blob([JSON.stringify(data, null, 2)], {
-    type: "application/json",
-  });
-  const url = URL.createObjectURL(blob);
-  const link = document.createElement("a");
+    const data = {
+      moments: moments.map((m) => (m.toJSON ? m.toJSON() : m)),
+      tasks: tasks.map((t) => (t.toJSON ? t.toJSON() : t)),
+      projects: projects.map((p) => (p.toJSON ? p.toJSON() : p)),
+      timeEntries: timeEntries.map((e) => (e.toJSON ? e.toJSON() : e)),
+      primeItems: primeItems.map((p) => (p.toJSON ? p.toJSON() : p)),
+      reviewItems: reviewItems.map((r) => (r.toJSON ? r.toJSON() : r)),
+      habits: habits.map((h) => (h.toJSON ? h.toJSON() : h)),
+      exportedAt: new Date().toISOString(),
+    };
 
-  const timestamp = new Date().toISOString().split("T")[0];
-  link.href = url;
-  link.download = `timer-backup-${timestamp}.json`;
-  link.click();
+    const blob = new Blob([JSON.stringify(data, null, 2)], {
+      type: "application/json",
+    });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
 
-  URL.revokeObjectURL(url);
-  console.log("Data exported");
+    const timestamp = new Date().toISOString().split("T")[0];
+    link.href = url;
+    link.download = `timer-backup-${timestamp}.json`;
+    link.click();
+
+    URL.revokeObjectURL(url);
+    console.log("Data exported");
+    return true;
+  } catch (error) {
+    console.error("Failed to export data:", error);
+    alert("Export failed. Check the console for details.");
+    return false;
+  }
 }
 
 export async function importAllData(file) {
@@ -525,36 +545,126 @@ export async function importAllData(file) {
     const text = await file.text();
     const data = JSON.parse(text);
 
-    if (data.moments) {
-      localStorage.setItem(STORAGE_KEYS.moments, JSON.stringify(data.moments));
-    }
-    if (data.tasks) {
-      localStorage.setItem(STORAGE_KEYS.tasks, JSON.stringify(data.tasks));
-    }
-    if (data.projects) {
-      localStorage.setItem(
-        STORAGE_KEYS.projects,
-        JSON.stringify(data.projects),
-      );
-    }
-    if (data.timeEntries) {
-      localStorage.setItem(
-        STORAGE_KEYS.timeEntries,
-        JSON.stringify(data.timeEntries),
-      );
-    }
-    if (data.primeItems) {
-      localStorage.setItem(
-        STORAGE_KEYS.primeItems,
-        JSON.stringify(data.primeItems),
-      );
-    }
-    if (data.reviewItems) {
-      localStorage.setItem(
-        STORAGE_KEYS.reviewItems,
-        JSON.stringify(data.reviewItems),
-      );
-    }
+    const normalizeTaskImport = (task) => {
+      if (!task || typeof task !== "object") return task;
+      const normalized = { ...task };
+      if (
+        normalized.projectId !== undefined &&
+        normalized.project === undefined
+      ) {
+        normalized.project = normalized.projectId;
+      }
+      if (
+        normalized.plannedStart !== undefined &&
+        normalized.planned_start === undefined
+      ) {
+        normalized.planned_start = normalized.plannedStart;
+      }
+      if (
+        normalized.plannedDuration !== undefined &&
+        normalized.planned_duration === undefined
+      ) {
+        normalized.planned_duration = normalized.plannedDuration;
+      }
+      if (
+        normalized.createdAt !== undefined &&
+        normalized.created_at === undefined
+      ) {
+        normalized.created_at = normalized.createdAt;
+      }
+      delete normalized.projectId;
+      delete normalized.plannedStart;
+      delete normalized.plannedDuration;
+      delete normalized.createdAt;
+      return normalized;
+    };
+
+    const normalizeProjectImport = (project) => {
+      if (!project || typeof project !== "object") return project;
+      const normalized = { ...project };
+      if (
+        normalized.createdAt !== undefined &&
+        normalized.created_at === undefined
+      ) {
+        normalized.created_at = normalized.createdAt;
+      }
+      delete normalized.createdAt;
+      return normalized;
+    };
+
+    const importCollection = async ({
+      items,
+      loadFn,
+      createFn,
+      updateFn,
+      normalizeFn,
+    }) => {
+      if (!Array.isArray(items) || items.length === 0) return;
+      const existing = await loadFn();
+      const existingIds = new Set(existing.map((item) => item.id));
+
+      for (const rawItem of items) {
+        const payload = normalizeFn ? normalizeFn(rawItem) : rawItem;
+        if (!payload) continue;
+
+        if (payload.id && existingIds.has(payload.id)) {
+          await updateFn(payload.id, payload);
+        } else {
+          await createFn(payload);
+        }
+      }
+    };
+
+    await importCollection({
+      items: data.projects,
+      loadFn: loadProjects,
+      createFn: createProject,
+      updateFn: updateProject,
+      normalizeFn: normalizeProjectImport,
+    });
+
+    await importCollection({
+      items: data.tasks,
+      loadFn: loadTasks,
+      createFn: createTask,
+      updateFn: updateTask,
+      normalizeFn: normalizeTaskImport,
+    });
+
+    await importCollection({
+      items: data.timeEntries,
+      loadFn: loadTimeEntries,
+      createFn: createTimeEntry,
+      updateFn: updateTimeEntry,
+    });
+
+    await importCollection({
+      items: data.moments,
+      loadFn: loadMoments,
+      createFn: createMoment,
+      updateFn: updateMoment,
+    });
+
+    await importCollection({
+      items: data.primeItems,
+      loadFn: loadPrimeItems,
+      createFn: createPrimeItem,
+      updateFn: updatePrimeItem,
+    });
+
+    await importCollection({
+      items: data.reviewItems,
+      loadFn: loadReviewItems,
+      createFn: createReviewItem,
+      updateFn: updateReviewItem,
+    });
+
+    await importCollection({
+      items: data.habits,
+      loadFn: loadHabits,
+      createFn: createHabit,
+      updateFn: updateHabit,
+    });
 
     console.log("Data imported successfully");
     return true;
