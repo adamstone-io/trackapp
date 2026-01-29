@@ -7,7 +7,7 @@ import { createDropdownMenu } from "../views/components/dropdown-menu.js";
 import { CategoryManager } from "../utils/category-manager.js";
 import { SoundManager } from "../utils/sound-manager.js";
 import {
-  saveReviewItems,
+  createReviewItem,
   loadReviewItems,
   updateReviewItem,
   deleteReviewItem,
@@ -16,7 +16,7 @@ import {
 let reviewItems = [];
 
 export function createReviewController() {
-  reviewItems = loadReviewItems();
+  reviewItems = [];
   let editingItemId = null;
   let showArchived = false;
 
@@ -33,19 +33,35 @@ export function createReviewController() {
   const quickAddCategoryManager = new CategoryManager(
     quickAddCategoryInput,
     categoryDropdown,
-    null
+    null,
   );
   quickAddCategoryManager.loadCategories(reviewItems);
 
   const modalCategoryManager = new CategoryManager(
     modalCategoryInput,
     modalCategoryDropdown,
-    null
+    null,
   );
   modalCategoryManager.loadCategories(reviewItems);
 
-  // Initial render
-  renderList();
+  async function refreshReviewItems({ refreshCategories = true } = {}) {
+    try {
+      reviewItems = await loadReviewItems();
+    } catch (error) {
+      console.error("Failed to load review items:", error);
+      reviewItems = [];
+    }
+
+    if (refreshCategories) {
+      quickAddCategoryManager.loadCategories(reviewItems);
+      modalCategoryManager.loadCategories(reviewItems);
+    }
+
+    renderList();
+  }
+
+  // Initial load
+  void refreshReviewItems();
 
   // Handler functions
   const handleToggleArchived = () => {
@@ -59,67 +75,65 @@ export function createReviewController() {
   };
 
   // Create header dropdown menu
-  const getHeaderMenuLabel = () => showArchived ? "Hide Archived" : "Show Archived";
-  
+  const getHeaderMenuLabel = () =>
+    showArchived ? "Hide Archived" : "Show Archived";
+
   const updateHeaderMenu = () => {
     if (headerMenu) {
       headerMenu.dispose();
     }
-    
+
     const menuItems = [
       { label: getHeaderMenuLabel(), onSelect: handleToggleArchived },
       { label: "Import from File", onSelect: handleImportClick },
     ];
-    
+
     headerMenu = createDropdownMenu({ items: menuItems });
     headerMenu.attachTo(headerMenuBtn);
   };
-  
+
   let headerMenu = null;
   updateHeaderMenu();
 
   // Quick-add from input field
-  const handleQuickAdd = () => {
+  const handleQuickAdd = async () => {
     const title = quickAddInput.value.trim();
     const category = quickAddCategoryInput.value.trim();
-    
+
     if (!title) {
       alert("Please enter a title for this review item");
       quickAddInput.focus();
       return;
     }
 
-    // Create new item
     const item = new ReviewItem({ title, category });
-    const next = loadReviewItems();
-    next.push(item);
-    saveReviewItems(next);
-    reviewItems = next;
 
-    // Update category manager with new category
-    if (category) {
-      quickAddCategoryManager.incrementCategory(category);
-      modalCategoryManager.incrementCategory(category);
+    try {
+      await createReviewItem(item.toJSON());
+      await refreshReviewItems({ refreshCategories: true });
+    } catch (error) {
+      console.error("Failed to add review item:", error);
+      alert("Failed to add review item. Please try again.");
+      return;
     }
 
     // Clear inputs and render
     quickAddInput.value = "";
     quickAddCategoryInput.value = "";
-    quickAddInput.style.height = 'auto';
+    quickAddInput.style.height = "auto";
     quickAddInput.focus();
-    renderList();
   };
 
   addReviewBtn.addEventListener("click", handleQuickAdd);
-  
+
   // Auto-expand textarea as user types
   const autoExpandTextarea = () => {
-    quickAddInput.style.height = 'auto';
-    quickAddInput.style.height = quickAddInput.scrollHeight + 'px';
+    quickAddInput.style.height = "auto";
+    quickAddInput.style.height = quickAddInput.scrollHeight + "px";
   };
 
-  quickAddInput.addEventListener('input', autoExpandTextarea);
-  
+  quickAddInput.addEventListener("input", autoExpandTextarea);
+
   // Allow Ctrl/Cmd+Enter to add review item, Enter alone for new lines
   quickAddInput.addEventListener("keydown", (e) => {
     if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) {
@@ -136,31 +150,27 @@ export function createReviewController() {
     try {
       const text = await file.text();
       const { items: importedItems, category } = parseImportFile(text);
-      
+
       if (importedItems.length === 0) {
-        alert("No review items found. Make sure lines start with #### for titles.");
+        alert(
+          "No review items found. Make sure lines start with #### for titles.",
+        );
         return;
       }
 
-      // Load current items and add imported ones
-      const currentItems = loadReviewItems();
-      const newItems = importedItems.map(title => new ReviewItem({ title, category }));
-      const combined = [...currentItems, ...newItems];
-      
-      saveReviewItems(combined);
-      reviewItems = loadReviewItems();
-      
-      // Update category managers if a category was imported
-      if (category) {
-        quickAddCategoryManager.loadCategories(reviewItems);
-        modalCategoryManager.loadCategories(reviewItems);
-      }
-      
-      renderList();
+      const newItems = importedItems.map(
+        (title) => new ReviewItem({ title, category }),
+      );
+      await Promise.all(
+        newItems.map((item) => createReviewItem(item.toJSON())),
+      );
+      await refreshReviewItems({ refreshCategories: true });
 
       const categoryMsg = category ? ` with category "${category}"` : "";
-      alert(`Successfully imported ${importedItems.length} review item(s)${categoryMsg}!`);
-      
+      alert(
+        `Successfully imported ${importedItems.length} review item(s)${categoryMsg}!`,
+      );
+
       // Reset file input
       importReviewFile.value = "";
     } catch (error) {
@@ -177,7 +187,7 @@ export function createReviewController() {
     onCancel: handleCancel,
   });
 
-  function handleSave() {
+  async function handleSave() {
     const data = ReviewView.readFormData();
 
     if (!data.title) {
@@ -186,46 +196,34 @@ export function createReviewController() {
     }
 
     if (editingItemId) {
-      // Update existing item
-      const success = updateReviewItem(editingItemId, {
-        title: data.title,
-        category: data.category,
-        description: data.description,
-      });
-
-      if (success) {
-        reviewItems = loadReviewItems();
-        
-        // Update category managers if category changed
-        if (data.category) {
-          quickAddCategoryManager.loadCategories(reviewItems);
-          modalCategoryManager.loadCategories(reviewItems);
-        }
-        
-        renderList();
+      try {
+        await updateReviewItem(editingItemId, {
+          title: data.title,
+          category: data.category,
+          description: data.description,
+        });
+        editingItemId = null;
+        await refreshReviewItems({ refreshCategories: true });
+      } catch (error) {
+        console.error("Failed to update review item:", error);
+        alert("Failed to update review item. Please try again.");
+        return;
       }
-
-      editingItemId = null;
     } else {
-      // Create new item
       const item = new ReviewItem({
         title: data.title,
         category: data.category,
         description: data.description,
       });
 
-      const next = loadReviewItems();
-      next.push(item);
-      saveReviewItems(next);
-      reviewItems = next;
-
-      // Update category managers with new category
-      if (data.category) {
-        quickAddCategoryManager.incrementCategory(data.category);
-        modalCategoryManager.incrementCategory(data.category);
+      try {
+        await createReviewItem(item.toJSON());
+        await refreshReviewItems({ refreshCategories: true });
+      } catch (error) {
+        console.error("Failed to create review item:", error);
+        alert("Failed to create review item. Please try again.");
+        return;
       }
-
-      renderList();
     }
 
     ReviewView.close();
@@ -236,19 +234,34 @@ export function createReviewController() {
     ReviewView.close();
   }
 
-  function handleLogReview(item) {
-    // Find the item and log a review
+  async function handleLogReview(item) {
     const itemIndex = reviewItems.findIndex((r) => r.id === item.id);
     if (itemIndex === -1) return;
 
     reviewItems[itemIndex].logReview();
-    saveReviewItems(reviewItems);
+    const nextReviewTimestamps = [
+      ...(reviewItems[itemIndex].reviewTimestamps || []),
+    ];
+    const nextFirstStudiedAt = reviewItems[itemIndex].firstStudiedAt ?? null;
+
+    try {
+      await updateReviewItem(item.id, {
+        reviewTimestamps: nextReviewTimestamps,
+        firstStudiedAt: nextFirstStudiedAt,
+      });
+    } catch (error) {
+      console.error("Failed to log review:", error);
+      alert("Failed to log review. Please try again.");
+      return;
+    }
 
     // Play the sound
     SoundManager.play("reviewLogged");
 
     // Add green border to the review item container immediately
-    const reviewItemContainer = document.querySelector(`.review-item[data-id="${item.id}"]`);
+    const reviewItemContainer = document.querySelector(
+      `.review-item[data-id="${item.id}"]`,
+    );
     if (reviewItemContainer) {
       reviewItemContainer.classList.add("review-item--logged");
     }
@@ -269,12 +282,14 @@ export function createReviewController() {
     // Wait 1 second before re-rendering to move item and update stats
     setTimeout(() => {
       renderList();
-      
+
       // Re-apply green border after render (item may have moved)
-      const newReviewItemContainer = document.querySelector(`.review-item[data-id="${item.id}"]`);
+      const newReviewItemContainer = document.querySelector(
+        `.review-item[data-id="${item.id}"]`,
+      );
       if (newReviewItemContainer) {
         newReviewItemContainer.classList.add("review-item--logged");
-        
+
         setTimeout(() => {
           newReviewItemContainer.classList.remove("review-item--logged");
         }, 1000);
@@ -287,46 +302,60 @@ export function createReviewController() {
     ReviewView.openForEdit(item);
   }
 
-  function handleDelete(item) {
+  async function handleDelete(item) {
     if (!confirm(`Delete "${item.title}"?`)) return;
-
-    const success = deleteReviewItem(item.id);
-    if (success) {
-      reviewItems = loadReviewItems();
-      renderList();
+    try {
+      await deleteReviewItem(item.id);
+      await refreshReviewItems({ refreshCategories: true });
+    } catch (error) {
+      console.error("Failed to delete review item:", error);
+      alert("Failed to delete review item. Please try again.");
     }
   }
 
-  function handleArchive(item) {
-    if (!confirm(`Archive "${item.title}"? You can restore it later from archived items.`)) return;
+  async function handleArchive(item) {
+    if (
+      !confirm(
+        `Archive "${item.title}"? You can restore it later from archived items.`,
+      )
+    )
+      return;
 
-    const success = updateReviewItem(item.id, { archived: true });
-    if (success) {
-      reviewItems = loadReviewItems();
-      renderList();
+    try {
+      await updateReviewItem(item.id, { archived: true });
+      await refreshReviewItems({ refreshCategories: true });
+    } catch (error) {
+      console.error("Failed to archive review item:", error);
+      alert("Failed to archive review item. Please try again.");
     }
   }
 
-  function handleRestore(item) {
-    const success = updateReviewItem(item.id, { archived: false });
-    if (success) {
-      reviewItems = loadReviewItems();
-      renderList();
+  async function handleRestore(item) {
+    try {
+      await updateReviewItem(item.id, { archived: false });
+      await refreshReviewItems({ refreshCategories: true });
+    } catch (error) {
+      console.error("Failed to restore review item:", error);
+      alert("Failed to restore review item. Please try again.");
     }
   }
 
   function renderList() {
     // Filter items based on showArchived toggle
-    const itemsToShow = showArchived 
-      ? reviewItems.filter(item => item.archived)
-      : reviewItems.filter(item => !item.archived);
-    
-    ReviewView.renderList(itemsToShow, {
-      onLogReview: handleLogReview,
-      onEdit: handleEdit,
-      onDelete: handleDelete,
-      onArchive: showArchived ? handleRestore : handleArchive,
-    }, showArchived);
+    const itemsToShow = showArchived
+      ? reviewItems.filter((item) => item.archived)
+      : reviewItems.filter((item) => !item.archived);
+
+    ReviewView.renderList(
+      itemsToShow,
+      {
+        onLogReview: handleLogReview,
+        onEdit: handleEdit,
+        onDelete: handleDelete,
+        onArchive: showArchived ? handleRestore : handleArchive,
+      },
+      showArchived,
+    );
   }
 
   /**
@@ -336,9 +365,9 @@ export function createReviewController() {
    * @returns {{ items: string[], category: string }} - Object with array of review item titles and optional category
    */
   function parseImportFile(text) {
-    const lines = text.split('\n');
+    const lines = text.split("\n");
     const titles = [];
-    let category = '';
+    let category = "";
     let startIndex = 0;
 
     // Check if first line declares a category (case-insensitive)
@@ -354,7 +383,7 @@ export function createReviewController() {
     // Process lines starting from the appropriate index
     for (let i = startIndex; i < lines.length; i++) {
       const trimmed = lines[i].trim();
-      if (trimmed.startsWith('####')) {
+      if (trimmed.startsWith("####")) {
         const title = trimmed.substring(4).trim();
         if (title) {
           titles.push(title);

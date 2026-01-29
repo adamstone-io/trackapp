@@ -1,4 +1,5 @@
 import { Moment } from "../domain/moment.js";
+import { Habit } from "../domain/habit.js";
 import { TimeEntry } from "../domain/time-entry.js";
 import { Task } from "../domain/task.js";
 import { Project } from "../domain/project.js";
@@ -83,6 +84,99 @@ export function deleteMoment(id) {
   }
 
   return changed;
+}
+
+// ========== HABITS ==========
+
+function normalizeHabitPayload(payload) {
+  if (!payload || typeof payload !== "object") return payload;
+
+  const daily_target =
+    payload.daily_target ?? payload.dailyTarget ?? payload.targets?.daily;
+  const weekly_target =
+    payload.weekly_target ?? payload.weeklyTarget ?? payload.targets?.weekly;
+  const monthly_target =
+    payload.monthly_target ?? payload.monthlyTarget ?? payload.targets?.monthly;
+
+  const daily_count =
+    payload.daily_count ?? payload.dailyCount ?? payload.counts?.daily;
+  const weekly_count =
+    payload.weekly_count ?? payload.weeklyCount ?? payload.counts?.weekly;
+  const monthly_count =
+    payload.monthly_count ?? payload.monthlyCount ?? payload.counts?.monthly;
+
+  const is_active = payload.is_active ?? payload.isActive;
+  const created_at = payload.created_at ?? payload.createdAt;
+
+  const normalized = { ...payload };
+  delete normalized.targets;
+  delete normalized.counts;
+  delete normalized.isActive;
+  delete normalized.dailyTarget;
+  delete normalized.weeklyTarget;
+  delete normalized.monthlyTarget;
+  delete normalized.dailyCount;
+  delete normalized.weeklyCount;
+  delete normalized.monthlyCount;
+  delete normalized.createdAt;
+
+  if (daily_target !== undefined) normalized.daily_target = daily_target;
+  if (weekly_target !== undefined) normalized.weekly_target = weekly_target;
+  if (monthly_target !== undefined) normalized.monthly_target = monthly_target;
+
+  if (daily_count !== undefined) normalized.daily_count = daily_count;
+  if (weekly_count !== undefined) normalized.weekly_count = weekly_count;
+  if (monthly_count !== undefined) normalized.monthly_count = monthly_count;
+
+  if (is_active !== undefined) normalized.is_active = is_active;
+  if (created_at !== undefined) normalized.created_at = created_at;
+
+  return normalized;
+}
+
+function normalizeHabitFromApi(item) {
+  if (!item || typeof item !== "object") return item;
+
+  return {
+    ...item,
+    dailyTarget: item.dailyTarget ?? item.daily_target ?? item.targets?.daily,
+    weeklyTarget:
+      item.weeklyTarget ?? item.weekly_target ?? item.targets?.weekly,
+    monthlyTarget:
+      item.monthlyTarget ?? item.monthly_target ?? item.targets?.monthly,
+    counts: {
+      daily: item.counts?.daily ?? item.daily_count ?? 0,
+      weekly: item.counts?.weekly ?? item.weekly_count ?? 0,
+      monthly: item.counts?.monthly ?? item.monthly_count ?? 0,
+    },
+    isActive: item.isActive ?? item.is_active ?? true,
+    createdAt: item.createdAt ?? item.created_at ?? null,
+  };
+}
+
+export async function createHabit(payload) {
+  return apiRequest("/habits/", {
+    method: "POST",
+    body: JSON.stringify(normalizeHabitPayload(payload)),
+  });
+}
+
+export async function loadHabits() {
+  const data = await apiRequest("/habits/");
+  return (data.results ?? data).map((item) =>
+    Habit.fromJSON(normalizeHabitFromApi(item)),
+  );
+}
+
+export async function updateHabit(id, patch) {
+  return apiRequest(`/habits/${id}/`, {
+    method: "PATCH",
+    body: JSON.stringify(normalizeHabitPayload(patch)),
+  });
+}
+
+export async function deleteHabit(id) {
+  return apiRequest(`/habits/${id}/`, { method: "DELETE" });
 }
 
 // ========== TASKS ==========
@@ -261,55 +355,75 @@ export async function deletePrimeItem(id) {
 }
 
 // ========== REVIEW ITEMS ==========
+function normalizeReviewItemPayload(payload) {
+  if (!payload || typeof payload !== "object") return payload;
 
-export function saveReviewItems(reviewItems) {
-  const data = reviewItems.map((r) => (r.toJSON ? r.toJSON() : r));
-  localStorage.setItem(STORAGE_KEYS.reviewItems, JSON.stringify(data));
-}
+  const review_timestamps =
+    payload.review_timestamps ?? payload.reviewTimestamps;
+  const first_studied_at = payload.first_studied_at ?? payload.firstStudiedAt;
+  const created_at = payload.created_at ?? payload.createdAt;
 
-export function loadReviewItems() {
-  const raw = localStorage.getItem(STORAGE_KEYS.reviewItems);
-  if (!raw) return [];
+  const normalized = { ...payload };
+  delete normalized.reviewTimestamps;
+  delete normalized.firstStudiedAt;
+  delete normalized.createdAt;
 
-  try {
-    const data = JSON.parse(raw);
-    return data.map((item) => ReviewItem.fromJSON(item));
-  } catch (error) {
-    console.error("Failed to load review items:", error);
-    return [];
+  if (review_timestamps !== undefined)
+    normalized.review_timestamps = review_timestamps;
+  if (first_studied_at !== undefined) {
+    let normalizedFirstStudiedAt = first_studied_at;
+    if (
+      typeof normalizedFirstStudiedAt === "number" &&
+      Number.isFinite(normalizedFirstStudiedAt)
+    ) {
+      normalizedFirstStudiedAt = new Date(
+        normalizedFirstStudiedAt,
+      ).toISOString();
+    } else if (normalizedFirstStudiedAt instanceof Date) {
+      normalizedFirstStudiedAt = normalizedFirstStudiedAt.toISOString();
+    }
+    normalized.first_studied_at = normalizedFirstStudiedAt;
   }
+  if (created_at !== undefined) normalized.created_at = created_at;
+
+  return normalized;
 }
 
-export function updateReviewItem(id, patch) {
-  const raw = localStorage.getItem(STORAGE_KEYS.reviewItems);
-  const data = raw ? JSON.parse(raw) : [];
+function normalizeReviewItemFromApi(item) {
+  if (!item || typeof item !== "object") return item;
 
-  const index = data.findIndex((r) => r.id === id);
-  if (index === -1) return false;
-
-  const current = data[index];
-  data[index] = {
-    ...current,
-    ...patch,
-    id: current.id,
+  return {
+    ...item,
+    reviewTimestamps: item.reviewTimestamps ?? item.review_timestamps ?? [],
+    firstStudiedAt: item.firstStudiedAt ?? item.first_studied_at ?? null,
+    createdAt: item.createdAt ?? item.created_at ?? null,
   };
-
-  localStorage.setItem(STORAGE_KEYS.reviewItems, JSON.stringify(data));
-  return true;
 }
 
-export function deleteReviewItem(id) {
-  const raw = localStorage.getItem(STORAGE_KEYS.reviewItems);
-  const data = raw ? JSON.parse(raw) : [];
+export async function createReviewItem(payload) {
+  return apiRequest("/review-items/", {
+    method: "POST",
+    body: JSON.stringify(normalizeReviewItemPayload(payload)),
+  });
+}
 
-  const next = data.filter((r) => r.id !== id);
-  const changed = next.length !== data.length;
+export async function loadReviewItems() {
+  const data = await apiRequest("/review-items/");
+  const items = data.results ?? data;
+  return items.map((item) =>
+    ReviewItem.fromJSON(normalizeReviewItemFromApi(item)),
+  );
+}
 
-  if (changed) {
-    localStorage.setItem(STORAGE_KEYS.reviewItems, JSON.stringify(next));
-  }
+export async function updateReviewItem(id, patch) {
+  return apiRequest(`/review-items/${id}/`, {
+    method: "PATCH",
+    body: JSON.stringify(normalizeReviewItemPayload(patch)),
+  });
+}
 
-  return changed;
+export async function deleteReviewItem(id) {
+  return apiRequest(`/review-items/${id}/`, { method: "DELETE" });
 }
 
 // ========== CONVERSION UTILITIES ==========
@@ -326,7 +440,7 @@ export async function convertPrimeToReview(primeItemId) {
     const primeItem = primeItems.find((p) => p.id === primeItemId);
     if (!primeItem) return null;
 
-    const reviewItem = {
+    const reviewItemPayload = {
       id: crypto.randomUUID(),
       title: primeItem.title,
       description: primeItem.description || "",
@@ -340,13 +454,9 @@ export async function convertPrimeToReview(primeItemId) {
       createdAt: new Date().toISOString(),
     };
 
-    const reviewRaw = localStorage.getItem(STORAGE_KEYS.reviewItems);
-    const reviewData = reviewRaw ? JSON.parse(reviewRaw) : [];
-    reviewData.push(reviewItem);
-    localStorage.setItem(STORAGE_KEYS.reviewItems, JSON.stringify(reviewData));
-
+    const createdReview = await createReviewItem(reviewItemPayload);
     await updatePrimeItem(primeItemId, { archived: true });
-    return reviewItem;
+    return createdReview;
   } catch (error) {
     console.error("Failed to convert prime item to review:", error);
     return null;

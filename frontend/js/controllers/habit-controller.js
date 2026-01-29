@@ -2,20 +2,26 @@
 import { Habit } from "../domain/habit.js";
 import { HabitView } from "../views/habit-view.js";
 import { SoundManager } from "../utils/sound-manager.js";
+import {
+  loadHabits,
+  createHabit,
+  updateHabit,
+  deleteHabit,
+} from "../data/storage.js";
 
-const STORAGE_KEY = "habits";
 const RESET_TIMESTAMPS_KEY = "habit-reset-timestamps";
 
 export class HabitController {
   constructor() {
     this.view = new HabitView();
-    this.habits = this.loadHabits();
-    this.checkAndResetCounts();
+    this.habits = [];
   }
 
-  init() {
+  async init() {
+    await this.refreshHabits();
+    await this.checkAndResetCounts();
     this.render();
-    
+
     // Set up add button
     const addBtn = document.getElementById("add-habit-btn");
     if (addBtn) {
@@ -25,152 +31,164 @@ export class HabitController {
     }
   }
 
-  loadHabits() {
+  async refreshHabits() {
     try {
-      const data = localStorage.getItem(STORAGE_KEY);
-      if (!data) return [];
-      
-      const parsed = JSON.parse(data);
-      return parsed.map(item => Habit.fromJSON(item)).filter(h => h.isActive);
+      const habits = await loadHabits();
+      this.habits = habits.filter((habit) => habit.isActive);
     } catch (error) {
       console.error("Failed to load habits:", error);
-      return [];
+      this.habits = [];
     }
   }
 
-  saveHabits() {
-    try {
-      // Load all habits (including archived ones)
-      const allData = localStorage.getItem(STORAGE_KEY);
-      let allHabits = allData ? JSON.parse(allData) : [];
-      
-      // Update active habits
-      this.habits.forEach(habit => {
-        const index = allHabits.findIndex(h => h.id === habit.id);
-        if (index >= 0) {
-          allHabits[index] = habit.toJSON();
-        } else {
-          allHabits.push(habit.toJSON());
-        }
-      });
-      
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(allHabits));
-    } catch (error) {
-      console.error("Failed to save habits:", error);
-    }
-  }
-
-  addHabit({ name, dailyTarget, weeklyTarget }) {
+  async addHabit({ name, dailyTarget, weeklyTarget }) {
     if (!name) return;
-    
+
     const habit = new Habit({
       name,
       dailyTarget,
       weeklyTarget,
     });
-    
-    this.habits.push(habit);
-    this.saveHabits();
-    this.render();
+
+    try {
+      await createHabit(habit.toJSON());
+      await this.refreshHabits();
+      this.render();
+    } catch (error) {
+      console.error("Failed to add habit:", error);
+      alert("Failed to add habit. Please try again.");
+    }
   }
 
-  logHabit(habitId) {
-    const habit = this.habits.find(h => h.id === habitId);
+  async logHabit(habitId) {
+    const habit = this.habits.find((h) => h.id === habitId);
     if (!habit) return;
-    
+
     habit.increment(1);
-    this.saveHabits();
-    
-    // Play success sound
-    SoundManager.play("habitLogged");
-    
-    this.render();
+
+    try {
+      await updateHabit(habit.id, {
+        dailyCount: habit.counts.daily,
+        weeklyCount: habit.counts.weekly,
+        monthlyCount: habit.counts.monthly,
+      });
+
+      // Play success sound
+      SoundManager.play("habitLogged");
+
+      this.render();
+    } catch (error) {
+      console.error("Failed to log habit:", error);
+      alert("Failed to log habit. Please try again.");
+    }
   }
 
-  editHabit(habitId, { name, dailyTarget, weeklyTarget }) {
-    const habit = this.habits.find(h => h.id === habitId);
+  async editHabit(habitId, { name, dailyTarget, weeklyTarget }) {
+    const habit = this.habits.find((h) => h.id === habitId);
     if (!habit) return;
-    
+
     habit.name = name;
     habit.targets.daily = dailyTarget;
     habit.targets.weekly = weeklyTarget;
-    
-    this.saveHabits();
-    this.render();
+
+    try {
+      await updateHabit(habit.id, {
+        name: habit.name,
+        dailyTarget: habit.targets.daily,
+        weeklyTarget: habit.targets.weekly,
+        monthlyTarget: habit.targets.monthly,
+      });
+      await this.refreshHabits();
+      this.render();
+    } catch (error) {
+      console.error("Failed to edit habit:", error);
+      alert("Failed to edit habit. Please try again.");
+    }
   }
 
-  deleteHabit(habitId) {
-    const habit = this.habits.find(h => h.id === habitId);
+  async deleteHabit(habitId) {
+    const habit = this.habits.find((h) => h.id === habitId);
     if (!habit) return;
-    
-    const confirmed = confirm(`Are you sure you want to delete "${habit.name}"?`);
+
+    const confirmed = confirm(
+      `Are you sure you want to delete "${habit.name}"?`,
+    );
     if (!confirmed) return;
-    
-    // Remove from active habits
-    this.habits = this.habits.filter(h => h.id !== habitId);
-    
-    // Remove from storage completely
+
     try {
-      const allData = localStorage.getItem(STORAGE_KEY);
-      if (allData) {
-        let allHabits = JSON.parse(allData);
-        allHabits = allHabits.filter(h => h.id !== habitId);
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(allHabits));
-      }
+      await deleteHabit(habit.id);
+      await this.refreshHabits();
+      this.render();
     } catch (error) {
       console.error("Failed to delete habit:", error);
+      alert("Failed to delete habit. Please try again.");
     }
-    
-    this.render();
   }
 
-  archiveHabit(habitId) {
-    const habit = this.habits.find(h => h.id === habitId);
+  async archiveHabit(habitId) {
+    const habit = this.habits.find((h) => h.id === habitId);
     if (!habit) return;
-    
+
     if (habit.isActive) {
       habit.deactivate();
-      this.habits = this.habits.filter(h => h.id !== habitId);
     } else {
       habit.activate();
-      this.habits.push(habit);
     }
-    
-    this.saveHabits();
-    this.render();
+
+    try {
+      await updateHabit(habit.id, { isActive: habit.isActive });
+      await this.refreshHabits();
+      this.render();
+    } catch (error) {
+      console.error("Failed to archive habit:", error);
+      alert("Failed to archive habit. Please try again.");
+    }
   }
 
-  checkAndResetCounts() {
+  async checkAndResetCounts() {
     const now = new Date();
     const timestamps = this.loadResetTimestamps();
-    
+
     let needsSave = false;
-    
+
     // Check daily reset
-    const lastDaily = timestamps.lastDailyReset 
-      ? new Date(timestamps.lastDailyReset) 
+    const lastDaily = timestamps.lastDailyReset
+      ? new Date(timestamps.lastDailyReset)
       : null;
-    
+
     if (!lastDaily || !this.isSameDay(lastDaily, now)) {
-      this.habits.forEach(habit => habit.resetDaily());
+      this.habits.forEach((habit) => habit.resetDaily());
       timestamps.lastDailyReset = this.getStartOfDay(now).toISOString();
       needsSave = true;
     }
-    
+
     // Check weekly reset (Monday = start of week)
-    const lastWeekly = timestamps.lastWeeklyReset 
-      ? new Date(timestamps.lastWeeklyReset) 
+    const lastWeekly = timestamps.lastWeeklyReset
+      ? new Date(timestamps.lastWeeklyReset)
       : null;
-    
+
     if (!lastWeekly || !this.isSameWeek(lastWeekly, now)) {
-      this.habits.forEach(habit => habit.resetWeekly());
+      this.habits.forEach((habit) => habit.resetWeekly());
       timestamps.lastWeeklyReset = this.getStartOfWeek(now).toISOString();
       needsSave = true;
     }
-    
+
     if (needsSave) {
       this.saveResetTimestamps(timestamps);
-      this.saveHabits();
+      try {
+        await Promise.all(
+          this.habits.map((habit) =>
+            updateHabit(habit.id, {
+              dailyCount: habit.counts.daily,
+              weeklyCount: habit.counts.weekly,
+              monthlyCount: habit.counts.monthly,
+            }),
+          ),
+        );
+        await this.refreshHabits();
+      } catch (error) {
+        console.error("Failed to reset habit counts:", error);
+      }
     }
   }
 
@@ -193,9 +211,11 @@ export class HabitController {
   }
 
   isSameDay(date1, date2) {
-    return date1.getFullYear() === date2.getFullYear() &&
-           date1.getMonth() === date2.getMonth() &&
-           date1.getDate() === date2.getDate();
+    return (
+      date1.getFullYear() === date2.getFullYear() &&
+      date1.getMonth() === date2.getMonth() &&
+      date1.getDate() === date2.getDate()
+    );
   }
 
   isSameWeek(date1, date2) {
@@ -223,13 +243,15 @@ export class HabitController {
     this.view.renderHabits(this.habits, {
       onLog: (id) => this.logHabit(id),
       onEdit: (id) => {
-        const habit = this.habits.find(h => h.id === id);
+        const habit = this.habits.find((h) => h.id === id);
         if (habit) {
-          this.view.openEditModal(habit, (formData) => this.editHabit(id, formData));
+          this.view.openEditModal(habit, (formData) =>
+            this.editHabit(id, formData),
+          );
         }
       },
       onDelete: (id) => this.deleteHabit(id),
-      onArchive: (id) => this.archiveHabit(id)
+      onArchive: (id) => this.archiveHabit(id),
     });
   }
 }

@@ -44,9 +44,10 @@ export function createStatsController() {
   async function refresh() {
     const { startMs, endMs } = getTodayWindowMs();
 
-    const [allEntries, primeItems] = await Promise.all([
+    const [allEntries, primeItems, reviewItems] = await Promise.all([
       loadTimeEntries(),
       loadPrimeItems(),
+      loadReviewItems(),
     ]);
     const entries = allEntries.filter((entry) => {
       const ms = new Date(entry.startedAt ?? entry.started_at).getTime();
@@ -108,7 +109,6 @@ export function createStatsController() {
     }
 
     // Calculate review item statistics
-    const reviewItems = loadReviewItems();
     let totalReviews = 0;
     let todayReviews = 0;
     let weekReviews = 0;
