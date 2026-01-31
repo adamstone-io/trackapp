@@ -523,6 +523,27 @@ export async function loadPrimeItems() {
   );
 }
 
+export async function loadPrimeItemsPage({ url, path = "/prime-items/" } = {}) {
+  const data = url ? await apiRequestUrl(url) : await apiRequest(path);
+  if (data && Array.isArray(data.results)) {
+    return {
+      items: data.results.map((item) =>
+        PrimeItem.fromJSON(normalizePrimeItemFromApi(item))
+      ),
+      next: data.next,
+    };
+  }
+  if (Array.isArray(data)) {
+    return {
+      items: data.map((item) =>
+        PrimeItem.fromJSON(normalizePrimeItemFromApi(item))
+      ),
+      next: null,
+    };
+  }
+  return { items: [], next: null };
+}
+
 export async function updatePrimeItem(id, patch) {
   return apiRequest(`/prime-items/${id}/`, {
     method: "PATCH",

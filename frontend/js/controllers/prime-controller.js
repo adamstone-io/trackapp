@@ -8,7 +8,7 @@ import { CategoryManager } from "../utils/category-manager.js";
 import { SoundManager } from "../utils/sound-manager.js";
 import {
   createPrimeItem,
-  loadPrimeItems,
+  loadPrimeItemsPage,
   updatePrimeItem,
   deletePrimeItem,
   convertPrimeToReview,
@@ -20,6 +20,10 @@ export function createPrimeController() {
   primeItems = [];
   let editingItemId = null;
   let showArchived = false;
+  let renderCount = 6;
+  let nextPrimeUrl = null;
+  let isLoadingMore = false;
+  let scrollObserver = null;
 
   const addPrimeBtn = byId(primeIds.addPrimeBtn);
   const quickAddInput = byId(primeIds.quickAddPrimeInput);
@@ -34,28 +38,94 @@ export function createPrimeController() {
   const quickAddCategoryManager = new CategoryManager(
     quickAddCategoryInput,
     categoryDropdown,
-    null, // No special action on select for quick add
+    null // No special action on select for quick add
   );
   quickAddCategoryManager.loadCategories(primeItems);
 
   const modalCategoryManager = new CategoryManager(
     modalCategoryInput,
     modalCategoryDropdown,
-    null, // No special action on select for modal
+    null // No special action on select for modal
   );
   modalCategoryManager.loadCategories(primeItems);
 
-  async function refreshPrimeItems({ refreshCategories = true } = {}) {
+  const RENDER_BATCH_SIZE = 6;
+
+  const updateCategories = () => {
+    quickAddCategoryManager.loadCategories(primeItems);
+    modalCategoryManager.loadCategories(primeItems);
+  };
+
+  const getVisiblePrimeItems = () =>
+    showArchived
+      ? primeItems.filter((item) => item.archived)
+      : primeItems.filter((item) => !item.archived);
+
+  async function loadNextPage() {
+    if (isLoadingMore || !nextPrimeUrl) return false;
+    isLoadingMore = true;
     try {
-      primeItems = await loadPrimeItems();
+      const { items, next } = await loadPrimeItemsPage({ url: nextPrimeUrl });
+      primeItems = primeItems.concat(items);
+      nextPrimeUrl = next;
+      return items.length > 0;
+    } catch (error) {
+      console.error("Failed to load more prime items:", error);
+      return false;
+    } finally {
+      isLoadingMore = false;
+    }
+  }
+
+  async function ensureVisibleItems(targetCount) {
+    while (getVisiblePrimeItems().length < targetCount && nextPrimeUrl) {
+      const loaded = await loadNextPage();
+      if (!loaded) break;
+    }
+  }
+
+  function setupInfiniteScroll() {
+    if (scrollObserver) {
+      scrollObserver.disconnect();
+    }
+
+    const sentinel = byId(primeIds.primeListSentinel);
+    if (!sentinel) return;
+
+    scrollObserver = new IntersectionObserver(
+      async (entries) => {
+        if (!entries.some((entry) => entry.isIntersecting)) return;
+        if (isLoadingMore) return;
+        renderCount += RENDER_BATCH_SIZE;
+        await ensureVisibleItems(renderCount);
+        updateCategories();
+        renderList();
+      },
+      { root: null, rootMargin: "200px" }
+    );
+
+    scrollObserver.observe(sentinel);
+  }
+
+  async function refreshPrimeItems({ refreshCategories = true } = {}) {
+    primeItems = [];
+    renderCount = RENDER_BATCH_SIZE;
+    nextPrimeUrl = null;
+    renderList();
+
+    try {
+      const { items, next } = await loadPrimeItemsPage();
+      primeItems = items;
+      nextPrimeUrl = next;
+      await ensureVisibleItems(renderCount);
     } catch (error) {
       console.error("Failed to load prime items:", error);
       primeItems = [];
+      nextPrimeUrl = null;
     }
 
     if (refreshCategories) {
-      quickAddCategoryManager.loadCategories(primeItems);
-      modalCategoryManager.loadCategories(primeItems);
+      updateCategories();
     }
 
     renderList();
@@ -66,8 +136,10 @@ export function createPrimeController() {
 
   // Handler functions (defined before being used in menu)
   // Toggle archived items visibility
-  const handleToggleArchived = () => {
+  const handleToggleArchived = async () => {
     showArchived = !showArchived;
+    renderCount = RENDER_BATCH_SIZE;
+    await ensureVisibleItems(renderCount);
     renderList();
     updateHeaderMenu();
   };
@@ -156,20 +228,20 @@ export function createPrimeController() {
 
       if (importedItems.length === 0) {
         alert(
-          "No prime items found. Make sure lines start with #### for titles.",
+          "No prime items found. Make sure lines start with #### for titles."
         );
         return;
       }
 
       const newItems = importedItems.map(
-        (title) => new PrimeItem({ title, category }),
+        (title) => new PrimeItem({ title, category })
       );
       await Promise.all(newItems.map((item) => createPrimeItem(item.toJSON())));
       await refreshPrimeItems({ refreshCategories: true });
 
       const categoryMsg = category ? ` with category "${category}"` : "";
       alert(
-        `Successfully imported ${importedItems.length} prime item(s)${categoryMsg}!`,
+        `Successfully imported ${importedItems.length} prime item(s)${categoryMsg}!`
       );
 
       // Reset file input
@@ -258,7 +330,7 @@ export function createPrimeController() {
 
     // Add green border to the prime item container immediately
     const primeItemContainer = document.querySelector(
-      `.prime-item[data-id="${item.id}"]`,
+      `.prime-item[data-id="${item.id}"]`
     );
     if (primeItemContainer) {
       primeItemContainer.classList.add("prime-item--logged");
@@ -283,7 +355,7 @@ export function createPrimeController() {
 
       // Re-apply green border after render (item may have moved)
       const newPrimeItemContainer = document.querySelector(
-        `.prime-item[data-id="${item.id}"]`,
+        `.prime-item[data-id="${item.id}"]`
       );
       if (newPrimeItemContainer) {
         newPrimeItemContainer.classList.add("prime-item--logged");
@@ -314,7 +386,7 @@ export function createPrimeController() {
   async function handleArchive(item) {
     if (
       !confirm(
-        `Archive "${item.title}"? You can restore it later from archived items.`,
+        `Archive "${item.title}"? You can restore it later from archived items.`
       )
     )
       return;
@@ -340,7 +412,7 @@ export function createPrimeController() {
   async function handleConvertToReview(item) {
     if (
       !confirm(
-        `Convert "${item.title}" to a review item? The original prime item will be archived.`,
+        `Convert "${item.title}" to a review item? The original prime item will be archived.`
       )
     )
       return;
@@ -354,9 +426,8 @@ export function createPrimeController() {
 
   function renderList() {
     // Filter items based on showArchived toggle
-    const itemsToShow = showArchived
-      ? primeItems.filter((item) => item.archived)
-      : primeItems.filter((item) => !item.archived);
+    const itemsToShow = getVisiblePrimeItems();
+    const hasMore = itemsToShow.length > renderCount || Boolean(nextPrimeUrl);
 
     PrimeView.renderList(
       itemsToShow,
@@ -368,7 +439,14 @@ export function createPrimeController() {
         onConvertToReview: handleConvertToReview,
       },
       showArchived,
+      { limit: renderCount, showSentinel: hasMore }
     );
+
+    if (hasMore) {
+      setupInfiniteScroll();
+    } else if (scrollObserver) {
+      scrollObserver.disconnect();
+    }
   }
 
   /**
@@ -417,6 +495,7 @@ export function createPrimeController() {
       addPrimeBtn.removeEventListener("click", handleQuickAdd);
       importPrimeFile.removeEventListener("change", handleFileImport);
       headerMenu?.dispose();
+      scrollObserver?.disconnect();
       quickAddCategoryManager?.dispose();
       modalCategoryManager?.dispose();
     },

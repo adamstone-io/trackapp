@@ -85,7 +85,7 @@ class HabitViewSet(UserOwnedViewSet):
 
 
 class PrimeItemViewSet(UserOwnedViewSet):
-    queryset = PrimeItem.objects.all()
+    queryset = PrimeItem.objects.all().order_by("last_primed_at", "created_at")
     serializer_class = PrimeItemSerializer
 
 

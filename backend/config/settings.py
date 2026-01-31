@@ -142,7 +142,7 @@ REST_FRAMEWORK = {
         'rest_framework.permissions.IsAuthenticated',
     ],
     'DEFAULT_PAGINATION_CLASS': 'rest_framework.pagination.PageNumberPagination',
-    'PAGE_SIZE': 10,
+    'PAGE_SIZE': 20,
 }
 
 SIMPLE_JWT = {
@@ -173,3 +173,4 @@ CORS_ALLOWED_ORIGINS = (
     DEV_CORS_ALLOWED_ORIGINS + parse_csv_env("DEV_LIVE_CORS_ALLOWED_ORIGINS") if DEBUG else []
 ) + parse_csv_env("CORS_ALLOWED_ORIGINS")
 
+CORS_PREFLIGHT_MAX_AGE = 3600

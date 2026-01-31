@@ -21,6 +21,7 @@ export class PrimeView {
     primeItems,
     { onLogPrime, onEdit, onDelete, onArchive, onConvertToReview },
     showArchived = false,
+    { limit = null, showSentinel = false } = {}
   ) {
     const listEl = byId(primeIds.primeList);
     const emptyEl = byId(primeIds.primeListEmpty);
@@ -46,15 +47,25 @@ export class PrimeView {
       const aLast = a.getLastPrimeDate()?.getTime() ?? 0;
       const bLast = b.getLastPrimeDate()?.getTime() ?? 0;
       if (aLast !== bLast) return aLast - bLast; // Least recent first (reversed from before)
-      return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+      return new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
     });
 
-    listEl.innerHTML = sorted
+    const itemsToRender =
+      typeof limit === "number" ? sorted.slice(0, limit) : sorted;
+
+    listEl.innerHTML = itemsToRender
       .map((item) => this.renderPrimeItem(item, showArchived))
       .join("");
 
+    if (showSentinel) {
+      const sentinel = document.createElement("div");
+      sentinel.id = primeIds.primeListSentinel;
+      sentinel.className = "prime-list-sentinel";
+      listEl.appendChild(sentinel);
+    }
+
     // Attach event listeners
-    sorted.forEach((item) => {
+    itemsToRender.forEach((item) => {
       const logBtn = byId(`log-prime-${item.id}`);
       const menuBtn = byId(`menu-prime-${item.id}`);
 
@@ -71,7 +82,10 @@ export class PrimeView {
               { label: "Delete", onSelect: () => onDelete(item) },
             ]
           : [
-              { label: "Convert to Review", onSelect: () => onConvertToReview(item) },
+              {
+                label: "Convert to Review",
+                onSelect: () => onConvertToReview(item),
+              },
               { label: "Archive", onSelect: () => onArchive(item) },
               { label: "Edit", onSelect: () => onEdit(item) },
               { label: "Delete", onSelect: () => onDelete(item) },
@@ -104,12 +118,16 @@ export class PrimeView {
             <h3 class="prime-item__title">${this.escapeHtml(item.title)}</h3>
             ${
               item.category
-                ? `<span class="prime-item__category">${this.escapeHtml(this.capitalize(item.category))}</span>`
+                ? `<span class="prime-item__category">${this.escapeHtml(
+                    this.capitalize(item.category)
+                  )}</span>`
                 : ""
             }
             ${
               item.description
-                ? `<p class="prime-item__description">${this.escapeHtml(item.description)}</p>`
+                ? `<p class="prime-item__description">${this.escapeHtml(
+                    item.description
+                  )}</p>`
                 : ""
             }
           </div>
