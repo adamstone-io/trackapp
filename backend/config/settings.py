@@ -166,9 +166,9 @@ DEV_CORS_ALLOWED_ORIGINS = [
     "http://localhost:5501",
     "http://localhost:3000",
     "http://localhost:8080",
-]
+] 
 
 
 CORS_ALLOWED_ORIGINS = (
-    DEV_CORS_ALLOWED_ORIGINS if DEBUG else []
+    DEV_CORS_ALLOWED_ORIGINS + parse_csv_env("DEV_LIVE_CORS_ALLOWED_ORIGINS") if DEBUG else []
 ) + parse_csv_env("CORS_ALLOWED_ORIGINS")
