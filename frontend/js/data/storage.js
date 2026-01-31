@@ -16,7 +16,20 @@ const STORAGE_KEYS = {
   reviewItems: "reviewItems",
 };
 
-const API_BASE = "https://trackapp-8azc.onrender.com/api";
+const firstCsvValue = (raw = "") =>
+  raw
+    .split(",")
+    .map((s) => s.trim())
+    .filter(Boolean)[0];
+
+const debug = String(window.APP_CONFIG?.DEBUG).toLowerCase() === "true";
+
+const apiOrigin = debug
+  ? firstCsvValue(window.APP_CONFIG?.DEV_API_ORIGIN)
+  : firstCsvValue(window.APP_CONFIG?.PROD_API_ORIGIN);
+
+export const API_BASE = `${apiOrigin.replace(/\/$/, "")}/api`;
+
 const AUTH_KEYS = {
   access: "authAccessToken",
   refresh: "authRefreshToken",
@@ -157,7 +170,7 @@ export async function registerUser({ username, password }) {
       method: "POST",
       body: JSON.stringify({ username, password }),
     },
-    { skipAuth: true, retry: false },
+    { skipAuth: true, retry: false }
   );
 }
 
@@ -168,7 +181,7 @@ export async function loginUser({ username, password }) {
       method: "POST",
       body: JSON.stringify({ username, password }),
     },
-    { skipAuth: true, retry: false },
+    { skipAuth: true, retry: false }
   );
 
   setAuthTokens({ access: data.access, refresh: data.refresh });
@@ -507,7 +520,7 @@ export async function createPrimeItem(payload) {
 export async function loadPrimeItems() {
   const items = await fetchAllPages("/prime-items/");
   return items.map((item) =>
-    PrimeItem.fromJSON(normalizePrimeItemFromApi(item)),
+    PrimeItem.fromJSON(normalizePrimeItemFromApi(item))
   );
 }
 
@@ -545,7 +558,7 @@ function normalizeReviewItemPayload(payload) {
       Number.isFinite(normalizedFirstStudiedAt)
     ) {
       normalizedFirstStudiedAt = new Date(
-        normalizedFirstStudiedAt,
+        normalizedFirstStudiedAt
       ).toISOString();
     } else if (normalizedFirstStudiedAt instanceof Date) {
       normalizedFirstStudiedAt = normalizedFirstStudiedAt.toISOString();
@@ -578,7 +591,7 @@ export async function createReviewItem(payload) {
 export async function loadReviewItems() {
   const items = await fetchAllPages("/review-items/");
   return items.map((item) =>
-    ReviewItem.fromJSON(normalizeReviewItemFromApi(item)),
+    ReviewItem.fromJSON(normalizeReviewItemFromApi(item))
   );
 }
 

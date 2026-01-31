@@ -1,4 +1,4 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
@@ -24,7 +24,9 @@
             <a class="nav__link" href="timer.html">Time</a>
           </li>
           <li class="nav__item">
-            <a class="nav__link nav__link--active" href="workspace.html">Workspace</a>
+            <a class="nav__link nav__link--active" href="workspace.html"
+              >Workspace</a
+            >
           </li>
           <li class="nav__item">
             <a class="nav__link" href="stats.html">Stats</a>
@@ -74,11 +76,7 @@
           <div class="workspace-header">
             <div class="workspace-header__top">
               <h2 class="workspace-header__title">Scheduled Tasks</h2>
-              <button
-                id="add-task-btn"
-                class="btn btn--primary"
-                type="button"
-              >
+              <button id="add-task-btn" class="btn btn--primary" type="button">
                 New Task
               </button>
             </div>
@@ -126,15 +124,15 @@
 
           <div class="form-group">
             <label for="project-color">Color</label>
-            <input
-              id="project-color"
-              type="color"
-              value="#6366f1"
-            />
+            <input id="project-color" type="color" value="#6366f1" />
           </div>
 
           <div class="modal__actions">
-            <button type="submit" id="project-save-btn" class="btn btn--primary">
+            <button
+              type="submit"
+              id="project-save-btn"
+              class="btn btn--primary"
+            >
               Save
             </button>
             <button
@@ -195,14 +193,13 @@
 
           <div class="form-group">
             <label for="task-planned-start">Planned Start</label>
-            <input
-              id="task-planned-start"
-              type="datetime-local"
-            />
+            <input id="task-planned-start" type="datetime-local" />
           </div>
 
           <div class="form-group">
-            <label for="task-planned-duration">Planned Duration (minutes)</label>
+            <label for="task-planned-duration"
+              >Planned Duration (minutes)</label
+            >
             <input
               id="task-planned-duration"
               type="number"
@@ -216,11 +213,7 @@
             <button type="submit" id="task-save-btn" class="btn btn--primary">
               Save
             </button>
-            <button
-              type="button"
-              id="task-cancel-btn"
-              class="btn btn--outline"
-            >
+            <button type="button" id="task-cancel-btn" class="btn btn--outline">
               Cancel
             </button>
           </div>
@@ -228,6 +221,7 @@
       </div>
     </div>
 
+    <script src="./config.js"></script>
     <script type="module" src="../js/workspace-main.js"></script>
   </body>
 </html>

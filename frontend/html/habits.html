@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  
+
     <title>TempoTrack - Advanced Time Tracker</title>
     <link rel="stylesheet" href="../css/main.css" />
   </head>
@@ -15,7 +15,7 @@
           <h1 class="nav__title">TEMPO TRACK</h1>
           <p class="nav__tagline">"What gets measured gets managed."</p>
         </div>
-        
+
         <ul class="nav__links">
           <li class="nav__item">
             <a class="nav__link nav__link--active" href="habits.html">Habits</a>
@@ -36,8 +36,6 @@
             <a class="nav__link" href="reviews.html">Reviews</a>
           </li>
         </ul>
-        
-        
       </nav>
     </header>
 
@@ -47,7 +45,7 @@
         <h2>My Habits</h2>
         <button id="add-habit-btn" class="btn btn--primary">Add Habit</button>
       </div>
-      
+
       <div id="habits-list" class="habits-list">
         <!-- Habit cards will be rendered here -->
       </div>
@@ -57,13 +55,13 @@
     <div id="add-habit-modal" class="modal hidden">
       <div class="modal__content">
         <h2>Add New Habit</h2>
-        
+
         <form id="add-habit-form">
           <div class="form-group">
             <label for="habit-name">Habit Name</label>
-            <input 
-              type="text" 
-              id="habit-name" 
+            <input
+              type="text"
+              id="habit-name"
               placeholder="e.g., Drink water, Exercise, Read"
               required
             />
@@ -71,34 +69,19 @@
 
           <div class="form-group">
             <label for="daily-target">Daily Target</label>
-            <input 
-              type="number" 
-              id="daily-target" 
-              min="0"
-              placeholder="0"
-            />
+            <input type="number" id="daily-target" min="0" placeholder="0" />
           </div>
 
           <div class="form-group">
             <label for="weekly-target">Weekly Target</label>
-            <input 
-              type="number" 
-              id="weekly-target" 
-              min="0"
-              placeholder="0"
-            />
+            <input type="number" id="weekly-target" min="0" placeholder="0" />
           </div>
 
           <div class="modal__actions">
-            <button 
-              type="submit" 
-              class="btn btn--primary"
-            >
-              Add Habit
-            </button>
-            <button 
-              type="button" 
-              id="add-habit-cancel-btn" 
+            <button type="submit" class="btn btn--primary">Add Habit</button>
+            <button
+              type="button"
+              id="add-habit-cancel-btn"
               class="btn btn--outline"
             >
               Cancel
@@ -111,13 +94,13 @@
     <div id="edit-habit-modal" class="modal hidden">
       <div class="modal__content">
         <h2>Edit Habit</h2>
-        
+
         <form id="edit-habit-form">
           <div class="form-group">
             <label for="edit-habit-name">Habit Name</label>
-            <input 
-              type="text" 
-              id="edit-habit-name" 
+            <input
+              type="text"
+              id="edit-habit-name"
               placeholder="e.g., Drink water, Exercise, Read"
               required
             />
@@ -125,9 +108,9 @@
 
           <div class="form-group">
             <label for="edit-daily-target">Daily Target</label>
-            <input 
-              type="number" 
-              id="edit-daily-target" 
+            <input
+              type="number"
+              id="edit-daily-target"
               min="0"
               placeholder="0"
             />
@@ -135,24 +118,19 @@
 
           <div class="form-group">
             <label for="edit-weekly-target">Weekly Target</label>
-            <input 
-              type="number" 
-              id="edit-weekly-target" 
+            <input
+              type="number"
+              id="edit-weekly-target"
               min="0"
               placeholder="0"
             />
           </div>
 
           <div class="modal__actions">
-            <button 
-              type="submit" 
-              class="btn btn--primary"
-            >
-              Save Changes
-            </button>
-            <button 
-              type="button" 
-              id="edit-habit-cancel-btn" 
+            <button type="submit" class="btn btn--primary">Save Changes</button>
+            <button
+              type="button"
+              id="edit-habit-cancel-btn"
               class="btn btn--outline"
             >
               Cancel
@@ -161,7 +139,7 @@
         </form>
       </div>
     </div>
-
+    <script src="./config.js"></script>
     <script type="module" src="../js/habits-main.js"></script>
   </body>
 </html>
