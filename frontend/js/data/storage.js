@@ -16,21 +16,18 @@ const STORAGE_KEYS = {
   reviewItems: "reviewItems",
 };
 
-const firstCsvValue = (raw = "") =>
-  raw
-    .split(",")
-    .map((s) => s.trim())
-    .filter(Boolean)[0];
+const isLocalFrontend =
+  location.hostname === "localhost" || location.hostname === "127.0.0.1";
 
-const debug = String(window.APP_CONFIG?.DEBUG).toLowerCase() === "true";
+const apiOrigin = isLocalFrontend
+  ? "http://127.0.0.1:8000" // your local Django server
+  : window.APP_CONFIG?.API_ORIGIN || "";
 
-const apiOrigin = debug
-  ? firstCsvValue(window.APP_CONFIG?.DEV_API_ORIGIN)
-  : firstCsvValue(window.APP_CONFIG?.PROD_API_ORIGIN);
+if (!apiOrigin) throw new Error("Missing API origin");
 
 export const API_BASE = `${apiOrigin.replace(/\/$/, "")}/api`;
 
-const AUTH_KEYS = {
+export const AUTH_KEYS = {
   access: "authAccessToken",
   refresh: "authRefreshToken",
 };

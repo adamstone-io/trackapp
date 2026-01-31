@@ -1,5 +1,3 @@
 window.APP_CONFIG = {
-  DEBUG: "__DEBUG__",
-  DEV_API_ORIGIN: "__DEV_API_ORIGIN__",
-  PROD_API_ORIGIN: "__PROD_API_ORIGIN__",
+  API_ORIGIN: "__API_ORIGIN__",
 };
