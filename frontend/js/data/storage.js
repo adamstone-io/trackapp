@@ -17,7 +17,9 @@ const STORAGE_KEYS = {
 };
 
 const isLocalFrontend =
-  location.hostname === "localhost" || location.hostname === "127.0.0.1";
+  location.protocol === "file:" ||
+  ["localhost", "127.0.0.1"].includes(location.hostname) ||
+  location.hostname.endsWith(".local");
 
 const apiOrigin = isLocalFrontend
   ? "http://127.0.0.1:8000" // your local Django server
