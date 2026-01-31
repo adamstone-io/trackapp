@@ -91,7 +91,7 @@ class Moment(models.Model):
         on_delete=models.SET_NULL,
         related_name="moments",
     )
-    task_title = models.CharField(max_length=200, blank=True)
+    task_title = models.CharField(max_length=1000, blank=True)
     is_milestone = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True)
 
@@ -134,7 +134,7 @@ class PrimeItem(models.Model):
         on_delete=models.CASCADE,
         related_name='prime_items',
     )
-    title = models.CharField(max_length=200)
+    title = models.CharField(max_length=1000)
     description = models.TextField(blank=True)
     category = models.CharField(max_length=100, blank=True)
     prime_timestamps = models.JSONField(default=list, blank=True)
@@ -154,7 +154,7 @@ class ReviewItem(models.Model):
         on_delete=models.CASCADE,
         related_name='review_items',
     )
-    title = models.CharField(max_length=200)
+    title = models.CharField(max_length=1000)
     description = models.TextField(blank=True)
     category = models.CharField(max_length=100, blank=True)
     review_timestamps = models.JSONField(default=list, blank=True)
