@@ -7,11 +7,13 @@
   padding: 0;
 }
 
+html,
 body {
   font-family: var(--font-family);
   font-size: var(--font-size-base);
   color: var(--color-text);
   line-height: 1.6;
+  overflow-y: scroll;
 }
 
 button {
