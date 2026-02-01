@@ -11,6 +11,12 @@ export class PrimeItem {
    * @param {string} [data.description] - Additional notes or questions
    * @param {string} [data.category] - Category for organizing prime items
    * @param {Array<number>} [data.primeTimestamps] - Array of timestamp (ms) when primed
+   * @param {number|null} [data.totalCount] - Total primes count (optional)
+   * @param {number|null} [data.todayCount] - Primes today (optional)
+   * @param {number|null} [data.thisWeekCount] - Primes this week (optional)
+   * @param {number|null} [data.thisMonthCount] - Primes this month (optional)
+   * @param {string|null} [data.firstPrimedAt] - ISO string of first prime (optional)
+   * @param {string|null} [data.lastPrimedAt] - ISO string of last prime (optional)
    * @param {boolean} [data.archived] - Whether item is archived
    * @param {string} [data.createdAt] - ISO date string for creation time
    */
@@ -20,6 +26,12 @@ export class PrimeItem {
     description = "",
     category = "",
     primeTimestamps = [],
+    totalCount = null,
+    todayCount = null,
+    thisWeekCount = null,
+    thisMonthCount = null,
+    firstPrimedAt = null,
+    lastPrimedAt = null,
     archived = false,
     createdAt = null,
   }) {
@@ -28,6 +40,12 @@ export class PrimeItem {
     this.description = description.trim();
     this.category = category.trim().toLowerCase();
     this.primeTimestamps = [...primeTimestamps];
+    this.totalCount = totalCount;
+    this.todayCount = todayCount;
+    this.thisWeekCount = thisWeekCount;
+    this.thisMonthCount = thisMonthCount;
+    this.firstPrimedAt = firstPrimedAt;
+    this.lastPrimedAt = lastPrimedAt;
     this.archived = archived;
     this.createdAt = createdAt ?? new Date().toISOString();
   }
@@ -43,6 +61,9 @@ export class PrimeItem {
    * Get total number of times this item has been primed.
    */
   getTotalCount() {
+    if (this.totalCount !== null && this.totalCount !== undefined) {
+      return this.totalCount;
+    }
     return this.primeTimestamps.length;
   }
 
@@ -50,6 +71,9 @@ export class PrimeItem {
    * Get count of primes today.
    */
   getTodayCount() {
+    if (this.todayCount !== null && this.todayCount !== undefined) {
+      return this.todayCount;
+    }
     const todayStart = new Date();
     todayStart.setHours(0, 0, 0, 0);
     const todayMs = todayStart.getTime();
@@ -76,6 +100,9 @@ export class PrimeItem {
    * Get count of primes this week (week starts on Sunday).
    */
   getThisWeekCount() {
+    if (this.thisWeekCount !== null && this.thisWeekCount !== undefined) {
+      return this.thisWeekCount;
+    }
     const now = new Date();
     const weekStart = new Date(now);
     weekStart.setDate(now.getDate() - now.getDay());
@@ -106,6 +133,9 @@ export class PrimeItem {
    * Get count of primes this month.
    */
   getThisMonthCount() {
+    if (this.thisMonthCount !== null && this.thisMonthCount !== undefined) {
+      return this.thisMonthCount;
+    }
     const now = new Date();
     const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
     monthStart.setHours(0, 0, 0, 0);
@@ -119,9 +149,12 @@ export class PrimeItem {
    * @returns {Date|null}
    */
   getFirstPrimeDate() {
-    if (this.primeTimestamps.length === 0) return null;
-    const firstTimestamp = Math.min(...this.primeTimestamps);
-    return new Date(firstTimestamp);
+    if (this.primeTimestamps.length > 0) {
+      const firstTimestamp = Math.min(...this.primeTimestamps);
+      return new Date(firstTimestamp);
+    }
+    if (this.firstPrimedAt) return new Date(this.firstPrimedAt);
+    return null;
   }
 
   /**
@@ -129,9 +162,12 @@ export class PrimeItem {
    * @returns {Date|null}
    */
   getLastPrimeDate() {
-    if (this.primeTimestamps.length === 0) return null;
-    const lastTimestamp = Math.max(...this.primeTimestamps);
-    return new Date(lastTimestamp);
+    if (this.primeTimestamps.length > 0) {
+      const lastTimestamp = Math.max(...this.primeTimestamps);
+      return new Date(lastTimestamp);
+    }
+    if (this.lastPrimedAt) return new Date(this.lastPrimedAt);
+    return null;
   }
 
   /**

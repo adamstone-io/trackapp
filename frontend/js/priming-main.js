@@ -2,10 +2,15 @@
 import { createPrimeController } from "./controllers/prime-controller.js";
 import { SoundManager } from "./utils/sound-manager.js";
 import { initNavigation } from "./controllers/nav-controller.js";
-import { ensureAuthenticated } from "./data/storage.js";
+import { ensureAuthenticated, loadPrimeItemsPage } from "./data/storage.js";
+
+const authReady = ensureAuthenticated();
+const initialPrimePagePromise = authReady.then((ok) =>
+  ok ? loadPrimeItemsPage() : null
+);
 
 document.addEventListener("DOMContentLoaded", async () => {
-  if (!(await ensureAuthenticated())) return;
+  if (!(await authReady)) return;
   // Initialize navigation
   initNavigation();
   SoundManager.register(
@@ -14,7 +19,9 @@ document.addEventListener("DOMContentLoaded", async () => {
     { volume: 0.9 },
   );
 
-  const primeController = createPrimeController();
+  const primeController = createPrimeController({
+    initialPagePromise: initialPrimePagePromise,
+  });
 
   // Debug mode
   if (window.location.hostname === "localhost") {

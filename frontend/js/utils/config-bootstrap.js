@@ -11,3 +11,11 @@ if (!isLocal) {
 } else {
   window.APP_CONFIG = window.APP_CONFIG || {};
 }
+
+const apiOrigin = window.APP_CONFIG?.API_ORIGIN;
+if (apiOrigin) {
+  const link = document.createElement("link");
+  link.rel = "preconnect";
+  link.href = apiOrigin;
+  document.head.appendChild(link);
+}

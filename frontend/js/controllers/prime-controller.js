@@ -9,6 +9,7 @@ import { SoundManager } from "../utils/sound-manager.js";
 import {
   createPrimeItem,
   loadPrimeItemsPage,
+  logPrimeItem,
   updatePrimeItem,
   deletePrimeItem,
   convertPrimeToReview,
@@ -16,7 +17,7 @@ import {
 
 let primeItems = [];
 
-export function createPrimeController() {
+export function createPrimeController({ initialPagePromise = null } = {}) {
   primeItems = [];
   let editingItemId = null;
   let showArchived = false;
@@ -24,6 +25,7 @@ export function createPrimeController() {
   let nextPrimeUrl = null;
   let isLoadingMore = false;
   let scrollObserver = null;
+  let initialPageConsumed = false;
 
   const addPrimeBtn = byId(primeIds.addPrimeBtn);
   const quickAddInput = byId(primeIds.quickAddPrimeInput);
@@ -115,7 +117,13 @@ export function createPrimeController() {
     renderList({ forceFullRender: true });
 
     try {
-      const { items, next } = await loadPrimeItemsPage();
+      const initialPage =
+        initialPagePromise && !initialPageConsumed
+          ? await initialPagePromise
+          : null;
+      initialPageConsumed = true;
+
+      const { items, next } = initialPage || (await loadPrimeItemsPage());
       primeItems = items;
       nextPrimeUrl = next;
       await ensureVisibleItems(renderCount);
@@ -313,14 +321,9 @@ export function createPrimeController() {
     const itemIndex = primeItems.findIndex((p) => p.id === item.id);
     if (itemIndex === -1) return;
 
-    const nextTimestamps = [
-      ...(primeItems[itemIndex].primeTimestamps || []),
-      Date.now(),
-    ];
-
     try {
-      await updatePrimeItem(item.id, { primeTimestamps: nextTimestamps });
-      primeItems[itemIndex].primeTimestamps = nextTimestamps;
+      const updatedItem = await logPrimeItem(item.id);
+      primeItems[itemIndex] = updatedItem;
     } catch (error) {
       console.error("Failed to log prime:", error);
       alert("Failed to log prime. Please try again.");

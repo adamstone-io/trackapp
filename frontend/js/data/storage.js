@@ -506,6 +506,12 @@ function normalizePrimeItemFromApi(item) {
     ...item,
     primeTimestamps: item.primeTimestamps ?? item.prime_timestamps ?? [],
     createdAt: item.createdAt ?? item.created_at ?? null,
+    totalCount: item.totalCount ?? item.total_count ?? null,
+    todayCount: item.todayCount ?? item.today_count ?? null,
+    thisWeekCount: item.thisWeekCount ?? item.week_count ?? null,
+    thisMonthCount: item.thisMonthCount ?? item.month_count ?? null,
+    firstPrimedAt: item.firstPrimedAt ?? item.first_primed_at ?? null,
+    lastPrimedAt: item.lastPrimedAt ?? item.last_primed_at ?? null,
   };
 }
 
@@ -516,11 +522,26 @@ export async function createPrimeItem(payload) {
   });
 }
 
-export async function loadPrimeItems() {
-  const items = await fetchAllPages("/prime-items/");
+export async function loadPrimeItems({ includeTimestamps = false } = {}) {
+  const path = includeTimestamps
+    ? "/prime-items/?include_timestamps=1"
+    : "/prime-items/";
+  const items = await fetchAllPages(path);
   return items.map((item) =>
     PrimeItem.fromJSON(normalizePrimeItemFromApi(item))
   );
+}
+
+export async function loadPrimeItem(id) {
+  const item = await apiRequest(`/prime-items/${id}/`);
+  return PrimeItem.fromJSON(normalizePrimeItemFromApi(item));
+}
+
+export async function logPrimeItem(id) {
+  const item = await apiRequest(`/prime-items/${id}/log_prime/`, {
+    method: "POST",
+  });
+  return PrimeItem.fromJSON(normalizePrimeItemFromApi(item));
 }
 
 export async function loadPrimeItemsPage({ url, path = "/prime-items/" } = {}) {
@@ -636,8 +657,7 @@ export async function deleteReviewItem(id) {
  */
 export async function convertPrimeToReview(primeItemId) {
   try {
-    const primeItems = await loadPrimeItems();
-    const primeItem = primeItems.find((p) => p.id === primeItemId);
+    const primeItem = await loadPrimeItem(primeItemId);
     if (!primeItem) return null;
 
     const reviewItemPayload = {
@@ -680,7 +700,7 @@ export async function exportAllData() {
       loadTasks(),
       loadProjects(),
       loadTimeEntries(),
-      loadPrimeItems(),
+      loadPrimeItems({ includeTimestamps: true }),
       loadReviewItems(),
       loadHabits(),
     ]);

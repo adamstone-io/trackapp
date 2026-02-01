@@ -46,7 +46,7 @@ export function createStatsController() {
 
     const [allEntries, primeItems, reviewItems] = await Promise.all([
       loadTimeEntries(),
-      loadPrimeItems(),
+      loadPrimeItems({ includeTimestamps: true }),
       loadReviewItems(),
     ]);
     const entries = allEntries.filter((entry) => {

@@ -1,7 +1,9 @@
 from django.contrib.auth.models import User
 from rest_framework import permissions, status, viewsets
+from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework.views import APIView
+from django.utils import timezone
 
 from .models import (
     Habit,
@@ -16,6 +18,7 @@ from .serializers import (
     HabitSerializer,
     MomentSerializer,
     PrimeItemSerializer,
+    PrimeItemListSerializer,
     ProjectSerializer,
     ReviewItemSerializer,
     TaskSerializer,
@@ -87,6 +90,28 @@ class HabitViewSet(UserOwnedViewSet):
 class PrimeItemViewSet(UserOwnedViewSet):
     queryset = PrimeItem.objects.all().order_by("last_primed_at", "created_at")
     serializer_class = PrimeItemSerializer
+
+    def get_serializer_class(self):
+        include_timestamps = self.request.query_params.get("include_timestamps")
+        if self.action == "list" and not include_timestamps:
+            return PrimeItemListSerializer
+        if self.action == "log_prime":
+            return PrimeItemListSerializer
+        return PrimeItemSerializer
+
+    @action(detail=True, methods=["post"])
+    def log_prime(self, request, pk=None):
+        item = self.get_object()
+        timestamp_ms = int(timezone.now().timestamp() * 1000)
+        prime_timestamps = list(item.prime_timestamps or [])
+        prime_timestamps.append(timestamp_ms)
+        item.prime_timestamps = prime_timestamps
+        item.last_primed_at = timezone.datetime.fromtimestamp(
+            timestamp_ms / 1000, tz=timezone.UTC
+        )
+        item.save(update_fields=["prime_timestamps", "last_primed_at"])
+        serializer = self.get_serializer(item)
+        return Response(serializer.data, status=status.HTTP_200_OK)
 
 
 class ReviewItemViewSet(UserOwnedViewSet):
