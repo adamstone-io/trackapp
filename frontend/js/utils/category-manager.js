@@ -1,4 +1,4 @@
-// utils/category-manager.js
+import { API_BASE, AUTH_KEYS } from "../data/storage.js";
 
 /**
  * Manages category autocomplete functionality with frequency tracking
@@ -10,18 +10,18 @@ export class CategoryManager {
     this.onSelect = onSelect;
     this.categories = new Map(); // category -> usage count
     this.selectedIndex = -1;
-    
+
     this.init();
   }
 
   init() {
     // Input events
-    this.input.addEventListener('input', () => this.handleInput());
-    this.input.addEventListener('focus', () => this.handleInput());
-    this.input.addEventListener('keydown', (e) => this.handleKeydown(e));
-    
+    this.input.addEventListener("input", () => this.handleInput());
+    this.input.addEventListener("focus", () => this.handleInput());
+    this.input.addEventListener("keydown", (e) => this.handleKeydown(e));
+
     // Close dropdown when clicking outside
-    document.addEventListener('click', (e) => {
+    document.addEventListener("click", (e) => {
       if (!this.input.contains(e.target) && !this.dropdown.contains(e.target)) {
         this.hideDropdown();
       }
@@ -31,35 +31,47 @@ export class CategoryManager {
   /**
    * Load categories from prime items and count frequencies
    */
-  loadCategories(primeItems) {
-    this.categories.clear();
-    
-    primeItems.forEach(item => {
-      if (item.category && item.category.trim()) {
-        const category = item.category.trim();
-        const count = this.categories.get(category) || 0;
-        this.categories.set(category, count + 1);
-      }
-    });
+  async loadCategories() {
+    try {
+      const response = await fetch(`${API_BASE}/prime-items/categories/`, {
+        headers: {
+          Authorization: `Bearer ${localStorage.getItem(AUTH_KEYS.access)}`,
+          "Content-Type": "application/json",
+        },
+      });
+
+      if (!response.ok) throw new Error("Failed to fetch categories");
+
+      const categories = await response.json();
+
+      // Clear and populate the map
+      this.categories.clear();
+      categories.forEach((cat) => {
+        this.categories.set(cat.category, cat.count);
+      });
+    } catch (error) {
+      console.error("Error loading categories:", error);
+    }
   }
 
   /**
    * Get categories sorted by frequency (most used first), then filtered by search
    */
-  getFilteredCategories(searchTerm = '') {
+  getFilteredCategories(searchTerm = "") {
     const normalized = searchTerm.toLowerCase().trim();
-    
+
     // Convert to array and sort by frequency
-    let categories = Array.from(this.categories.entries())
-      .sort((a, b) => b[1] - a[1]); // Sort by count descending
-    
+    let categories = Array.from(this.categories.entries()).sort(
+      (a, b) => b[1] - a[1]
+    ); // Sort by count descending
+
     // Filter by search term if provided
     if (normalized) {
-      categories = categories.filter(([category]) => 
+      categories = categories.filter(([category]) =>
         category.toLowerCase().includes(normalized)
       );
     }
-    
+
     return categories;
   }
 
@@ -76,24 +88,24 @@ export class CategoryManager {
    * Handle keyboard navigation
    */
   handleKeydown(e) {
-    const items = this.dropdown.querySelectorAll('.category-dropdown-item');
-    
-    if (e.key === 'ArrowDown') {
+    const items = this.dropdown.querySelectorAll(".category-dropdown-item");
+
+    if (e.key === "ArrowDown") {
       e.preventDefault();
       this.selectedIndex = Math.min(this.selectedIndex + 1, items.length - 1);
       this.updateSelection(items);
-    } else if (e.key === 'ArrowUp') {
+    } else if (e.key === "ArrowUp") {
       e.preventDefault();
       this.selectedIndex = Math.max(this.selectedIndex - 1, -1);
       this.updateSelection(items);
-    } else if (e.key === 'Enter' && this.selectedIndex >= 0) {
+    } else if (e.key === "Enter" && this.selectedIndex >= 0) {
       e.preventDefault();
       const selectedItem = items[this.selectedIndex];
       if (selectedItem) {
         const category = selectedItem.dataset.category;
         this.selectCategory(category);
       }
-    } else if (e.key === 'Escape') {
+    } else if (e.key === "Escape") {
       this.hideDropdown();
     }
   }
@@ -104,10 +116,10 @@ export class CategoryManager {
   updateSelection(items) {
     items.forEach((item, index) => {
       if (index === this.selectedIndex) {
-        item.classList.add('category-dropdown-item--selected');
-        item.scrollIntoView({ block: 'nearest' });
+        item.classList.add("category-dropdown-item--selected");
+        item.scrollIntoView({ block: "nearest" });
       } else {
-        item.classList.remove('category-dropdown-item--selected');
+        item.classList.remove("category-dropdown-item--selected");
       }
     });
   }
@@ -115,31 +127,39 @@ export class CategoryManager {
   /**
    * Render the dropdown with filtered categories
    */
-  renderDropdown(searchTerm = '') {
+  renderDropdown(searchTerm = "") {
     const filtered = this.getFilteredCategories(searchTerm);
-    
+
     if (filtered.length === 0) {
       this.hideDropdown();
       return;
     }
-    
-    const html = filtered.map(([category, count]) => `
-      <div class="category-dropdown-item" data-category="${this.escapeHtml(category)}">
+
+    const html = filtered
+      .map(
+        ([category, count]) => `
+      <div class="category-dropdown-item" data-category="${this.escapeHtml(
+        category
+      )}">
         <span>${this.escapeHtml(this.capitalize(category))}</span>
         <span class="category-count">${count}</span>
       </div>
-    `).join('');
-    
+    `
+      )
+      .join("");
+
     this.dropdown.innerHTML = html;
-    this.dropdown.classList.remove('hidden');
-    
+    this.dropdown.classList.remove("hidden");
+
     // Attach click handlers
-    this.dropdown.querySelectorAll('.category-dropdown-item').forEach(item => {
-      item.addEventListener('click', () => {
-        const category = item.dataset.category;
-        this.selectCategory(category);
+    this.dropdown
+      .querySelectorAll(".category-dropdown-item")
+      .forEach((item) => {
+        item.addEventListener("click", () => {
+          const category = item.dataset.category;
+          this.selectCategory(category);
+        });
       });
-    });
   }
 
   /**
@@ -157,7 +177,7 @@ export class CategoryManager {
    * Hide the dropdown
    */
   hideDropdown() {
-    this.dropdown.classList.add('hidden');
+    this.dropdown.classList.add("hidden");
     this.selectedIndex = -1;
   }
 
@@ -166,7 +186,7 @@ export class CategoryManager {
    */
   incrementCategory(category) {
     if (!category || !category.trim()) return;
-    
+
     const normalized = category.trim();
     const count = this.categories.get(normalized) || 0;
     this.categories.set(normalized, count + 1);
@@ -176,7 +196,7 @@ export class CategoryManager {
    * Escape HTML to prevent XSS
    */
   escapeHtml(text) {
-    const div = document.createElement('div');
+    const div = document.createElement("div");
     div.textContent = text;
     return div.innerHTML;
   }

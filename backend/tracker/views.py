@@ -4,6 +4,7 @@ from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from django.utils import timezone
+from django.db.models import Count
 
 from .models import (
     Habit,
@@ -123,7 +124,23 @@ class PrimeItemViewSet(UserOwnedViewSet):
         serializer = self.get_serializer(item)
         return Response(serializer.data, status=status.HTTP_200_OK)
 
+    @action(detail=False, methods=['get'])
+    def categories(self, request):
+        """GET /api/prime-items/categories/"""
+        categories = PrimeItem.objects.filter(
+            user=request.user,
+            archived=False
+        ).exclude(
+            category=''
+        ).values('category').annotate(
+            count=Count('id')
+        ).order_by('category')
+        
+        return Response(list(categories))
+
 
 class ReviewItemViewSet(UserOwnedViewSet):
     queryset = ReviewItem.objects.all()
     serializer_class = ReviewItemSerializer
+
+

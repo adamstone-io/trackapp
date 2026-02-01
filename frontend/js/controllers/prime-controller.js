@@ -42,20 +42,20 @@ export function createPrimeController({ initialPagePromise = null } = {}) {
     categoryDropdown,
     null // No special action on select for quick add
   );
-  quickAddCategoryManager.loadCategories(primeItems);
+  quickAddCategoryManager.loadCategories();
 
   const modalCategoryManager = new CategoryManager(
     modalCategoryInput,
     modalCategoryDropdown,
     null // No special action on select for modal
   );
-  modalCategoryManager.loadCategories(primeItems);
+  modalCategoryManager.loadCategories();
 
   const RENDER_BATCH_SIZE = 6;
 
   const updateCategories = () => {
-    quickAddCategoryManager.loadCategories(primeItems);
-    modalCategoryManager.loadCategories(primeItems);
+    quickAddCategoryManager.loadCategories();
+    modalCategoryManager.loadCategories();
   };
 
   const getVisiblePrimeItems = () =>
