@@ -13,7 +13,6 @@
       <nav class="nav">
         <div class="nav__content">
           <h1 class="nav__title">TEMPO TRACK</h1>
-          <p class="nav__tagline">"What gets measured gets managed."</p>
         </div>
 
         <ul class="nav__links">
@@ -37,8 +36,20 @@
               >Reviews</a
             >
           </li>
+          <li class="nav__item nav__user-menu" id="nav-user-menu">
+            <button class="nav__link nav__user-btn" id="nav-user-btn" type="button">&nbsp;</button>
+          </li>
         </ul>
       </nav>
+      <script>
+        (function() {
+          var u = localStorage.getItem("authUsername");
+          if (u) {
+            var btn = document.getElementById("nav-user-btn");
+            if (btn) btn.textContent = u;
+          }
+        })();
+      </script>
     </header>
 
     <!-- Container centers main content -->

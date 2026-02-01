@@ -32,6 +32,7 @@ export const API_BASE = `${apiOrigin.replace(/\/$/, "")}/api`;
 export const AUTH_KEYS = {
   access: "authAccessToken",
   refresh: "authRefreshToken",
+  username: "authUsername",
 };
 
 const LOGIN_PAGE = "login.html";
@@ -47,6 +48,16 @@ function getRefreshToken() {
 export function setAuthTokens({ access, refresh } = {}) {
   if (access) {
     localStorage.setItem(AUTH_KEYS.access, access);
+    // Extract and store username from JWT for instant access
+    try {
+      const payload = JSON.parse(atob(access.split(".")[1]));
+      const username = payload.username || payload.user || payload.sub;
+      if (username) {
+        localStorage.setItem(AUTH_KEYS.username, username);
+      }
+    } catch (e) {
+      // Ignore decode errors
+    }
   }
   if (refresh) {
     localStorage.setItem(AUTH_KEYS.refresh, refresh);
@@ -56,6 +67,11 @@ export function setAuthTokens({ access, refresh } = {}) {
 export function clearAuthTokens() {
   localStorage.removeItem(AUTH_KEYS.access);
   localStorage.removeItem(AUTH_KEYS.refresh);
+  localStorage.removeItem(AUTH_KEYS.username);
+}
+
+export function getUsername() {
+  return localStorage.getItem(AUTH_KEYS.username);
 }
 
 export function isAuthenticated() {
@@ -185,6 +201,10 @@ export async function loginUser({ username, password }) {
 
   setAuthTokens({ access: data.access, refresh: data.refresh });
   return data;
+}
+
+export async function getCurrentUser() {
+  return apiRequest("/auth/user/");
 }
 
 export async function ensureAuthenticated() {

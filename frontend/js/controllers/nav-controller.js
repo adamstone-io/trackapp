@@ -4,7 +4,8 @@
  * Initializes the navigation menu functionality
  * Handles mobile menu toggle and accessibility
  */
-import { clearAuthTokens, getAccessToken } from "../data/storage.js";
+import { clearAuthTokens, getAccessToken, getUsername } from "../data/storage.js";
+import { createDropdownMenu } from "../views/components/dropdown-menu.js";
 
 export function initNavigation() {
   const nav = document.querySelector(".nav");
@@ -41,24 +42,40 @@ export function initNavigation() {
     console.log("Toggle button already exists");
   }
 
-  function addLogoutLink() {
+  let userMenu = null;
+
+  function addUserMenu() {
     if (!getAccessToken()) return;
-    if (navLinks.querySelector(".nav__logout")) return;
+    
+    const button = document.getElementById("nav-user-btn");
+    if (!button) return;
+    
+    // Username is already set by inline script in HTML
+    // Just ensure it's set if inline script didn't run
+    if (!button.textContent.trim() || button.textContent === "\u00a0") {
+      button.textContent = getUsername() || "User";
+    }
 
-    const li = document.createElement("li");
-    li.className = "nav__item";
-    const link = document.createElement("a");
-    link.href = "login.html";
-    link.className = "nav__link nav__logout";
-    link.textContent = "Logout";
-    link.addEventListener("click", (event) => {
-      event.preventDefault();
-      clearAuthTokens();
-      window.location.href = "login.html";
-    });
+    // Create dropdown menu
+    const menuItems = [
+      {
+        label: "Settings",
+        onSelect: () => {
+          // Settings page to be implemented
+          console.log("Settings clicked");
+        },
+      },
+      {
+        label: "Logout",
+        onSelect: () => {
+          clearAuthTokens();
+          window.location.href = "login.html";
+        },
+      },
+    ];
 
-    li.appendChild(link);
-    navLinks.appendChild(li);
+    userMenu = createDropdownMenu({ items: menuItems });
+    userMenu.attachTo(button);
   }
 
   // Toggle menu function
@@ -129,7 +146,7 @@ export function initNavigation() {
     link.addEventListener("click", closeMenu);
   });
 
-  addLogoutLink();
+  addUserMenu();
 
   // Close menu when clicking outside
   document.addEventListener("click", handleClickOutside);
@@ -142,5 +159,6 @@ export function initNavigation() {
     navToggle.removeEventListener("click", toggleMenu);
     document.removeEventListener("click", handleClickOutside);
     window.removeEventListener("resize", handleResize);
+    userMenu?.dispose();
   };
 }

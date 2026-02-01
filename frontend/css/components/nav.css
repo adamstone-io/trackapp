@@ -96,9 +96,11 @@
     font-size: var(--font-size-base);
     padding: var(--spacing-sm) var(--spacing-lg);
     border-radius: var(--radius-md);
-    transition: all 0.2s ease;
+    transition: background-color 0.2s ease, color 0.2s ease, transform 0.2s ease, box-shadow 0.2s ease;
     white-space: nowrap;
     position: relative;
+    -webkit-tap-highlight-color: transparent;
+    background-color: transparent;
   }
 
   .nav__link::after {
@@ -123,9 +125,20 @@
     transform: translateX(-50%) scaleX(1);
   }
 
-  .nav__link:focus {
+  .nav__link:visited {
+    color: var(--color-text);
+  }
+
+  .nav__link:focus,
+  .nav__link:focus-visible {
     outline: none;
     box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.2);
+  }
+
+  .nav__link:active {
+    background: var(--color-primary-light);
+    color: var(--color-text);
+    transform: translateY(0);
   }
   
   .nav__link--active {
@@ -142,6 +155,35 @@
     background: var(--color-primary-dark);
     color: white;
     transform: translateY(0);
+  }
+
+  /* User menu button - reserve space to prevent layout shift */
+  .nav__user-menu {
+    min-width: 100px;
+  }
+
+  .nav__user-btn {
+    background: none;
+    border: none;
+    cursor: pointer;
+    font-family: inherit;
+    min-width: 80px;
+    text-align: center;
+    outline: none;
+  }
+
+  .nav__user-btn:hover {
+    background: var(--color-primary-light);
+    color: var(--color-primary-dark);
+  }
+
+  .nav__user-btn:focus {
+    outline: none;
+    box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.2);
+  }
+
+  .nav__user-btn:active {
+    background: var(--color-primary-light);
   }
   
   /* Tablet responsiveness */

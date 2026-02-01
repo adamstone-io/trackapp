@@ -62,6 +62,16 @@ class RegisterView(APIView):
         )
 
 
+class CurrentUserView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request):
+        return Response(
+            {"id": request.user.id, "username": request.user.username},
+            status=status.HTTP_200_OK,
+        )
+
+
 class ProjectViewSet(UserOwnedViewSet):
     queryset = Project.objects.all()
     serializer_class = ProjectSerializer
