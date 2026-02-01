@@ -138,6 +138,8 @@ export function createPrimeController({ initialPagePromise = null } = {}) {
     }
 
     renderList({ forceFullRender: true, isLoading: false });
+
+    return primeItems.length;
   }
 
   // Initial load
@@ -197,7 +199,10 @@ export function createPrimeController({ initialPagePromise = null } = {}) {
       await createPrimeItem(item.toJSON());
       quickAddInput.classList.add("submitted");
       setTimeout(() => quickAddInput.classList.remove("submitted"), 1000);
-      await refreshPrimeItems({ refreshCategories: true });
+
+      if (primeItems.length <= 6) {
+        await refreshPrimeItems({ refreshCategories: true });
+      }
     } catch (error) {
       quickAddInput.classList.add("failed");
       setTimeout(() => quickAddInput.classList.remove("failed"), 1000);
