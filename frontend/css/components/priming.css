@@ -199,6 +199,18 @@
   color: var(--color-text-muted, #999);
 }
 
+.priming-header__quick-add textarea.submitted {
+  border-color: var(--color-success);
+  box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.3);
+  transition: border-color 0.1s ease, box-shadow 0.1s ease;
+}
+
+.priming-header__quick-add textarea.failed {
+  border-color: var(--color-danger);
+  box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.3); /* Red glow */
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
 /* Bottom row with category and button */
 .priming-header__bottom-row {
   display: flex;

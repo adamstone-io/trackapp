@@ -195,10 +195,12 @@ export function createPrimeController({ initialPagePromise = null } = {}) {
 
     try {
       await createPrimeItem(item.toJSON());
+      quickAddInput.classList.add("submitted");
+      setTimeout(() => quickAddInput.classList.remove("submitted"), 1000);
       await refreshPrimeItems({ refreshCategories: true });
     } catch (error) {
-      console.error("Failed to add prime item:", error);
-      alert("Failed to add prime item. Please try again.");
+      quickAddInput.classList.add("failed");
+      setTimeout(() => quickAddInput.classList.remove("failed"), 1000);
       return;
     }
 
