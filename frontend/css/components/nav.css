@@ -30,11 +30,6 @@
   margin: 0;
   line-height: 1;
   letter-spacing: -0.025em;
-  transition: color 0.2s ease;
-}
-
-.nav__title:hover {
-  color: var(--color-primary-dark);
 }
 
 .nav__tagline {
