@@ -6,7 +6,18 @@ import { createDropdownMenu } from "./components/dropdown-menu.js";
 // Store dropdown menus for cleanup
 const dropdownMenus = new Map();
 
+// Track rendered item IDs to support incremental rendering
+let renderedItemIds = new Set();
+let lastRenderCount = 0;
+
 export class PrimeView {
+  /**
+   * Reset the incremental rendering state (call when switching views).
+   */
+  static resetRenderState() {
+    renderedItemIds.clear();
+    lastRenderCount = 0;
+  }
   /**
    * Render the list of prime items.
    * @param {PrimeItem[]} primeItems
@@ -21,14 +32,10 @@ export class PrimeView {
     primeItems,
     { onLogPrime, onEdit, onDelete, onArchive, onConvertToReview },
     showArchived = false,
-    { limit = null, showSentinel = false } = {}
+    { limit = null, showSentinel = false, forceFullRender = false } = {}
   ) {
     const listEl = byId(primeIds.primeList);
     const emptyEl = byId(primeIds.primeListEmpty);
-
-    // Clean up existing dropdown menus
-    dropdownMenus.forEach((menu) => menu.dispose());
-    dropdownMenus.clear();
 
     if (!primeItems || primeItems.length === 0) {
       listEl.innerHTML = "";
@@ -36,66 +43,86 @@ export class PrimeView {
       emptyEl.textContent = showArchived
         ? "No archived prime items."
         : 'No prime items yet. Click "Add Prime Item" to get started.';
+      dropdownMenus.forEach((menu) => menu.dispose());
+      dropdownMenus.clear();
+      renderedItemIds.clear();
+      lastRenderCount = 0;
       return;
     }
 
     emptyEl.style.display = "none";
 
     // Sort by least recently primed first (unprimed items at top)
-    // This ensures that when you log a prime, it moves to the end
     const sorted = [...primeItems].sort((a, b) => {
       const aLast = a.getLastPrimeDate()?.getTime() ?? 0;
       const bLast = b.getLastPrimeDate()?.getTime() ?? 0;
-      if (aLast !== bLast) return aLast - bLast; // Least recent first (reversed from before)
+      if (aLast !== bLast) return aLast - bLast;
       return new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
     });
 
     const itemsToRender =
       typeof limit === "number" ? sorted.slice(0, limit) : sorted;
+    const currentRenderCount = itemsToRender.length;
 
-    listEl.innerHTML = itemsToRender
-      .map((item) => this.renderPrimeItem(item, showArchived))
-      .join("");
+    // Check if we can do incremental render
+    const canIncrement = !forceFullRender && currentRenderCount > lastRenderCount;
+    
+    if (canIncrement) {
+      // Incremental render: only add new items
+      const newItems = itemsToRender.slice(lastRenderCount);
 
-    if (showSentinel) {
-      const sentinel = document.createElement("div");
-      sentinel.id = primeIds.primeListSentinel;
-      sentinel.className = "prime-list-sentinel";
-      listEl.appendChild(sentinel);
+      // Remove old sentinel if exists
+      const oldSentinel = byId(primeIds.primeListSentinel);
+      if (oldSentinel) {
+        oldSentinel.remove();
+      }
+
+      // Append new items
+      newItems.forEach((item) => {
+        const itemHtml = this.renderPrimeItem(item, showArchived);
+        listEl.insertAdjacentHTML("beforeend", itemHtml);
+        renderedItemIds.add(item.id);
+        this.attachItemListeners(
+          item,
+          { onLogPrime, onEdit, onDelete, onArchive, onConvertToReview },
+          showArchived
+        );
+      });
+
+      if (showSentinel) {
+        listEl.insertAdjacentHTML(
+          "beforeend",
+          `<div id="${primeIds.primeListSentinel}" class="prime-list-sentinel"></div>`
+        );
+      }
+    } else {
+      // Full render (refresh or reset)
+      dropdownMenus.forEach((menu) => menu.dispose());
+      dropdownMenus.clear();
+      renderedItemIds.clear();
+
+      listEl.innerHTML = itemsToRender
+        .map((item) => this.renderPrimeItem(item, showArchived))
+        .join("");
+
+      if (showSentinel) {
+        listEl.insertAdjacentHTML(
+          "beforeend",
+          `<div id="${primeIds.primeListSentinel}" class="prime-list-sentinel"></div>`
+        );
+      }
+
+      itemsToRender.forEach((item) => {
+        renderedItemIds.add(item.id);
+        this.attachItemListeners(
+          item,
+          { onLogPrime, onEdit, onDelete, onArchive, onConvertToReview },
+          showArchived
+        );
+      });
     }
 
-    // Attach event listeners
-    itemsToRender.forEach((item) => {
-      const logBtn = byId(`log-prime-${item.id}`);
-      const menuBtn = byId(`menu-prime-${item.id}`);
-
-      if (logBtn) {
-        logBtn.addEventListener("click", () => onLogPrime(item));
-      }
-
-      if (menuBtn) {
-        // Create dropdown menu items
-        const menuItems = showArchived
-          ? [
-              { label: "Restore", onSelect: () => onArchive(item) },
-              { label: "Edit", onSelect: () => onEdit(item) },
-              { label: "Delete", onSelect: () => onDelete(item) },
-            ]
-          : [
-              {
-                label: "Convert to Review",
-                onSelect: () => onConvertToReview(item),
-              },
-              { label: "Archive", onSelect: () => onArchive(item) },
-              { label: "Edit", onSelect: () => onEdit(item) },
-              { label: "Delete", onSelect: () => onDelete(item) },
-            ];
-
-        const menu = createDropdownMenu({ items: menuItems });
-        menu.attachTo(menuBtn);
-        dropdownMenus.set(item.id, menu);
-      }
-    });
+    lastRenderCount = currentRenderCount;
   }
 
   /**
@@ -193,6 +220,44 @@ export class PrimeView {
         </div>
       </div>
     `;
+  }
+
+  /**
+   * Attach event listeners to a single prime item.
+   */
+  static attachItemListeners(
+    item,
+    { onLogPrime, onEdit, onDelete, onArchive, onConvertToReview },
+    showArchived
+  ) {
+    const logBtn = byId(`log-prime-${item.id}`);
+    const menuBtn = byId(`menu-prime-${item.id}`);
+
+    if (logBtn) {
+      logBtn.addEventListener("click", () => onLogPrime(item));
+    }
+
+    if (menuBtn) {
+      const menuItems = showArchived
+        ? [
+            { label: "Restore", onSelect: () => onArchive(item) },
+            { label: "Edit", onSelect: () => onEdit(item) },
+            { label: "Delete", onSelect: () => onDelete(item) },
+          ]
+        : [
+            {
+              label: "Convert to Review",
+              onSelect: () => onConvertToReview(item),
+            },
+            { label: "Archive", onSelect: () => onArchive(item) },
+            { label: "Edit", onSelect: () => onEdit(item) },
+            { label: "Delete", onSelect: () => onDelete(item) },
+          ];
+
+      const menu = createDropdownMenu({ items: menuItems });
+      menu.attachTo(menuBtn);
+      dropdownMenus.set(item.id, menu);
+    }
   }
 
   /**

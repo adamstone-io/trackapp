@@ -101,7 +101,7 @@ export function createPrimeController() {
         updateCategories();
         renderList();
       },
-      { root: null, rootMargin: "200px" }
+      { root: null, rootMargin: "100% 0px", threshold: 0 }
     );
 
     scrollObserver.observe(sentinel);
@@ -111,7 +111,8 @@ export function createPrimeController() {
     primeItems = [];
     renderCount = RENDER_BATCH_SIZE;
     nextPrimeUrl = null;
-    renderList();
+    PrimeView.resetRenderState();
+    renderList({ forceFullRender: true });
 
     try {
       const { items, next } = await loadPrimeItemsPage();
@@ -128,7 +129,7 @@ export function createPrimeController() {
       updateCategories();
     }
 
-    renderList();
+    renderList({ forceFullRender: true });
   }
 
   // Initial load
@@ -139,8 +140,9 @@ export function createPrimeController() {
   const handleToggleArchived = async () => {
     showArchived = !showArchived;
     renderCount = RENDER_BATCH_SIZE;
+    PrimeView.resetRenderState();
     await ensureVisibleItems(renderCount);
-    renderList();
+    renderList({ forceFullRender: true });
     updateHeaderMenu();
   };
 
@@ -351,7 +353,7 @@ export function createPrimeController() {
 
     // Wait 1 second before re-rendering to move item and update stats
     setTimeout(() => {
-      renderList();
+      renderList({ forceFullRender: true });
 
       // Re-apply green border after render (item may have moved)
       const newPrimeItemContainer = document.querySelector(
@@ -424,7 +426,7 @@ export function createPrimeController() {
     }
   }
 
-  function renderList() {
+  function renderList({ forceFullRender = false } = {}) {
     // Filter items based on showArchived toggle
     const itemsToShow = getVisiblePrimeItems();
     const hasMore = itemsToShow.length > renderCount || Boolean(nextPrimeUrl);
@@ -439,7 +441,7 @@ export function createPrimeController() {
         onConvertToReview: handleConvertToReview,
       },
       showArchived,
-      { limit: renderCount, showSentinel: hasMore }
+      { limit: renderCount, showSentinel: hasMore, forceFullRender }
     );
 
     if (hasMore) {
