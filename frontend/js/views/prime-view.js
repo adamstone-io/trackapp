@@ -32,17 +32,38 @@ export class PrimeView {
     primeItems,
     { onLogPrime, onEdit, onDelete, onArchive, onConvertToReview },
     showArchived = false,
-    { limit = null, showSentinel = false, forceFullRender = false } = {}
+    {
+      limit = null,
+      showSentinel = false,
+      forceFullRender = false,
+      isLoading = false,
+    } = {}
   ) {
     const listEl = byId(primeIds.primeList);
     const emptyEl = byId(primeIds.primeListEmpty);
+    const loadingEl = byId(primeIds.primeListLoading);
+
+    if (isLoading) {
+      listEl.innerHTML = "";
+      emptyEl.style.display = "none";
+      if (loadingEl) loadingEl.classList.remove("hidden");
+      dropdownMenus.forEach((menu) => menu.dispose());
+      dropdownMenus.clear();
+      renderedItemIds.clear();
+      lastRenderCount = 0;
+      return;
+    }
+
+    if (loadingEl) {
+      loadingEl.classList.add("hidden");
+    }
 
     if (!primeItems || primeItems.length === 0) {
       listEl.innerHTML = "";
       emptyEl.style.display = "block";
       emptyEl.textContent = showArchived
         ? "No archived prime items."
-        : 'No prime items yet. Click "Add Prime Item" to get started.';
+        : "No primes found. Click Add to create your first prime.";
       dropdownMenus.forEach((menu) => menu.dispose());
       dropdownMenus.clear();
       renderedItemIds.clear();

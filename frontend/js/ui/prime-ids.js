@@ -18,6 +18,7 @@ export const primeIds = {
   primeList: "prime-list",
   primeListEmpty: "prime-list-empty",
   primeListSentinel: "prime-list-sentinel",
+  primeListLoading: "prime-list-loading",
   
   // Header menu
   headerMenuBtn: "header-menu-btn",

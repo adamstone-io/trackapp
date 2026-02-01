@@ -114,7 +114,7 @@ export function createPrimeController({ initialPagePromise = null } = {}) {
     renderCount = RENDER_BATCH_SIZE;
     nextPrimeUrl = null;
     PrimeView.resetRenderState();
-    renderList({ forceFullRender: true });
+    renderList({ forceFullRender: true, isLoading: true });
 
     try {
       const initialPage =
@@ -137,7 +137,7 @@ export function createPrimeController({ initialPagePromise = null } = {}) {
       updateCategories();
     }
 
-    renderList({ forceFullRender: true });
+    renderList({ forceFullRender: true, isLoading: false });
   }
 
   // Initial load
@@ -429,7 +429,7 @@ export function createPrimeController({ initialPagePromise = null } = {}) {
     }
   }
 
-  function renderList({ forceFullRender = false } = {}) {
+  function renderList({ forceFullRender = false, isLoading = false } = {}) {
     // Filter items based on showArchived toggle
     const itemsToShow = getVisiblePrimeItems();
     const hasMore = itemsToShow.length > renderCount || Boolean(nextPrimeUrl);
@@ -444,10 +444,10 @@ export function createPrimeController({ initialPagePromise = null } = {}) {
         onConvertToReview: handleConvertToReview,
       },
       showArchived,
-      { limit: renderCount, showSentinel: hasMore, forceFullRender }
+      { limit: renderCount, showSentinel: hasMore, forceFullRender, isLoading }
     );
 
-    if (hasMore) {
+    if (hasMore && !isLoading) {
       setupInfiniteScroll();
     } else if (scrollObserver) {
       scrollObserver.disconnect();
