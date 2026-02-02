@@ -542,16 +542,6 @@ export async function createPrimeItem(payload) {
   });
 }
 
-export async function loadPrimeItems({ includeTimestamps = false } = {}) {
-  const path = includeTimestamps
-    ? "/prime-items/?include_timestamps=1"
-    : "/prime-items/";
-  const items = await fetchAllPages(path);
-  return items.map((item) =>
-    PrimeItem.fromJSON(normalizePrimeItemFromApi(item))
-  );
-}
-
 export async function loadPrimeItem(id) {
   const item = await apiRequest(`/prime-items/${id}/`);
   return PrimeItem.fromJSON(normalizePrimeItemFromApi(item));
@@ -564,25 +554,40 @@ export async function logPrimeItem(id) {
   return PrimeItem.fromJSON(normalizePrimeItemFromApi(item));
 }
 
-export async function loadPrimeItemsPage({ url, path = "/prime-items/" } = {}) {
-  const data = url ? await apiRequestUrl(url) : await apiRequest(path);
-  if (data && Array.isArray(data.results)) {
+export async function loadPrimeItemsPage({ url = null, category = null } = {}) {
+  try {
+    let endpoint;
+
+    if (url) {
+      // Use the provided URL (for pagination)
+      endpoint = url;
+    } else {
+      // Build initial URL with optional category filter
+      endpoint = `${API_BASE}/prime-items/`;
+      if (category) {
+        endpoint += `?category=${encodeURIComponent(category)}`;
+      }
+    }
+
+    const data = await apiRequestUrl(endpoint);
+
+    // Map results to PrimeItem objects
+    const items = Array.isArray(data.results)
+      ? data.results
+      : Array.isArray(data)
+      ? data
+      : [];
+
     return {
-      items: data.results.map((item) =>
+      items: items.map((item) =>
         PrimeItem.fromJSON(normalizePrimeItemFromApi(item))
       ),
-      next: data.next,
+      next: data.next || null,
     };
+  } catch (error) {
+    console.error("Error loading prime items:", error);
+    return { items: [], next: null };
   }
-  if (Array.isArray(data)) {
-    return {
-      items: data.map((item) =>
-        PrimeItem.fromJSON(normalizePrimeItemFromApi(item))
-      ),
-      next: null,
-    };
-  }
-  return { items: [], next: null };
 }
 
 export async function updatePrimeItem(id, patch) {

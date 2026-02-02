@@ -4,6 +4,7 @@ import { PrimeView } from "../views/prime-view.js";
 import { byId } from "../ui/ui-core.js";
 import { primeIds } from "../ui/prime-ids.js";
 import { createDropdownMenu } from "../views/components/dropdown-menu.js";
+import { createCategoryFilterModal } from "../views/components/category-filter-modal.js";
 import { CategoryManager } from "../utils/category-manager.js";
 import { SoundManager } from "../utils/sound-manager.js";
 import {
@@ -13,6 +14,8 @@ import {
   updatePrimeItem,
   deletePrimeItem,
   convertPrimeToReview,
+  API_BASE,
+  AUTH_KEYS,
 } from "../data/storage.js";
 
 let primeItems = [];
@@ -26,6 +29,7 @@ export function createPrimeController({ initialPagePromise = null } = {}) {
   let isLoadingMore = false;
   let scrollObserver = null;
   let initialPageConsumed = false;
+  let currentCategoryFilter = "";
 
   const addPrimeBtn = byId(primeIds.addPrimeBtn);
   const quickAddInput = byId(primeIds.quickAddPrimeInput);
@@ -35,6 +39,23 @@ export function createPrimeController({ initialPagePromise = null } = {}) {
   const modalCategoryDropdown = byId(primeIds.modalCategoryDropdown);
   const headerMenuBtn = byId(primeIds.headerMenuBtn);
   const importPrimeFile = byId(primeIds.importPrimeFile);
+
+  async function fetchCategories() {
+    try {
+      const response = await fetch(`${API_BASE}/prime-items/categories/`, {
+        headers: {
+          Authorization: `Bearer ${localStorage.getItem(AUTH_KEYS.access)}`,
+          "Content-Type": "application/json",
+        },
+      });
+
+      if (!response.ok) throw new Error("Failed to fetch categories");
+      return await response.json();
+    } catch (error) {
+      console.error("Error fetching categories:", error);
+      return [];
+    }
+  }
 
   // Initialize category managers
   const quickAddCategoryManager = new CategoryManager(
@@ -123,7 +144,12 @@ export function createPrimeController({ initialPagePromise = null } = {}) {
           : null;
       initialPageConsumed = true;
 
-      const { items, next } = initialPage || (await loadPrimeItemsPage());
+      // Pass category filter to loadPrimeItemsPage
+      const { items, next } =
+        initialPage ||
+        (await loadPrimeItemsPage({
+          category: currentCategoryFilter || undefined, // ← Add this
+        }));
       primeItems = items;
       nextPrimeUrl = next;
       await ensureVisibleItems(renderCount);
@@ -140,6 +166,15 @@ export function createPrimeController({ initialPagePromise = null } = {}) {
     renderList({ forceFullRender: true, isLoading: false });
 
     return primeItems.length;
+  }
+
+  const clearFilterBtn = byId("clear-filter");
+  if (clearFilterBtn) {
+    clearFilterBtn.addEventListener("click", () => {
+      currentCategoryFilter = "";
+      updateActiveFilterDisplay("");
+      refreshPrimeItems({ refreshCategories: false });
+    });
   }
 
   // Initial load
@@ -171,6 +206,7 @@ export function createPrimeController({ initialPagePromise = null } = {}) {
     }
 
     const menuItems = [
+      { label: "Filter by Category", onSelect: handleFilterClick }, // ← Add this
       { label: getHeaderMenuLabel(), onSelect: handleToggleArchived },
       { label: "Import from File", onSelect: handleImportClick },
     ];
@@ -180,6 +216,39 @@ export function createPrimeController({ initialPagePromise = null } = {}) {
   };
 
   let headerMenu = null;
+
+  let categoryFilterModal = null;
+
+  categoryFilterModal = createCategoryFilterModal({
+    title: "Filter Prime Items",
+    onFilter: handleCategoryFilter,
+  });
+
+  function handleCategoryFilter(category) {
+    currentCategoryFilter = category;
+    updateActiveFilterDisplay(category);
+    refreshPrimeItems({ refreshCategories: false });
+  }
+
+  function updateActiveFilterDisplay(category) {
+    const filterDisplay = byId("active-filter");
+    const filterName = byId("filter-name");
+
+    if (filterDisplay && filterName) {
+      if (category) {
+        filterDisplay.style.display = "flex";
+        filterName.textContent = category;
+      } else {
+        filterDisplay.style.display = "none";
+      }
+    }
+  }
+
+  async function handleFilterClick() {
+    const categories = await fetchCategories();
+    categoryFilterModal.open(categories, currentCategoryFilter);
+  }
+
   updateHeaderMenu();
 
   // Quick-add from input field
@@ -510,6 +579,7 @@ export function createPrimeController({ initialPagePromise = null } = {}) {
       scrollObserver?.disconnect();
       quickAddCategoryManager?.dispose();
       modalCategoryManager?.dispose();
+      categoryFilterModal?.dispose();
     },
   };
 }

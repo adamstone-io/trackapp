@@ -102,6 +102,14 @@ class PrimeItemViewSet(UserOwnedViewSet):
     queryset = PrimeItem.objects.all().order_by("last_primed_at", "created_at")
     serializer_class = PrimeItemSerializer
 
+
+    def get_queryset(self):
+        queryset = super().get_queryset()
+        category = self.request.query_params.get("category")
+        if category:
+            queryset = queryset.filter(category=category)
+        return queryset
+
     def get_serializer_class(self):
         include_timestamps = self.request.query_params.get("include_timestamps")
         if self.action == "list" and not include_timestamps:
