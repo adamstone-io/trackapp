@@ -174,3 +174,10 @@ CORS_ALLOWED_ORIGINS = (
 ) + parse_csv_env("CORS_ALLOWED_ORIGINS")
 
 CORS_PREFLIGHT_MAX_AGE = 3600
+
+# Extend default CORS headers with custom ones
+from corsheaders.defaults import default_headers
+
+CORS_ALLOW_HEADERS = list(default_headers) + [
+    'x-user-timezone',  # Custom header for user timezone
+]

@@ -129,9 +129,10 @@ function buildHeaders(options = {}, skipAuth = false) {
 
 async function requestUrl(url, options = {}, config = {}) {
   const { skipAuth = false, retry = true } = config;
+  const { headers: _, ...restOptions } = options;
   const response = await fetch(url, {
+    ...restOptions,
     headers: buildHeaders(options, skipAuth),
-    ...options,
   });
 
   if (response.status === 401 && !skipAuth && retry) {
@@ -469,7 +470,15 @@ export async function loadTimeEntries() {
 
 export async function loadTodayEntries() {
   try {
-    const entries = await apiRequest("/today-entries/");
+    // Get user's IANA timezone (e.g., 'Australia/Brisbane')
+    const userTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+    
+    // Pass timezone via header so "today" is calculated in user's local time
+    const entries = await apiRequest("/today-entries/", {
+      headers: {
+        'X-User-Timezone': userTimezone
+      }
+    });
     return entries || [];
   } catch (error) {
     console.error("Failed to load today entries:", error);

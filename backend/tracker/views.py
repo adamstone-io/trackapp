@@ -157,11 +157,15 @@ class TodayEntriesView(APIView):
     Optimized endpoint that returns today's time entries and moments in a single call.
     Returns enriched data with project information to avoid additional API calls.
     Sorted with latest on top (reverse chronological order).
+    
+    Accepts optional 'X-User-Timezone' header with IANA timezone (e.g., 'Australia/Brisbane')
+    to calculate "today" in the user's local timezone.
     """
     permission_classes = [permissions.IsAuthenticated]
 
     def get(self, request):
-        today_start = self._get_today_start()
+        user_timezone = request.headers.get('X-User-Timezone', 'UTC')
+        today_start = self._get_today_start(user_timezone)
         today_end = today_start + timedelta(days=1)
 
         time_entries = self._get_time_entries(request.user, today_start, today_end)
@@ -171,9 +175,29 @@ class TodayEntriesView(APIView):
 
         return Response(combined_entries)
 
-    def _get_today_start(self):
-        """Get the start of today at 00:00:00"""
-        return timezone.now().replace(hour=0, minute=0, second=0, microsecond=0)
+    def _get_today_start(self, user_timezone):
+        """
+        Get the start of today at 00:00:00 in the user's timezone.
+        
+        Args:
+            user_timezone: IANA timezone string (e.g., 'Australia/Brisbane')
+        
+        Returns:
+            Timezone-aware datetime at midnight in the user's timezone
+        """
+        import zoneinfo
+        
+        try:
+            tz = zoneinfo.ZoneInfo(user_timezone)
+        except Exception:
+            # Fallback to UTC if timezone is invalid
+            tz = zoneinfo.ZoneInfo('UTC')
+        
+        # Get current time in user's timezone
+        now_in_tz = timezone.now().astimezone(tz)
+        
+        # Get midnight in user's timezone
+        return now_in_tz.replace(hour=0, minute=0, second=0, microsecond=0)
 
     def _get_time_entries(self, user, start, end):
         """
