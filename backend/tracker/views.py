@@ -4,6 +4,7 @@ from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from django.utils import timezone
+from datetime import timedelta
 from django.db.models import Count
 
 from .models import (
@@ -151,4 +152,82 @@ class ReviewItemViewSet(UserOwnedViewSet):
     queryset = ReviewItem.objects.all()
     serializer_class = ReviewItemSerializer
 
+class TodayEntriesView(APIView):
+    """
+    Optimized endpoint that returns today's time entries and moments in a single call.
+    Returns enriched data with project information to avoid additional API calls.
+    Sorted with latest on top (reverse chronological order).
+    """
+    permission_classes = [permissions.IsAuthenticated]
 
+    def get(self, request):
+        today_start = self._get_today_start()
+        today_end = today_start + timedelta(days=1)
+
+        time_entries = self._get_time_entries(request.user, today_start, today_end)
+        moments = self._get_moments(request.user, today_start, today_end)
+
+        combined_entries = self._combine_and_sort(time_entries, moments)
+
+        return Response(combined_entries)
+
+    def _get_today_start(self):
+        """Get the start of today at 00:00:00"""
+        return timezone.now().replace(hour=0, minute=0, second=0, microsecond=0)
+
+    def _get_time_entries(self, user, start, end):
+        """
+        Get today's time entries with related task and project data.
+        Uses select_related to optimize database queries.
+        """
+        return TimeEntry.objects.filter(
+            user=user,
+            started_at__gte=start,
+            started_at__lt=end
+        ).select_related('task', 'task__project').order_by('-started_at')
+
+    def _get_moments(self, user, start, end):
+        """Get today's moments"""
+        return Moment.objects.filter(
+            user=user,
+            timestamp__gte=start,
+            timestamp__lt=end
+        ).order_by('-timestamp')
+
+    def _combine_and_sort(self, time_entries, moments):
+        """
+        Combine time entries and moments into a single sorted list.
+        Enriches time entries with project information to avoid additional API calls.
+        """
+        combined = []
+        
+        for entry in time_entries:
+            # Serialize the entry
+            entry_data = TimeEntrySerializer(entry).data
+            
+            # Enrich with project information if available
+            if entry.task and entry.task.project:
+                project = entry.task.project
+                entry_data['project_name'] = project.name
+                entry_data['project_color'] = project.color
+                entry_data['project_id'] = str(project.id)
+            
+            combined.append({
+                'type': 'time_entry',
+                'id': str(entry.id),
+                'data': entry_data,
+                'sort_time': entry.started_at.isoformat(),
+            })
+
+        for moment in moments:
+            combined.append({
+                'type': 'moment',
+                'id': str(moment.id),
+                'data': MomentSerializer(moment).data,
+                'sort_time': moment.timestamp.isoformat(),
+            })
+
+        # Sort by sort_time descending (latest on top)
+        combined.sort(key=lambda x: x['sort_time'], reverse=True)
+
+        return combined

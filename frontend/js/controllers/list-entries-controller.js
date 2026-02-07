@@ -1,8 +1,7 @@
 // controllers/list-entries-controller.js
 import { EntriesView } from "../views/list-entries-view.js";
 import {
-  loadTimeEntries,
-  loadMoments,
+  loadTodayEntries,
   loadTasks,
   loadProjects,
   updateTimeEntry,
@@ -20,7 +19,7 @@ export function createEntriesController() {
     onSave: async (payload) => {
       if (payload.id) {
         const durationSeconds = Math.round(
-          (new Date(payload.endedAt) - new Date(payload.startedAt)) / 1000,
+          (new Date(payload.endedAt) - new Date(payload.startedAt)) / 1000
         );
 
         await updateTimeEntry(payload.id, {
@@ -83,26 +82,26 @@ export function createEntriesController() {
   /** @type {Function | null} */
   let onEditMoment = null;
 
-  function getTodayWindowMs() {
-    const start = new Date();
-    start.setHours(0, 0, 0, 0);
-
-    const end = new Date(start);
-    end.setDate(end.getDate() + 1);
-
-    return { startMs: start.getTime(), endMs: end.getTime() };
-  }
-
+  /**
+   * Dispose all entry menus
+   */
   function disposeMenus() {
     for (const dispose of menuDisposers) dispose();
     menuDisposers = [];
   }
 
+  /**
+   * Dispose all moment menus
+   */
   function disposeMomentMenus() {
     for (const dispose of momentMenuDisposers) dispose();
     momentMenuDisposers = [];
   }
 
+  /**
+   * Attach dropdown menus to time entry cards
+   * @param {Array} entries - Time entries with project info
+   */
   function attachEntryMenus(entries) {
     disposeMenus();
 
@@ -138,6 +137,10 @@ export function createEntriesController() {
     });
   }
 
+  /**
+   * Attach dropdown menus to moment cards
+   * @param {Array} moments - Moments
+   */
   function attachMomentMenus(moments) {
     disposeMomentMenus();
 
@@ -177,70 +180,114 @@ export function createEntriesController() {
     });
   }
 
-  async function refresh() {
-    const { startMs, endMs } = getTodayWindowMs();
+  /**
+   * Parse API entry data to match existing format
+   * @param {Object} apiEntry - Entry from API
+   * @returns {Object} Normalized entry
+   */
+  function parseApiEntry(apiEntry) {
+    const { type, id, data } = apiEntry;
 
-    const allEntries = await loadTimeEntries();
-    const todayEntries = allEntries.filter((entry) => {
-      const ms = new Date(entry.startedAt ?? entry.started_at).getTime();
-      return ms >= startMs && ms < endMs;
-    });
-
-    const allMoments = await loadMoments();
-    const todayMoments = allMoments.filter(
-      (moment) => moment.timestampMs >= startMs && moment.timestampMs < endMs,
-    );
-
-    // Load tasks and projects to resolve project names for entries
-    const tasks = await loadTasks();
-    const projects = await loadProjects();
-    const taskMap = new Map(tasks.map((t) => [t.id, t]));
-    const projectMap = new Map(projects.map((p) => [p.id, p]));
-
-    // Add project info to entries
-    // Use toJSON() to get a plain object that spreads correctly
-    const entriesWithProject = todayEntries.map((entry) => {
-      const taskId = entry.taskId ?? entry.task;
-      const task = taskMap.get(taskId);
-      const projectId = task?.projectId ?? task?.project;
-      const project = projectId ? projectMap.get(projectId) : null;
-      const plainEntry =
-        typeof entry.toJSON === "function" ? entry.toJSON() : entry;
+    if (type === "time_entry") {
       return {
-        ...plainEntry,
-        taskId: taskId,
-        category: task?.category || null,
-        projectId: projectId || null,
-        projectName: project?.name || null,
-        projectColor: project?.color || null,
+        id,
+        taskId: data.task,
+        taskTitle: data.task_title,
+        startedAt: data.started_at,
+        endedAt: data.ended_at,
+        durationSeconds: data.duration_seconds,
+        notes: data.notes || "",
+        breaks: data.breaks || [],
+        createdAt: data.created_at,
       };
-    });
+    }
 
-    const items = [
-      ...entriesWithProject.map((entry) => ({
-        kind: "entry",
-        atMs: new Date(entry.startedAt ?? entry.started_at).getTime(),
-        entry,
-      })),
-      ...todayMoments.map((moment) => ({
-        kind: "moment",
-        atMs: moment.timestampMs,
-        moment,
-      })),
-    ].sort((a, b) => {
-      if (b.atMs !== a.atMs) return b.atMs - a.atMs;
-      // Tie-breaker: show moments before entries if same timestamp
-      if (a.kind !== b.kind) return a.kind === "moment" ? -1 : 1;
-      return 0;
-    });
+    if (type === "moment") {
+      return {
+        id,
+        description: data.description,
+        category: data.category,
+        timestamp: data.timestamp,
+        timestampMs: new Date(data.timestamp).getTime(),
+        taskId: data.task,
+        taskTitle: data.task_title,
+        isMilestone: data.is_milestone,
+        createdAt: data.created_at,
+      };
+    }
 
-    EntriesView.render(items);
-
-    // Menus only exist for entries - use entriesWithProject so edit modal gets projectId
-    attachEntryMenus(entriesWithProject);
-    attachMomentMenus(todayMoments);
+    return null;
   }
 
+  /**
+   * Refresh the entries list
+   * Uses optimized single API call that includes enriched data (project info).
+   * Backend already handles filtering, sorting, and enrichment.
+   */
+  async function refresh() {
+    try {
+      // Single optimized API call - backend returns enriched data
+      const todayData = await loadTodayEntries();
+
+      // Separate entries and moments with enriched data from backend
+      const entriesWithProject = [];
+      const moments = [];
+
+      for (const item of todayData) {
+        if (item.type === "time_entry") {
+          const entry = parseApiEntry(item);
+          if (!entry) continue;
+
+          // Backend now provides project info directly in the response
+          entriesWithProject.push({
+            ...entry,
+            projectId: item.data.project_id || null,
+            projectName: item.data.project_name || null,
+            projectColor: item.data.project_color || null,
+          });
+        } else if (item.type === "moment") {
+          const moment = parseApiEntry(item);
+          if (moment) {
+            moments.push(moment);
+          }
+        }
+      }
+
+      // Build items array for view (backend already sorted with latest on top)
+      const items = todayData.map((item) => {
+        if (item.type === "time_entry") {
+          const entry = entriesWithProject.find((e) => e.id === item.id);
+          return {
+            kind: "entry",
+            atMs: new Date(item.sort_time).getTime(),
+            entry,
+          };
+        } else {
+          const moment = moments.find((m) => m.id === item.id);
+          return {
+            kind: "moment",
+            atMs: new Date(item.sort_time).getTime(),
+            moment,
+          };
+        }
+      });
+
+      // Render the view (maintains backend sort order - latest on top)
+      EntriesView.render(items);
+
+      // Attach menus
+      attachEntryMenus(entriesWithProject);
+      attachMomentMenus(moments);
+    } catch (error) {
+      console.error("Failed to refresh entries:", error);
+      // Optionally show error in UI
+      EntriesView.renderError(
+        "Failed to load entries. Please refresh the page."
+      );
+    }
+  }
+
+  // Initial load
   refresh();
 
   return {

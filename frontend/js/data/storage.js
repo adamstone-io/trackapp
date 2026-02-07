@@ -467,6 +467,16 @@ export async function loadTimeEntries() {
   return fetchAllPages("/time-entries/");
 }
 
+export async function loadTodayEntries() {
+  try {
+    const entries = await apiRequest("/today-entries/");
+    return entries || [];
+  } catch (error) {
+    console.error("Failed to load today entries:", error);
+    throw error;
+  }
+}
+
 export async function updateTimeEntry(id, patch) {
   return apiRequest(`/time-entries/${id}/`, {
     method: "PATCH",

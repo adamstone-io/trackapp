@@ -199,23 +199,30 @@ export const EntriesView = {
 
     const renderables = coerceToRenderableItems(items);
 
-    renderables.sort((a, b) => {
-      const aMs =
-        a.kind === "moment"
-          ? Number.isFinite(a.moment?.timestampMs)
-            ? a.moment.timestampMs
-            : new Date(a.moment?.createdAt ?? 0).getTime()
-          : new Date(a.entry?.startedAt ?? 0).getTime();
+    // Backend already provides sorted data (latest on top)
+    // Only sort if items don't have atMs property (backward compatibility)
+    const needsSorting = renderables.length > 0 && !renderables[0].atMs;
+    
+    if (needsSorting) {
+      renderables.sort((a, b) => {
+        const aMs =
+          a.kind === "moment"
+            ? Number.isFinite(a.moment?.timestampMs)
+              ? a.moment.timestampMs
+              : new Date(a.moment?.createdAt ?? 0).getTime()
+            : new Date(a.entry?.startedAt ?? 0).getTime();
 
-      const bMs =
-        b.kind === "moment"
-          ? Number.isFinite(b.moment?.timestampMs)
-            ? b.moment.timestampMs
-            : new Date(b.moment?.createdAt ?? 0).getTime()
-          : new Date(b.entry?.startedAt ?? 0).getTime();
+        const bMs =
+          b.kind === "moment"
+            ? Number.isFinite(b.moment?.timestampMs)
+              ? b.moment.timestampMs
+              : new Date(b.moment?.createdAt ?? 0).getTime()
+            : new Date(b.entry?.startedAt ?? 0).getTime();
 
-      return bMs - aMs;
-    });
+        // Latest on top (descending order)
+        return bMs - aMs;
+      });
+    }
 
     if (renderables.length === 0) {
       list.innerHTML = "";

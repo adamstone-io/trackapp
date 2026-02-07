@@ -13,6 +13,7 @@ from .views import (
     RegisterView,
     TaskViewSet,
     TimeEntryViewSet,
+    TodayEntriesView,
 )
 
 router = DefaultRouter()
@@ -30,4 +31,5 @@ urlpatterns = [
     path("api/auth/user/", CurrentUserView.as_view(), name="current-user"),
     path("api/auth/token/", CustomTokenObtainPairView.as_view(), name="token-obtain"),
     path("api/auth/token/refresh/", TokenRefreshView.as_view(), name="token-refresh"),
+    path("api/today-entries/", TodayEntriesView.as_view(), name="today-entries"),
 ]
