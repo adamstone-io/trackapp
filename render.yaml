@@ -1,0 +1,56 @@
+services:
+  - type: static
+    name: trackapp-frontend-prod
+    buildCommand: "node -e \"const fs=require('fs'); const v=process.env.RENDER_GIT_COMMIT||'dev'; const p='frontend/js/utils/config-bootstrap.js'; let c=fs.readFileSync(p,'utf8'); c=c.replace(/__BUILD_VERSION__/g,v); fs.writeFileSync(p,c);\""
+    staticPublishPath: frontend/
+    routes:
+      # Clean URLs
+      - type: rewrite
+        source: /
+        destination: /html/index.html
+      - type: rewrite
+        source: /timer
+        destination: /html/timer.html
+      - type: rewrite
+        source: /login
+        destination: /html/login.html
+      - type: rewrite
+        source: /priming
+        destination: /html/priming.html
+      - type: rewrite
+        source: /habits
+        destination: /html/habits.html
+      - type: rewrite
+        source: /workspace
+        destination: /html/workspace.html
+      - type: rewrite
+        source: /stats
+        destination: /html/stats.html
+      - type: rewrite
+        source: /reviews
+        destination: /html/reviews.html
+      # .html fallbacks (relative nav links resolve here from clean URLs)
+      - type: rewrite
+        source: /timer.html
+        destination: /html/timer.html
+      - type: rewrite
+        source: /login.html
+        destination: /html/login.html
+      - type: rewrite
+        source: /priming.html
+        destination: /html/priming.html
+      - type: rewrite
+        source: /habits.html
+        destination: /html/habits.html
+      - type: rewrite
+        source: /workspace.html
+        destination: /html/workspace.html
+      - type: rewrite
+        source: /stats.html
+        destination: /html/stats.html
+      - type: rewrite
+        source: /reviews.html
+        destination: /html/reviews.html
+      - type: rewrite
+        source: /index.html
+        destination: /html/index.html
