@@ -121,7 +121,11 @@
   font-weight: 500;
   padding: 0.125rem 0.5rem;
   border-radius: 3px;
-  background: color-mix(in srgb, var(--project-color, #6366f1) 15%, transparent);
+  background: color-mix(
+    in srgb,
+    var(--project-color, #6366f1) 15%,
+    transparent
+  );
   color: var(--project-color, #6366f1);
   border-left: 2px solid var(--project-color, #6366f1);
   white-space: nowrap;
@@ -138,7 +142,7 @@
 
 .entry-card__meta {
   display: flex;
-  align-items: center;
+  margin-top: 0.5rem;
   gap: var(--spacing-sm);
   flex-shrink: 0;
 }
@@ -152,6 +156,7 @@
   min-height: var(--touch-target-min);
   border-radius: var(--radius-sm);
   transition: background-color 0.15s ease;
+  margin-top: -0.5rem;
 }
 
 .entry-card__menu-btn:hover {
