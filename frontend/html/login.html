@@ -3,47 +3,48 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Login | Time Tracker</title>
+    <title>Login | TempoTrack</title>
     <link rel="stylesheet" href="../css/main.css" />
   </head>
   <body>
-    <main
-      class="container"
-      style="max-width: 420px; margin: 0 auto; padding: 48px 24px"
-    >
-      <h1 style="margin-bottom: 16px">Sign in</h1>
-      <p id="auth-message" style="margin-bottom: 16px; color: #9ca3af"></p>
+    <main class="auth-page">
+      <div class="auth-page__card">
+        <h1 class="auth-page__title">Sign in</h1>
+        <p id="auth-message" class="auth-page__message"></p>
 
-      <form id="auth-form">
-        <label class="input-label" for="auth-username">Username</label>
-        <input
-          id="auth-username"
-          name="username"
-          type="text"
-          autocomplete="username"
-          required
-        />
+        <form id="auth-form" class="form-stack">
+          <div class="form-group">
+            <label for="auth-username">Username</label>
+            <input
+              id="auth-username"
+              name="username"
+              type="text"
+              autocomplete="username"
+              required
+            />
+          </div>
 
-        <label class="input-label" for="auth-password" style="margin-top: 12px">
-          Password
-        </label>
-        <input
-          id="auth-password"
-          name="password"
-          type="password"
-          autocomplete="current-password"
-          required
-        />
+          <div class="form-group">
+            <label for="auth-password">Password</label>
+            <input
+              id="auth-password"
+              name="password"
+              type="password"
+              autocomplete="current-password"
+              required
+            />
+          </div>
 
-        <button
-          id="auth-submit"
-          type="submit"
-          class="btn btn--primary"
-          style="margin-top: 16px; width: 100%"
-        >
-          Log In
-        </button>
-      </form>
+          <button
+            id="auth-submit"
+            type="submit"
+            class="btn btn--primary"
+            style="width: 100%"
+          >
+            Log In
+          </button>
+        </form>
+      </div>
     </main>
 
     <script src="../js/utils/config-bootstrap.js"></script>

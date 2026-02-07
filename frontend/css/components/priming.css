@@ -347,46 +347,11 @@
   font-size: 0.875rem;
 }
 
-/* Modal form */
+/* Modal form — .form-group base styles are in forms.css */
 .prime-form {
   display: flex;
   flex-direction: column;
   gap: 1rem;
-}
-
-.form-group {
-  display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
-}
-
-.form-group label {
-  font-size: 0.875rem;
-  font-weight: 500;
-  color: var(--text-primary);
-}
-
-.form-group input,
-.form-group textarea {
-  padding: 0.75rem;
-  border: 1px solid var(--border);
-  border-radius: 6px;
-  font-size: 1rem;
-  font-family: inherit;
-  background: var(--background);
-  color: var(--text-primary);
-  transition: border-color 0.2s ease;
-}
-
-.form-group input:focus,
-.form-group textarea:focus {
-  outline: none;
-  border-color: var(--primary);
-}
-
-.form-group textarea {
-  resize: vertical;
-  min-height: 80px;
 }
 
 /* Form group with category dropdown */

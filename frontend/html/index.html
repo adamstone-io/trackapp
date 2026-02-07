@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>TempoTrack</title>
+    <link rel="stylesheet" href="../css/main.css" />
+    <style>
+      .home__title {
+        font-size: 2.5rem;
+        font-weight: 700;
+        color: var(--color-text);
+        margin: 0 0 0.5rem;
+        letter-spacing: 1px;
+      }
+
+      .home__subtitle {
+        font-size: 1.125rem;
+        color: var(--color-text-muted);
+        margin: 0 0 2.5rem;
+        max-width: 28rem;
+        line-height: 1.5;
+      }
+
+      .home__greeting {
+        font-size: 1.25rem;
+        color: var(--color-text-light);
+        margin: 0 0 2rem;
+      }
+
+      .home__actions {
+        display: flex;
+        gap: 1rem;
+        flex-wrap: wrap;
+        justify-content: center;
+      }
+
+      .home__actions .btn {
+        min-width: 10rem;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <main class="auth-page" style="text-align: center">
+        <div>
+          <h1 class="home__title">TEMPO TRACK</h1>
+          <p class="home__subtitle">
+            Track your time, build habits, and prime your focus.
+          </p>
+
+          <!-- Shown when logged out -->
+          <div id="logged-out" class="hidden">
+            <div class="home__actions">
+              <a href="login.html" class="btn btn--primary">Log In</a>
+            </div>
+          </div>
+
+          <!-- Shown when logged in -->
+          <div id="logged-in" class="hidden">
+            <p class="home__greeting">
+              Welcome back, <strong id="home-username"></strong>
+            </p>
+            <div class="home__actions">
+              <a href="timer.html" class="btn btn--primary">Go to Timer</a>
+              <button id="logout-btn" class="btn btn--outline" type="button">
+                Log Out
+              </button>
+            </div>
+          </div>
+        </div>
+      </main>
+    </div>
+
+    <script>
+      (function () {
+        var token = localStorage.getItem("authAccessToken");
+        var username = localStorage.getItem("authUsername");
+
+        var loggedInEl = document.getElementById("logged-in");
+        var loggedOutEl = document.getElementById("logged-out");
+        var usernameEl = document.getElementById("home-username");
+        var logoutBtn = document.getElementById("logout-btn");
+
+        if (token) {
+          loggedInEl.classList.remove("hidden");
+          usernameEl.textContent = username || "User";
+        } else {
+          loggedOutEl.classList.remove("hidden");
+        }
+
+        logoutBtn.addEventListener("click", function () {
+          localStorage.removeItem("authAccessToken");
+          localStorage.removeItem("authRefreshToken");
+          localStorage.removeItem("authUsername");
+          window.location.reload();
+        });
+      })();
+    </script>
+  </body>
+</html>
