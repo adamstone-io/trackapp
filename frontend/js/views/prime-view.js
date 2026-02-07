@@ -30,7 +30,7 @@ export class PrimeView {
    */
   static renderList(
     primeItems,
-    { onLogPrime, onEdit, onDelete, onArchive, onConvertToReview },
+    { onLogPrime, onEdit, onDelete, onArchive, onConvertToReview, onConvertToStudy },
     showArchived = false,
     {
       limit = null,
@@ -105,7 +105,7 @@ export class PrimeView {
         renderedItemIds.add(item.id);
         this.attachItemListeners(
           item,
-          { onLogPrime, onEdit, onDelete, onArchive, onConvertToReview },
+          { onLogPrime, onEdit, onDelete, onArchive, onConvertToReview, onConvertToStudy },
           showArchived
         );
       });
@@ -137,7 +137,7 @@ export class PrimeView {
         renderedItemIds.add(item.id);
         this.attachItemListeners(
           item,
-          { onLogPrime, onEdit, onDelete, onArchive, onConvertToReview },
+          { onLogPrime, onEdit, onDelete, onArchive, onConvertToReview, onConvertToStudy },
           showArchived
         );
       });
@@ -248,7 +248,7 @@ export class PrimeView {
    */
   static attachItemListeners(
     item,
-    { onLogPrime, onEdit, onDelete, onArchive, onConvertToReview },
+    { onLogPrime, onEdit, onDelete, onArchive, onConvertToReview, onConvertToStudy },
     showArchived
   ) {
     const logBtn = byId(`log-prime-${item.id}`);
@@ -266,6 +266,10 @@ export class PrimeView {
             { label: "Delete", onSelect: () => onDelete(item) },
           ]
         : [
+            {
+              label: "Convert to Study",
+              onSelect: () => onConvertToStudy(item),
+            },
             {
               label: "Convert to Review",
               onSelect: () => onConvertToReview(item),

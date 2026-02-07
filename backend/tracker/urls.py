@@ -11,6 +11,7 @@ from .views import (
     ProjectViewSet,
     ReviewItemViewSet,
     RegisterView,
+    StudyItemViewSet,
     TaskViewSet,
     TimeEntryViewSet,
     TodayEntriesView,
@@ -23,6 +24,7 @@ router.register(r"time-entries", TimeEntryViewSet)
 router.register(r"moments", MomentViewSet)
 router.register(r"habits", HabitViewSet)
 router.register(r"prime-items", PrimeItemViewSet)
+router.register(r"study-items", StudyItemViewSet)
 router.register(r"review-items", ReviewItemViewSet)
 
 urlpatterns = [

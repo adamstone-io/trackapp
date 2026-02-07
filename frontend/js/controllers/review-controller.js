@@ -11,6 +11,7 @@ import {
   loadReviewItems,
   updateReviewItem,
   deleteReviewItem,
+  reactivateStudyItem,
 } from "../data/storage.js";
 
 let reviewItems = [];
@@ -340,6 +341,26 @@ export function createReviewController() {
     }
   }
 
+  async function handleReactivateStudy(item) {
+    if (!item.sourceStudyItemId) {
+      alert("No linked study item found.");
+      return;
+    }
+    if (
+      !confirm(
+        `Reactivate the study item for "${item.title}"? The study item will be restored.`,
+      )
+    )
+      return;
+
+    const success = await reactivateStudyItem(item.sourceStudyItemId);
+    if (success) {
+      alert(`Study item "${item.title}" has been reactivated.`);
+    } else {
+      alert("Failed to reactivate study item. Please try again.");
+    }
+  }
+
   function renderList() {
     // Filter items based on showArchived toggle
     const itemsToShow = showArchived
@@ -353,6 +374,7 @@ export function createReviewController() {
         onEdit: handleEdit,
         onDelete: handleDelete,
         onArchive: showArchived ? handleRestore : handleArchive,
+        onReactivateStudy: handleReactivateStudy,
       },
       showArchived,
     );

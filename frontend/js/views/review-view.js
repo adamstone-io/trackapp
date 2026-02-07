@@ -18,7 +18,7 @@ export class ReviewView {
    */
   static renderList(
     reviewItems,
-    { onLogReview, onEdit, onDelete, onArchive },
+    { onLogReview, onEdit, onDelete, onArchive, onReactivateStudy },
     showArchived = false,
   ) {
     const listEl = byId(reviewIds.reviewList);
@@ -69,6 +69,14 @@ export class ReviewView {
               { label: "Delete", onSelect: () => onDelete(item) },
             ]
           : [
+              ...(item.sourceStudyItemId
+                ? [
+                    {
+                      label: "Reactivate Study",
+                      onSelect: () => onReactivateStudy(item),
+                    },
+                  ]
+                : []),
               { label: "Archive", onSelect: () => onArchive(item) },
               { label: "Edit", onSelect: () => onEdit(item) },
               { label: "Delete", onSelect: () => onDelete(item) },

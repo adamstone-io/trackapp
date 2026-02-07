@@ -10,6 +10,7 @@ from .models import (
     PrimeItem,
     Project,
     ReviewItem,
+    StudyItem,
     Task,
     TimeEntry,
 )
@@ -165,6 +166,41 @@ class PrimeItemListSerializer(serializers.ModelSerializer):
             return None
         first_ts = min(timestamps)
         return timezone.datetime.fromtimestamp(first_ts / 1000, tz=timezone.UTC)
+
+
+class StudyItemSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = StudyItem
+        fields = "__all__"
+        read_only_fields = ("user", "created_at", "last_studied_at")
+
+    def _extract_last_studied_at(self, timestamps):
+        if not timestamps:
+            return None
+        numeric = []
+        for ts in timestamps:
+            if isinstance(ts, (int, float)) and math.isfinite(ts):
+                numeric.append(ts)
+            elif isinstance(ts, str) and ts.isdigit():
+                numeric.append(int(ts))
+        if not numeric:
+            return None
+        last_ts = max(numeric)
+        return timezone.datetime.fromtimestamp(last_ts / 1000, tz=timezone.UTC)
+
+    def _apply_last_studied_at(self, validated_data):
+        if "study_timestamps" in validated_data:
+            validated_data["last_studied_at"] = self._extract_last_studied_at(
+                validated_data.get("study_timestamps")
+            )
+
+    def create(self, validated_data):
+        self._apply_last_studied_at(validated_data)
+        return super().create(validated_data)
+
+    def update(self, instance, validated_data):
+        self._apply_last_studied_at(validated_data)
+        return super().update(instance, validated_data)
 
 
 class ReviewItemSerializer(serializers.ModelSerializer):

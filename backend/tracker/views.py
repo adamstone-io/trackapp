@@ -13,6 +13,7 @@ from .models import (
     PrimeItem,
     Project,
     ReviewItem,
+    StudyItem,
     Task,
     TimeEntry,
 )
@@ -23,6 +24,7 @@ from .serializers import (
     PrimeItemListSerializer,
     ProjectSerializer,
     ReviewItemSerializer,
+    StudyItemSerializer,
     TaskSerializer,
     TimeEntrySerializer,
 )
@@ -151,6 +153,27 @@ class PrimeItemViewSet(UserOwnedViewSet):
         ).order_by('category')
         
         return Response(list(categories))
+
+
+class StudyItemViewSet(UserOwnedViewSet):
+    queryset = StudyItem.objects.all().order_by("last_studied_at", "created_at")
+    serializer_class = StudyItemSerializer
+
+    @action(detail=True, methods=["post"])
+    def log_study(self, request, pk=None):
+        item = self.get_object()
+        timestamp_ms = int(timezone.now().timestamp() * 1000)
+        study_timestamps = list(item.study_timestamps or [])
+        study_timestamps.append(timestamp_ms)
+        item.study_timestamps = study_timestamps
+        item.last_studied_at = timezone.datetime.fromtimestamp(
+            timestamp_ms / 1000, tz=timezone.UTC
+        )
+        if item.first_studied_at is None:
+            item.first_studied_at = item.last_studied_at
+        item.save(update_fields=["study_timestamps", "last_studied_at", "first_studied_at"])
+        serializer = self.get_serializer(item)
+        return Response(serializer.data, status=status.HTTP_200_OK)
 
 
 class ReviewItemViewSet(UserOwnedViewSet):

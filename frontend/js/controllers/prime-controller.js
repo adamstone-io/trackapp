@@ -14,6 +14,7 @@ import {
   updatePrimeItem,
   deletePrimeItem,
   convertPrimeToReview,
+  convertPrimeToStudy,
   API_BASE,
   AUTH_KEYS,
 } from "../data/storage.js";
@@ -551,6 +552,21 @@ export function createPrimeController({ initialPagePromise = null } = {}) {
     }
   }
 
+  async function handleConvertToStudy(item) {
+    if (
+      !confirm(
+        `Convert "${item.title}" to a study item? The original prime item will be archived.`
+      )
+    )
+      return;
+    const studyItem = await convertPrimeToStudy(item.id);
+    if (studyItem) {
+      await refreshPrimeItems({ refreshCategories: true });
+    } else {
+      alert("Failed to convert prime item. Please try again.");
+    }
+  }
+
   function renderList({ forceFullRender = false, isLoading = false } = {}) {
     // Filter items based on showArchived toggle
     const itemsToShow = getVisiblePrimeItems();
@@ -564,6 +580,7 @@ export function createPrimeController({ initialPagePromise = null } = {}) {
         onDelete: handleDelete,
         onArchive: showArchived ? handleRestore : handleArchive,
         onConvertToReview: handleConvertToReview,
+        onConvertToStudy: handleConvertToStudy,
       },
       showArchived,
       { limit: renderCount, showSentinel: hasMore, forceFullRender, isLoading }

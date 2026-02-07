@@ -1,49 +1,53 @@
 /**
- * ReviewItem represents a topic or concept that is being reviewed/studied.
- * It tracks when first studied, last review time, and total number of reviews.
+ * StudyItem represents a topic or concept that is being actively studied.
+ * Study items are typically created by converting prime items.
+ * They track study sessions, notes, and can later be converted to review items.
  */
-export class ReviewItem {
+export class StudyItem {
   /**
    * @param {Object} data
    * @param {string} [data.id] - Unique identifier
-   * @param {string} data.title - Name of the topic/concept to review
-   * @param {string} [data.description] - Additional notes or details
-   * @param {string} [data.category] - Category for organizing review items
-   * @param {Array<number>} [data.reviewTimestamps] - Array of timestamps (ms) when reviewed
+   * @param {string} data.title - Name of the topic/concept to study
+   * @param {string} [data.description] - Additional details
+   * @param {string} [data.category] - Category for organizing study items
+   * @param {string} [data.notes] - Study notes (collapsible)
+   * @param {Array<number>} [data.studyTimestamps] - Array of timestamps (ms) when studied
    * @param {number|null} [data.firstStudiedAt] - Timestamp when first studied (ms)
-   * @param {string|null} [data.sourceStudyItemId] - ID of the source study item (for reactivation)
    * @param {boolean} [data.archived] - Whether item is archived
    * @param {string} [data.createdAt] - ISO date string for creation time
+   * @param {string|null} [data.sourcePrimeItemId] - ID of the source prime item
    */
   constructor({
     id,
     title,
     description = "",
     category = "",
-    reviewTimestamps = [],
+    notes = "",
+    studyTimestamps = [],
     firstStudiedAt = null,
-    sourceStudyItemId = null,
     archived = false,
     createdAt = null,
+    sourcePrimeItemId = null,
   }) {
     this.id = id ?? crypto.randomUUID();
     this.title = title.trim();
     this.description = description.trim();
     this.category = category.trim().toLowerCase();
-    this.reviewTimestamps = [...reviewTimestamps];
+    this.notes = notes;
+    this.studyTimestamps = [...studyTimestamps];
     this.firstStudiedAt = firstStudiedAt;
-    this.sourceStudyItemId = sourceStudyItemId;
     this.archived = archived;
     this.createdAt = createdAt ?? new Date().toISOString();
+    this.sourcePrimeItemId = sourcePrimeItemId;
   }
 
   /**
-   * Log a new review session (adds current timestamp).
+   * Log a new study session (adds current timestamp).
    */
-  logReview() {
+  logStudy() {
     const now = Date.now();
-    this.reviewTimestamps.push(now);
-    
+    this.studyTimestamps.push(now);
+
     // Set first studied date if not already set
     if (this.firstStudiedAt === null) {
       this.firstStudiedAt = now;
@@ -51,25 +55,25 @@ export class ReviewItem {
   }
 
   /**
-   * Get total number of times this item has been reviewed.
+   * Get total number of times this item has been studied.
    */
   getTotalCount() {
-    return this.reviewTimestamps.length;
+    return this.studyTimestamps.length;
   }
 
   /**
-   * Get count of reviews today.
+   * Get count of study sessions today.
    */
   getTodayCount() {
     const todayStart = new Date();
     todayStart.setHours(0, 0, 0, 0);
     const todayMs = todayStart.getTime();
 
-    return this.reviewTimestamps.filter((ts) => ts >= todayMs).length;
+    return this.studyTimestamps.filter((ts) => ts >= todayMs).length;
   }
 
   /**
-   * Get count of reviews this week (week starts on Sunday).
+   * Get count of study sessions this week (week starts on Sunday).
    */
   getThisWeekCount() {
     const now = new Date();
@@ -78,11 +82,11 @@ export class ReviewItem {
     weekStart.setHours(0, 0, 0, 0);
     const weekStartMs = weekStart.getTime();
 
-    return this.reviewTimestamps.filter((ts) => ts >= weekStartMs).length;
+    return this.studyTimestamps.filter((ts) => ts >= weekStartMs).length;
   }
 
   /**
-   * Get count of reviews this month.
+   * Get count of study sessions this month.
    */
   getThisMonthCount() {
     const now = new Date();
@@ -90,7 +94,7 @@ export class ReviewItem {
     monthStart.setHours(0, 0, 0, 0);
     const monthStartMs = monthStart.getTime();
 
-    return this.reviewTimestamps.filter((ts) => ts >= monthStartMs).length;
+    return this.studyTimestamps.filter((ts) => ts >= monthStartMs).length;
   }
 
   /**
@@ -103,12 +107,12 @@ export class ReviewItem {
   }
 
   /**
-   * Get the last time this item was reviewed.
+   * Get the last time this item was studied.
    * @returns {Date|null}
    */
-  getLastReviewDate() {
-    if (this.reviewTimestamps.length === 0) return null;
-    const lastTimestamp = Math.max(...this.reviewTimestamps);
+  getLastStudyDate() {
+    if (this.studyTimestamps.length === 0) return null;
+    const lastTimestamp = Math.max(...this.studyTimestamps);
     return new Date(lastTimestamp);
   }
 
@@ -135,10 +139,10 @@ export class ReviewItem {
   }
 
   /**
-   * Get a human-readable "time ago" string for last review.
+   * Get a human-readable "time ago" string for last study session.
    */
-  getLastReviewTimeAgo() {
-    const lastDate = this.getLastReviewDate();
+  getLastStudyTimeAgo() {
+    const lastDate = this.getLastStudyDate();
     if (!lastDate) return "Never";
 
     const now = Date.now();
@@ -173,10 +177,11 @@ export class ReviewItem {
   /**
    * Update item metadata.
    */
-  update({ title, description, category }) {
+  update({ title, description, category, notes }) {
     if (title !== undefined) this.title = title.trim();
     if (description !== undefined) this.description = description.trim();
     if (category !== undefined) this.category = category.trim().toLowerCase();
+    if (notes !== undefined) this.notes = notes;
   }
 
   /**
@@ -188,11 +193,12 @@ export class ReviewItem {
       title: this.title,
       description: this.description,
       category: this.category,
-      reviewTimestamps: this.reviewTimestamps,
+      notes: this.notes,
+      studyTimestamps: this.studyTimestamps,
       firstStudiedAt: this.firstStudiedAt,
-      sourceStudyItemId: this.sourceStudyItemId,
       archived: this.archived,
       createdAt: this.createdAt,
+      sourcePrimeItemId: this.sourcePrimeItemId,
     };
   }
 
@@ -200,6 +206,6 @@ export class ReviewItem {
    * Deserialize from storage/API.
    */
   static fromJSON(data) {
-    return new ReviewItem(data);
+    return new StudyItem(data);
   }
 }

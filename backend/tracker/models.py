@@ -146,6 +146,30 @@ class PrimeItem(models.Model):
         return self.title
 
 
+class StudyItem(models.Model):
+    id = models.UUIDField(primary_key=True, default=uuid4, editable=False)
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        null=True,
+        blank=True,
+        on_delete=models.CASCADE,
+        related_name='study_items',
+    )
+    title = models.CharField(max_length=1000)
+    description = models.TextField(blank=True)
+    category = models.CharField(max_length=100, blank=True)
+    notes = models.TextField(blank=True)
+    study_timestamps = models.JSONField(default=list, blank=True)
+    first_studied_at = models.DateTimeField(null=True, blank=True)
+    last_studied_at = models.DateTimeField(null=True, blank=True, db_index=True)
+    source_prime_item_id = models.UUIDField(null=True, blank=True)
+    archived = models.BooleanField(default=False)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self) -> str:
+        return self.title
+
+
 class ReviewItem(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid4, editable=False)
     user = models.ForeignKey(
@@ -160,6 +184,7 @@ class ReviewItem(models.Model):
     category = models.CharField(max_length=100, blank=True)
     review_timestamps = models.JSONField(default=list, blank=True)
     first_studied_at = models.DateTimeField(null=True, blank=True)
+    source_study_item_id = models.UUIDField(null=True, blank=True)
     archived = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True)
 

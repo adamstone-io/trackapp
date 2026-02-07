@@ -5,6 +5,7 @@ import { Task } from "../domain/task.js";
 import { Project } from "../domain/project.js";
 import { PrimeItem } from "../domain/prime-item.js";
 import { ReviewItem } from "../domain/review-item.js";
+import { StudyItem } from "../domain/study-item.js";
 
 const STORAGE_KEYS = {
   moments: "moments",
@@ -630,11 +631,14 @@ function normalizeReviewItemPayload(payload) {
     payload.review_timestamps ?? payload.reviewTimestamps;
   const first_studied_at = payload.first_studied_at ?? payload.firstStudiedAt;
   const created_at = payload.created_at ?? payload.createdAt;
+  const source_study_item_id =
+    payload.source_study_item_id ?? payload.sourceStudyItemId;
 
   const normalized = { ...payload };
   delete normalized.reviewTimestamps;
   delete normalized.firstStudiedAt;
   delete normalized.createdAt;
+  delete normalized.sourceStudyItemId;
 
   if (review_timestamps !== undefined)
     normalized.review_timestamps = review_timestamps;
@@ -653,6 +657,8 @@ function normalizeReviewItemPayload(payload) {
     normalized.first_studied_at = normalizedFirstStudiedAt;
   }
   if (created_at !== undefined) normalized.created_at = created_at;
+  if (source_study_item_id !== undefined)
+    normalized.source_study_item_id = source_study_item_id;
 
   return normalized;
 }
@@ -664,6 +670,8 @@ function normalizeReviewItemFromApi(item) {
     ...item,
     reviewTimestamps: item.reviewTimestamps ?? item.review_timestamps ?? [],
     firstStudiedAt: item.firstStudiedAt ?? item.first_studied_at ?? null,
+    sourceStudyItemId:
+      item.sourceStudyItemId ?? item.source_study_item_id ?? null,
     createdAt: item.createdAt ?? item.created_at ?? null,
   };
 }
@@ -691,6 +699,105 @@ export async function updateReviewItem(id, patch) {
 
 export async function deleteReviewItem(id) {
   return apiRequest(`/review-items/${id}/`, { method: "DELETE" });
+}
+
+// ========== STUDY ITEMS ==========
+
+function normalizeStudyItemPayload(payload) {
+  if (!payload || typeof payload !== "object") return payload;
+
+  const study_timestamps =
+    payload.study_timestamps ?? payload.studyTimestamps;
+  const first_studied_at = payload.first_studied_at ?? payload.firstStudiedAt;
+  const last_studied_at = payload.last_studied_at ?? payload.lastStudiedAt;
+  const created_at = payload.created_at ?? payload.createdAt;
+  const source_prime_item_id =
+    payload.source_prime_item_id ?? payload.sourcePrimeItemId;
+
+  const normalized = { ...payload };
+  delete normalized.studyTimestamps;
+  delete normalized.firstStudiedAt;
+  delete normalized.lastStudiedAt;
+  delete normalized.createdAt;
+  delete normalized.sourcePrimeItemId;
+
+  if (study_timestamps !== undefined)
+    normalized.study_timestamps = study_timestamps;
+  if (first_studied_at !== undefined) {
+    let val = first_studied_at;
+    if (typeof val === "number" && Number.isFinite(val)) {
+      val = new Date(val).toISOString();
+    } else if (val instanceof Date) {
+      val = val.toISOString();
+    }
+    normalized.first_studied_at = val;
+  }
+  if (last_studied_at !== undefined) {
+    let val = last_studied_at;
+    if (typeof val === "number" && Number.isFinite(val)) {
+      val = new Date(val).toISOString();
+    } else if (val instanceof Date) {
+      val = val.toISOString();
+    }
+    normalized.last_studied_at = val;
+  }
+  if (created_at !== undefined) normalized.created_at = created_at;
+  if (source_prime_item_id !== undefined)
+    normalized.source_prime_item_id = source_prime_item_id;
+
+  return normalized;
+}
+
+function normalizeStudyItemFromApi(item) {
+  if (!item || typeof item !== "object") return item;
+
+  return {
+    ...item,
+    studyTimestamps: item.studyTimestamps ?? item.study_timestamps ?? [],
+    firstStudiedAt: item.firstStudiedAt ?? item.first_studied_at ?? null,
+    createdAt: item.createdAt ?? item.created_at ?? null,
+    sourcePrimeItemId:
+      item.sourcePrimeItemId ?? item.source_prime_item_id ?? null,
+  };
+}
+
+export async function createStudyItem(payload) {
+  return apiRequest("/study-items/", {
+    method: "POST",
+    body: JSON.stringify(normalizeStudyItemPayload(payload)),
+  });
+}
+
+export async function loadStudyItems() {
+  const items = await fetchAllPages("/study-items/");
+  return items.map((item) =>
+    StudyItem.fromJSON(normalizeStudyItemFromApi(item))
+  );
+}
+
+export async function loadStudyItem(id) {
+  try {
+    const data = await apiRequest(`/study-items/${id}/`);
+    return StudyItem.fromJSON(normalizeStudyItemFromApi(data));
+  } catch (error) {
+    console.error("Failed to load study item:", error);
+    return null;
+  }
+}
+
+export async function updateStudyItem(id, patch) {
+  return apiRequest(`/study-items/${id}/`, {
+    method: "PATCH",
+    body: JSON.stringify(normalizeStudyItemPayload(patch)),
+  });
+}
+
+export async function deleteStudyItem(id) {
+  return apiRequest(`/study-items/${id}/`, { method: "DELETE" });
+}
+
+export async function logStudyItem(id) {
+  return apiRequest(`/study-items/${id}/log_study/`, { method: "POST" });
 }
 
 // ========== CONVERSION UTILITIES ==========
@@ -726,6 +833,90 @@ export async function convertPrimeToReview(primeItemId) {
   } catch (error) {
     console.error("Failed to convert prime item to review:", error);
     return null;
+  }
+}
+
+/**
+ * Convert a prime item to a study item.
+ * Creates a new study item and archives the original prime item.
+ * @param {string} primeItemId - ID of the prime item to convert
+ * @returns {Object|null} - The created study item or null if failed
+ */
+export async function convertPrimeToStudy(primeItemId) {
+  try {
+    const primeItem = await loadPrimeItem(primeItemId);
+    if (!primeItem) return null;
+
+    const studyItemPayload = {
+      id: crypto.randomUUID(),
+      title: primeItem.title,
+      description: primeItem.description || "",
+      category: primeItem.category || "",
+      notes: "",
+      studyTimestamps: [],
+      firstStudiedAt: null,
+      archived: false,
+      createdAt: new Date().toISOString(),
+      sourcePrimeItemId: primeItemId,
+    };
+
+    const createdStudy = await createStudyItem(studyItemPayload);
+    await updatePrimeItem(primeItemId, { archived: true });
+    return createdStudy;
+  } catch (error) {
+    console.error("Failed to convert prime item to study:", error);
+    return null;
+  }
+}
+
+/**
+ * Convert a study item to a review item.
+ * Creates a new review item and archives the study item.
+ * The review item stores the source study item ID for potential reactivation.
+ * @param {string} studyItemId - ID of the study item to convert
+ * @returns {Object|null} - The created review item or null if failed
+ */
+export async function convertStudyToReview(studyItemId) {
+  try {
+    const studyItem = await loadStudyItem(studyItemId);
+    if (!studyItem) return null;
+
+    const reviewItemPayload = {
+      id: crypto.randomUUID(),
+      title: studyItem.title,
+      description: studyItem.description || "",
+      category: studyItem.category || "",
+      reviewTimestamps: [],
+      firstStudiedAt: studyItem.firstStudiedAt,
+      sourceStudyItemId: studyItemId,
+      archived: false,
+      createdAt: new Date().toISOString(),
+    };
+
+    const createdReview = await createReviewItem(
+      normalizeReviewItemPayload(reviewItemPayload)
+    );
+    await updateStudyItem(studyItemId, { archived: true });
+    return createdReview;
+  } catch (error) {
+    console.error("Failed to convert study item to review:", error);
+    return null;
+  }
+}
+
+/**
+ * Reactivate a study item from a review item.
+ * Restores the archived study item linked to the review.
+ * @param {string} studyItemId - ID of the study item to reactivate
+ * @returns {boolean} - Whether reactivation was successful
+ */
+export async function reactivateStudyItem(studyItemId) {
+  try {
+    await updateStudyItem(studyItemId, { archived: false });
+    return true;
+  } catch (error) {
+    console.error("Failed to reactivate study item:", error);
+    return false;
   }
 }
 
