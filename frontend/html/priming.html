@@ -44,7 +44,20 @@
               id="nav-user-btn"
               type="button"
             >
-              &nbsp;
+              m <span id="nav-user-name">&nbsp;</span>
+              <svg
+                class="nav__user-arrow"
+                width="16"
+                height="16"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              >
+                <polyline points="6 9 12 15 18 9"></polyline>
+              </svg>
             </button>
           </li>
         </ul>
@@ -53,8 +66,8 @@
         (function () {
           var u = localStorage.getItem("authUsername");
           if (u) {
-            var btn = document.getElementById("nav-user-btn");
-            if (btn) btn.textContent = u;
+            var nameEl = document.getElementById("nav-user-name");
+            if (nameEl) nameEl.textContent = u;
           }
         })();
       </script>

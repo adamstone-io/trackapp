@@ -48,12 +48,13 @@ export function initNavigation() {
     if (!getAccessToken()) return;
     
     const button = document.getElementById("nav-user-btn");
-    if (!button) return;
+    const nameEl = document.getElementById("nav-user-name");
+    if (!button || !nameEl) return;
     
     // Username is already set by inline script in HTML
     // Just ensure it's set if inline script didn't run
-    if (!button.textContent.trim() || button.textContent === "\u00a0") {
-      button.textContent = getUsername() || "User";
+    if (!nameEl.textContent.trim() || nameEl.textContent === "\u00a0") {
+      nameEl.textContent = getUsername() || "User";
     }
 
     // Create dropdown menu

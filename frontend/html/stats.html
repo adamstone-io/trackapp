@@ -33,7 +33,12 @@
             <a class="nav__link" href="reviews.html">Reviews</a>
           </li>
           <li class="nav__item nav__user-menu" id="nav-user-menu">
-            <button class="nav__link nav__user-btn" id="nav-user-btn" type="button">&nbsp;</button>
+            <button class="nav__link nav__user-btn" id="nav-user-btn" type="button">
+              <span id="nav-user-name">&nbsp;</span>
+              <svg class="nav__user-arrow" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <polyline points="6 9 12 15 18 9"></polyline>
+              </svg>
+            </button>
           </li>
         </ul>
       </nav>
@@ -41,8 +46,8 @@
         (function() {
           var u = localStorage.getItem("authUsername");
           if (u) {
-            var btn = document.getElementById("nav-user-btn");
-            if (btn) btn.textContent = u;
+            var nameEl = document.getElementById("nav-user-name");
+            if (nameEl) nameEl.textContent = u;
           }
         })();
       </script>
