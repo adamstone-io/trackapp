@@ -322,42 +322,7 @@
   position: relative;
 }
 
-/* Button styles */
-.btn {
-  padding: 0.625rem 1.5rem;
-  border-radius: 6px;
-  font-size: 0.938rem;
-  font-weight: 500;
-  border: none;
-  cursor: pointer;
-  transition: all 0.2s ease;
-  white-space: nowrap;
-}
-
-.btn--primary {
-  background-color: var(--color-primary);
-  color: white;
-}
-
-.btn--primary:hover {
-  background-color: var(--color-primary-dark);
-  box-shadow: 0 2px 4px rgba(37, 99, 235, 0.3);
-}
-
-.btn--primary:active {
-  transform: translateY(1px);
-}
-
-.btn--outline {
-  background-color: transparent;
-  color: var(--color-text);
-  border: 2px solid var(--color-border);
-}
-
-.btn--outline:hover {
-  background-color: var(--color-bg-secondary);
-  border-color: var(--color-text-light);
-}
+/* Button styles — see buttons.css */
 
 .review-item__log-btn {
   padding: 0.5rem 1.25rem;

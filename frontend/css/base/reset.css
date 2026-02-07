@@ -7,6 +7,13 @@
   padding: 0;
 }
 
+html {
+  /* Prevent text size adjustment on orientation change */
+  -webkit-text-size-adjust: 100%;
+  -moz-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+}
+
 html,
 body {
   font-family: var(--font-family);
@@ -15,14 +22,20 @@ body {
   line-height: 1.6;
   overflow-y: scroll;
   overflow-x: hidden;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
 button {
   font-family: inherit;
   cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
 }
 
 input,
-textarea {
+textarea,
+select {
   font-family: inherit;
+  touch-action: manipulation;
 }

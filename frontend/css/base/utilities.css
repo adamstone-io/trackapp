@@ -35,3 +35,15 @@
     transform: rotate(360deg);
   }
 }
+
+/* Text utilities */
+.text-truncate {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.text-break {
+  word-wrap: break-word;
+  overflow-wrap: break-word;
+}
