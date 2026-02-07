@@ -399,15 +399,13 @@ export function createPrimeController({ initialPagePromise = null } = {}) {
 
     try {
       const updatedItem = await logPrimeItem(item.id);
+      SoundManager.play("primeLogged");
       primeItems[itemIndex] = updatedItem;
     } catch (error) {
       console.error("Failed to log prime:", error);
       alert("Failed to log prime. Please try again.");
       return;
     }
-
-    // Play the sound
-    SoundManager.play("primeLogged");
 
     // Add green border to the prime item container immediately
     const primeItemContainer = document.querySelector(
