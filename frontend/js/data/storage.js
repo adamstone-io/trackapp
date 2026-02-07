@@ -573,7 +573,7 @@ export async function logPrimeItem(id) {
   return PrimeItem.fromJSON(normalizePrimeItemFromApi(item));
 }
 
-export async function loadPrimeItemsPage({ url = null, category = null } = {}) {
+export async function loadPrimeItemsPage({ url = null, category = null, search = null } = {}) {
   try {
     let endpoint;
 
@@ -581,11 +581,13 @@ export async function loadPrimeItemsPage({ url = null, category = null } = {}) {
       // Use the provided URL (for pagination)
       endpoint = url;
     } else {
-      // Build initial URL with optional category filter
+      // Build initial URL with optional filters
       endpoint = `${API_BASE}/prime-items/`;
-      if (category) {
-        endpoint += `?category=${encodeURIComponent(category)}`;
-      }
+      const params = new URLSearchParams();
+      if (category) params.set("category", category);
+      if (search) params.set("search", search);
+      const qs = params.toString();
+      if (qs) endpoint += `?${qs}`;
     }
 
     const data = await apiRequestUrl(endpoint);

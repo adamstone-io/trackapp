@@ -5,7 +5,7 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 from django.utils import timezone
 from datetime import timedelta
-from django.db.models import Count
+from django.db.models import Count, Q
 
 from .models import (
     Habit,
@@ -109,6 +109,11 @@ class PrimeItemViewSet(UserOwnedViewSet):
         category = self.request.query_params.get("category")
         if category:
             queryset = queryset.filter(category=category)
+        search = self.request.query_params.get("search")
+        if search:
+            queryset = queryset.filter(
+                Q(title__icontains=search) | Q(description__icontains=search)
+            )
         return queryset
 
     def get_serializer_class(self):

@@ -27,6 +27,11 @@ export const primeIds = {
   // Import
   importPrimeBtn: "import-prime-btn",
   importPrimeFile: "import-prime-file",
+
+  // Search
+  searchBar: "search-bar",
+  searchInput: "search-input",
+  clearSearch: "clear-search",
   
   // Modal
   primeModal: "prime-modal",

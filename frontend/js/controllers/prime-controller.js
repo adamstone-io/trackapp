@@ -30,6 +30,8 @@ export function createPrimeController({ initialPagePromise = null } = {}) {
   let scrollObserver = null;
   let initialPageConsumed = false;
   let currentCategoryFilter = "";
+  let currentSearchQuery = "";
+  let searchDebounceTimer = null;
 
   const addPrimeBtn = byId(primeIds.addPrimeBtn);
   const quickAddInput = byId(primeIds.quickAddPrimeInput);
@@ -39,6 +41,9 @@ export function createPrimeController({ initialPagePromise = null } = {}) {
   const modalCategoryDropdown = byId(primeIds.modalCategoryDropdown);
   const headerMenuBtn = byId(primeIds.headerMenuBtn);
   const importPrimeFile = byId(primeIds.importPrimeFile);
+  const searchBar = byId(primeIds.searchBar);
+  const searchInput = byId(primeIds.searchInput);
+  const clearSearchBtn = byId(primeIds.clearSearch);
 
   async function fetchCategories() {
     try {
@@ -144,11 +149,12 @@ export function createPrimeController({ initialPagePromise = null } = {}) {
           : null;
       initialPageConsumed = true;
 
-      // Pass category filter to loadPrimeItemsPage
+      // Pass category/search filters to loadPrimeItemsPage
       const { items, next } =
         initialPage ||
         (await loadPrimeItemsPage({
-          category: currentCategoryFilter || undefined, // ← Add this
+          category: currentCategoryFilter || undefined,
+          search: currentSearchQuery || undefined,
         }));
       primeItems = items;
       nextPrimeUrl = next;
@@ -206,7 +212,8 @@ export function createPrimeController({ initialPagePromise = null } = {}) {
     }
 
     const menuItems = [
-      { label: "Filter by Category", onSelect: handleFilterClick }, // ← Add this
+      { label: "Search", onSelect: handleSearchClick },
+      { label: "Filter by Category", onSelect: handleFilterClick },
       { label: getHeaderMenuLabel(), onSelect: handleToggleArchived },
       { label: "Import from File", onSelect: handleImportClick },
     ];
@@ -247,6 +254,47 @@ export function createPrimeController({ initialPagePromise = null } = {}) {
   async function handleFilterClick() {
     const categories = await fetchCategories();
     categoryFilterModal.open(categories, currentCategoryFilter);
+  }
+
+  // Search
+  function handleSearchClick() {
+    if (searchBar) {
+      searchBar.classList.remove("hidden");
+      searchInput.value = currentSearchQuery;
+      searchInput.focus();
+    }
+  }
+
+  function clearSearch() {
+    if (searchDebounceTimer) clearTimeout(searchDebounceTimer);
+    const hadQuery = Boolean(currentSearchQuery);
+    currentSearchQuery = "";
+    if (searchInput) searchInput.value = "";
+    if (searchBar) searchBar.classList.add("hidden");
+    if (hadQuery) refreshPrimeItems({ refreshCategories: false });
+  }
+
+  function handleSearchInput() {
+    if (searchDebounceTimer) clearTimeout(searchDebounceTimer);
+    searchDebounceTimer = setTimeout(() => {
+      const query = searchInput.value.trim();
+      if (query === currentSearchQuery) return;
+      currentSearchQuery = query;
+      refreshPrimeItems({ refreshCategories: false });
+    }, 250);
+  }
+
+  if (searchInput) {
+    searchInput.addEventListener("input", handleSearchInput);
+    searchInput.addEventListener("keydown", (e) => {
+      if (e.key === "Escape") {
+        clearSearch();
+      }
+    });
+  }
+
+  if (clearSearchBtn) {
+    clearSearchBtn.addEventListener("click", clearSearch);
   }
 
   updateHeaderMenu();
@@ -573,6 +621,9 @@ export function createPrimeController({ initialPagePromise = null } = {}) {
       unbindModal();
       addPrimeBtn.removeEventListener("click", handleQuickAdd);
       importPrimeFile.removeEventListener("change", handleFileImport);
+      searchInput?.removeEventListener("input", handleSearchInput);
+      clearSearchBtn?.removeEventListener("click", clearSearch);
+      if (searchDebounceTimer) clearTimeout(searchDebounceTimer);
       headerMenu?.dispose();
       scrollObserver?.disconnect();
       quickAddCategoryManager?.dispose();
