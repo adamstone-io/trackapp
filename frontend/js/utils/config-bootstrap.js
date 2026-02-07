@@ -6,7 +6,7 @@ const isLocal =
 
 if (!isLocal) {
   const s = document.createElement("script");
-  s.src = "../html/config.js"; // adjust relative path per page
+  s.src = "/html/config.js";
   document.head.appendChild(s);
 } else {
   window.APP_CONFIG = window.APP_CONFIG || {};
