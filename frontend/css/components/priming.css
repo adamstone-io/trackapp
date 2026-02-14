@@ -1,5 +1,3 @@
-/* components/priming.css */
-
 .prime-list {
   display: flex;
   flex-direction: column;
@@ -74,6 +72,10 @@
   color: var(--text-primary);
   margin: 0;
   line-height: 1.4;
+
+  overflow-wrap: anywhere;
+  word-break: break-word;
+  max-width: 100%;
 }
 
 .prime-item__category {
@@ -174,7 +176,9 @@
   color: var(--color-text-muted, #999);
   font-size: 1rem;
   border-radius: 4px;
-  transition: color 0.2s ease, background-color 0.2s ease;
+  transition:
+    color 0.2s ease,
+    background-color 0.2s ease;
 }
 
 .search-bar .btn-icon:hover {
@@ -219,7 +223,6 @@
 }
 
 .priming-header__quick-add textarea {
-  flex: 1;
   width: 100%;
   padding: 0.625rem 0.875rem;
   font-size: 0.938rem;
@@ -230,9 +233,9 @@
   font-family: inherit;
   transition: border-color 0.2s ease;
   resize: none;
-  overflow-y: hidden;
+  overflow: hidden;
+  max-height: none;
   min-height: 2.5rem;
-  max-height: 12rem;
   line-height: 1.4;
 }
 
@@ -248,13 +251,17 @@
 .priming-header__quick-add textarea.submitted {
   border-color: var(--color-success);
   box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.3);
-  transition: border-color 0.1s ease, box-shadow 0.1s ease;
+  transition:
+    border-color 0.1s ease,
+    box-shadow 0.1s ease;
 }
 
 .priming-header__quick-add textarea.failed {
   border-color: var(--color-danger);
   box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.3); /* Red glow */
-  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+  transition:
+    border-color 0.2s ease,
+    box-shadow 0.2s ease;
 }
 
 /* Bottom row with category and button */
@@ -466,4 +473,58 @@
   align-items: flex-start;
   width: 100%;
   gap: 1rem;
+}
+
+.prime-item__image-row {
+  margin-top: 8px;
+}
+
+.prime-item__image {
+  display: block;
+  max-width: 100%;
+  height: auto;
+  margin: 0 auto;
+  border-radius: 8px;
+}
+
+.quick-add-row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.quick-add-row .category-input-wrapper {
+  flex: 1;
+  min-width: 0;
+}
+
+#quick-add-image-btn {
+  flex: 0 0 auto;
+  width: auto;
+  min-width: unset;
+  padding: 0.5rem 0.6rem;
+  font-size: 0.95rem;
+}
+
+#add-prime-btn {
+  margin-left: auto;
+}
+
+.btn--success {
+  background: var(--color-success, #10b981);
+  border-color: var(--color-success, #10b981);
+  color: white;
+}
+
+.quick-add-image-preview {
+  margin-top: 8px;
+  width: 100%;
+}
+
+.quick-add-image-preview img {
+  max-width: 100%;
+  height: auto;
+  border-radius: 8px;
+  display: block;
+  margin: 0 auto;
 }

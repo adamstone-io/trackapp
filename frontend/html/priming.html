@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
@@ -47,7 +47,7 @@
               id="nav-user-btn"
               type="button"
             >
-              m <span id="nav-user-name">&nbsp;</span>
+              <span id="nav-user-name">&nbsp;</span>
               <svg
                 class="nav__user-arrow"
                 width="16"
@@ -105,23 +105,46 @@
             <textarea
               id="quick-add-prime-input"
               placeholder="What do you want to prime?"
-              maxlength="500"
+              maxlength="2000"
               rows="1"
             ></textarea>
+            <div
+              id="quick-add-image-preview"
+              class="quick-add-image-preview hidden"
+            >
+              <img id="quick-add-image-preview-img" alt="" />
+            </div>
             <div class="priming-header__bottom-row">
-              <div class="category-input-wrapper">
+              <div class="quick-add-row">
+                <div class="category-input-wrapper">
+                  <input
+                    id="quick-add-category-input"
+                    type="text"
+                    placeholder="Category (optional)"
+                    maxlength="50"
+                    autocomplete="off"
+                  />
+                  <div
+                    id="category-dropdown"
+                    class="category-dropdown hidden"
+                  ></div>
+                </div>
+
+                <button
+                  id="quick-add-image-btn"
+                  class="btn btn--outline"
+                  type="button"
+                >
+                  Add Image
+                </button>
                 <input
-                  id="quick-add-category-input"
-                  type="text"
-                  placeholder="Category (optional)"
-                  maxlength="50"
-                  autocomplete="off"
+                  type="file"
+                  id="quick-add-image-input"
+                  accept="image/*"
+                  hidden
                 />
-                <div
-                  id="category-dropdown"
-                  class="category-dropdown hidden"
-                ></div>
               </div>
+
               <button id="add-prime-btn" class="btn btn--primary" type="button">
                 Add
               </button>

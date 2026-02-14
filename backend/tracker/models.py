@@ -1,6 +1,9 @@
+from typing import Any
 from django.db import models
 from django.conf import settings
+from django.utils import timezone
 from uuid import uuid4
+import os
 
 class Project(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid4, editable=False)
@@ -125,26 +128,20 @@ class Habit(models.Model):
         return self.name
 
 
-class PrimeItem(models.Model):
-    id = models.UUIDField(primary_key=True, default=uuid4, editable=False)
-    user = models.ForeignKey(
-        settings.AUTH_USER_MODEL,
-        null=True,
-        blank=True,
-        on_delete=models.CASCADE,
-        related_name='prime_items',
-    )
-    title = models.CharField(max_length=1000)
-    description = models.TextField(blank=True)
-    category = models.CharField(max_length=100, blank=True)
-    prime_timestamps = models.JSONField(default=list, blank=True)
-    last_primed_at = models.DateTimeField(null=True, blank=True, db_index=True)
-    archived = models.BooleanField(default=False)
-    created_at = models.DateTimeField(auto_now_add=True)
 
-    def __str__(self) -> str:
-        return self.title
-
+def study_item_image_path(instance, filename):
+    """
+    Generate organized upload path for study item images.
+    Path: study_item_images/<user_id>/<item_id>_<random>.<ext>
+    """
+    # Get file extension
+    ext = filename.split('.')[-1].lower()
+    
+    # Create unique filename using item ID + random string
+    unique_filename = f"{instance.id}_{uuid4().hex[:8]}.{ext}"
+    
+    # Organize by user ID
+    return os.path.join('study_item_images', str(instance.user.id), unique_filename)
 
 class StudyItem(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid4, editable=False)
@@ -155,38 +152,160 @@ class StudyItem(models.Model):
         on_delete=models.CASCADE,
         related_name='study_items',
     )
-    title = models.CharField(max_length=1000)
-    description = models.TextField(blank=True)
-    category = models.CharField(max_length=100, blank=True)
-    notes = models.TextField(blank=True)
-    study_timestamps = models.JSONField(default=list, blank=True)
+    
+    prompt = models.TextField(max_length=10000, blank=True, default="")
+    notes = models.TextField(blank=True, default="")
+    category = models.CharField(max_length=300, blank=True)
+
+    image = models.ImageField(upload_to=study_item_image_path, null=True, blank=True)
+
+    is_priming = models.BooleanField(default=True)
+    is_studying = models.BooleanField(default=False)
+    is_reviewing = models.BooleanField(default=False)
+    is_archived = models.BooleanField(default=False)
+
+    created_at = models.DateTimeField(auto_now_add=True)
+    first_primed_at = models.DateTimeField(null=True, blank=True)
+    last_primed_at = models.DateTimeField(null=True, blank=True, db_index=True)
     first_studied_at = models.DateTimeField(null=True, blank=True)
     last_studied_at = models.DateTimeField(null=True, blank=True, db_index=True)
-    source_prime_item_id = models.UUIDField(null=True, blank=True)
-    archived = models.BooleanField(default=False)
-    created_at = models.DateTimeField(auto_now_add=True)
+    first_reviewed_at = models.DateTimeField(null=True, blank=True)
+    last_reviewed_at = models.DateTimeField(null=True, blank=True, db_index=True)
+
+    interaction_timestamps = models.JSONField(default=list, blank=True)
+
+    prime_count = models.IntegerField(default=0)
+    study_count = models.IntegerField(default=0)
+    review_count = models.IntegerField(default=0)
+
+    class Meta:
+        ordering = ['-last_studied_at', 'created_at']
+        indexes = [
+            models.Index(fields=['user', 'is_priming', 'is_archived']),
+            models.Index(fields=['user', 'is_studying', 'is_archived']),
+            models.Index(fields=['user', 'is_reviewing', 'is_archived']),
+            models.Index(fields=['user', 'is_archived']),
+        ]
+        constraints = [
+            models.CheckConstraint(
+                condition=(
+                    models.Q(is_priming=True, is_studying=False, is_reviewing=False) |
+                    models.Q(is_priming=False, is_studying=True, is_reviewing=False) |
+                    models.Q(is_priming=False, is_studying=False, is_reviewing=True)
+                ),
+                name='exactly_one_mode_active'
+            )
+        ]
 
     def __str__(self) -> str:
-        return self.title
+        return self.prompt[:100]
+
+    def get_current_mode(self) -> str:
+        if self.is_priming:
+            return 'priming'
+        elif self.is_studying:
+            return 'studying'
+        elif self.is_reviewing:
+            return 'reviewing'
+        else:
+            return 'none'
+
+    def transition_to_priming(self):
+        if self.is_priming:
+            return 
+
+        self.is_priming = True
+        self.is_studying = False
+        self.is_reviewing = False
+
+        if not self.first_primed_at:
+            self.first_primed_at = timezone.now()
+
+    def transition_to_studying(self):
+        if self.is_studying:
+            return
+
+        self.is_priming = False
+        self.is_studying = True
+        self.is_reviewing = False
+
+        if not self.first_studied_at:
+            self.first_studied_at = timezone.now()
+
+    def transition_to_reviewing(self):
+        if self.is_reviewing:
+            return
+
+        self.is_priming = False
+        self.is_studying = False
+        self.is_reviewing = True
+
+        if not self.first_reviewed_at:
+            self.first_reviewed_at = timezone.now()
+
+    def log_interaction(self):
+
+        timestamp_ms = int(timezone.now().timestamp() * 1000)
+
+        interaction_timestamps = list(self.interaction_timestamps or [])
+        interaction_timestamps.append(timestamp_ms)
+        self.interaction_timestamps = interaction_timestamps
+
+        if self.is_priming:
+            self.prime_count += 1
+        elif self.is_studying:
+            self.study_count += 1
+        elif self.is_reviewing:
+            self.review_count += 1
+
+        timestamp_dt = timezone.datetime.fromtimestamp(timestamp_ms / 1000, tz=timezone.UTC)        
+
+        if self.is_priming:
+            self.last_primed_at = timezone.now()
+            if self.first_primed_at is None:
+                self.first_primed_at = timezone.now()
+        elif self.is_studying:
+            self.last_studied_at = timezone.now()
+            if self.first_studied_at is None:
+                self.first_studied_at = timezone.now()
+        elif self.is_reviewing:
+            self.last_reviewed_at = timezone.now()
+            if self.first_reviewed_at is None:
+                self.first_reviewed_at = timezone.now()
 
 
-class ReviewItem(models.Model):
-    id = models.UUIDField(primary_key=True, default=uuid4, editable=False)
-    user = models.ForeignKey(
-        settings.AUTH_USER_MODEL,
-        null=True,
-        blank=True,
-        on_delete=models.CASCADE,
-        related_name='review_items',
-    )
-    title = models.CharField(max_length=1000)
-    description = models.TextField(blank=True)
-    category = models.CharField(max_length=100, blank=True)
-    review_timestamps = models.JSONField(default=list, blank=True)
-    first_studied_at = models.DateTimeField(null=True, blank=True)
-    source_study_item_id = models.UUIDField(null=True, blank=True)
-    archived = models.BooleanField(default=False)
-    created_at = models.DateTimeField(auto_now_add=True)
+        return timestamp_ms
 
-    def __str__(self) -> str:
-        return self.title
+    def clean(self):
+        from django.core.exceptions import ValidationError
+
+        active_modes = sum([self.is_priming, self.is_studying, self.is_reviewing])
+
+        if active_modes != 1:
+            raise ValidationError("Exactly one mode must be active (is_priming, is studying, or is reviewing)")
+    
+    def save(self, *args, **kwargs):
+        self.clean()
+        super().save(*args, **kwargs)
+
+    def delete(self, *args, **kwargs):
+        self._delete_image_file()
+        super().delete(*args, **kwargs)
+
+    def remove_image(self):
+        """
+        Remove the image from this item (but keep the item itself).
+        Deletes the file from the disk and clears the image field.
+        """
+        self._delete_image_file()
+        self.image = None
+        self.save(update_fields=["image"])
+
+    def _delete_image_file(self):
+        """
+        Delete the physical file from the storage.
+        """
+        if self.image and os.path.exists(self.image.path):
+            os.remove(self.image.path)
+
+

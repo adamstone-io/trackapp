@@ -4,7 +4,7 @@ export const primeIds = {
   quickAddCategoryInput: "quick-add-category-input",
   categoryDropdown: "category-dropdown",
   addPrimeBtn: "add-prime-btn",
-  
+
   // Form
   primeForm: "prime-form",
   primeTitle: "prime-title",
@@ -13,17 +13,17 @@ export const primeIds = {
   primeDescription: "prime-description",
   primeCancelBtn: "prime-cancel-btn",
   primeSaveBtn: "prime-save-btn",
-  
+
   // List
   primeList: "prime-list",
   primeListEmpty: "prime-list-empty",
   primeListSentinel: "prime-list-sentinel",
   primeListLoading: "prime-list-loading",
-  
+
   // Header menu
   headerMenuBtn: "header-menu-btn",
   showArchivedBtn: "show-archived-btn",
-  
+
   // Import
   importPrimeBtn: "import-prime-btn",
   importPrimeFile: "import-prime-file",
@@ -32,8 +32,14 @@ export const primeIds = {
   searchBar: "search-bar",
   searchInput: "search-input",
   clearSearch: "clear-search",
-  
+
   // Modal
   primeModal: "prime-modal",
   primeModalTitle: "prime-modal-title",
+
+  // Quick add image
+  quickAddImageBtn: "quick-add-image-btn",
+  quickAddImageInput: "quick-add-image-input",
+  quickAddImagePreview: "quick-add-image-preview",
+  quickAddImagePreviewImg: "quick-add-image-preview-img",
 };

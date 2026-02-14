@@ -7,9 +7,7 @@ from .views import (
     CurrentUserView,
     HabitViewSet,
     MomentViewSet,
-    PrimeItemViewSet,
     ProjectViewSet,
-    ReviewItemViewSet,
     RegisterView,
     StudyItemViewSet,
     TaskViewSet,
@@ -23,9 +21,7 @@ router.register(r"tasks", TaskViewSet)
 router.register(r"time-entries", TimeEntryViewSet)
 router.register(r"moments", MomentViewSet)
 router.register(r"habits", HabitViewSet)
-router.register(r"prime-items", PrimeItemViewSet)
 router.register(r"study-items", StudyItemViewSet)
-router.register(r"review-items", ReviewItemViewSet)
 
 urlpatterns = [
     path("api/", include(router.urls)),
