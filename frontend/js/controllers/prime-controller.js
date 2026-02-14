@@ -211,17 +211,12 @@ export function createPrimeController() {
 
   async function handleLog(item) {
     try {
-      const updated = await logInteraction(item.id);
+      await logInteraction(item.id);
       SoundManager.play("primeLogged");
 
-      const index = studyItems.findIndex((i) => i.id === item.id);
+      // remove it locally so it disappears immediately
+      studyItems = studyItems.filter((i) => i.id !== item.id);
       renderList();
-      if (index !== -1) {
-        studyItems[index] = StudyItem.fromJSON(updated);
-        console.log("test");
-      }
-
-      queueMicrotask(() => renderList());
     } catch (error) {
       console.error("Failed to log prime:", error);
       alert("Failed to log prime.");
