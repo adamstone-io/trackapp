@@ -6,14 +6,17 @@ import { studyIds } from "../ui/study-ids.js";
 import { createDropdownMenu } from "../views/components/dropdown-menu.js";
 import { CategoryManager } from "../utils/category-manager.js";
 import { SoundManager } from "../utils/sound-manager.js";
+import { bindAutoGrow } from "../utils/textarea.js";
 import {
   createStudyItem,
   loadStudyItems,
   updateStudyItem,
   deleteStudyItem,
-  logStudyItem,
-  convertStudyToReview,
-} from "../data/storage.js";
+  logInteraction,
+  transitionToPriming,
+  transitionToReviewing,
+  loadCategories,
+} from "../api/studyItemApi.js";
 
 let studyItems = [];
 
@@ -22,28 +25,78 @@ export function createStudyController() {
   let editingItemId = null;
   let showArchived = false;
 
+  const quickAddInput = byId(studyIds.quickAddStudyInput);
+  const quickAddNotesWrap = byId(studyIds.quickAddNotesWrap);
+  const quickAddNotesInput = byId(studyIds.quickAddNotesInput);
+  const quickAddNotesToggleBtn = byId(studyIds.quickAddNotesToggleBtn);
+  const quickAddCategoryInput = byId(studyIds.quickAddCategoryInput);
+  const quickAddCategoryDropdown = byId(studyIds.quickAddCategoryDropdown);
+  const addStudyBtn = byId(studyIds.addStudyBtn);
+
   const modalCategoryInput = byId(studyIds.studyCategory);
   const modalCategoryDropdown = byId(studyIds.modalCategoryDropdown);
   const headerMenuBtn = byId(studyIds.headerMenuBtn);
 
-  // Initialize category manager for modal
+  let quickAddNotesVisible = true;
+
+  function applyQuickAddNotesVisibility(isVisible) {
+    quickAddNotesVisible = isVisible;
+    if (quickAddNotesWrap) {
+      quickAddNotesWrap.classList.toggle("hidden", !isVisible);
+    }
+    if (quickAddNotesToggleBtn) {
+      quickAddNotesToggleBtn.textContent = isVisible
+        ? "Hide Notes"
+        : "Add Notes";
+    }
+    if (!isVisible && quickAddNotesInput) {
+      quickAddNotesInput.value = "";
+    }
+  }
+
+  bindAutoGrow(quickAddInput);
+  bindAutoGrow(quickAddNotesInput);
+  applyQuickAddNotesVisibility(true);
+
+  quickAddNotesToggleBtn?.addEventListener("click", () => {
+    applyQuickAddNotesVisibility(!quickAddNotesVisible);
+  });
+
+  const quickAddCategoryManager = new CategoryManager(
+    quickAddCategoryInput,
+    quickAddCategoryDropdown,
+    null,
+  );
+
   const modalCategoryManager = new CategoryManager(
     modalCategoryInput,
     modalCategoryDropdown,
     null,
   );
-  modalCategoryManager.loadCategories(studyItems);
 
-  async function refreshStudyItems({ refreshCategories = true } = {}) {
+  async function refreshCategories() {
     try {
-      studyItems = await loadStudyItems();
+      const categories = await loadCategories({ mode: "studying" });
+      quickAddCategoryManager.setCategories(categories);
+      modalCategoryManager.setCategories(categories);
+    } catch (error) {
+      console.error("Failed to load categories:", error);
+    }
+  }
+
+  async function refreshStudyItems({
+    refreshCategories: shouldRefresh = true,
+  } = {}) {
+    try {
+      const data = await loadStudyItems({ mode: "studying" });
+      studyItems = data.map((item) => StudyItem.fromJSON(item));
     } catch (error) {
       console.error("Failed to load study items:", error);
       studyItems = [];
     }
 
-    if (refreshCategories) {
-      modalCategoryManager.loadCategories(studyItems);
+    if (shouldRefresh) {
+      await refreshCategories();
     }
 
     renderList();
@@ -52,7 +105,41 @@ export function createStudyController() {
   // Initial load
   void refreshStudyItems();
 
-  // Handler functions
+  addStudyBtn?.addEventListener("click", async () => {
+    const prompt = quickAddInput.value.trim();
+    const notes = quickAddNotesInput.value.trim();
+    const category = quickAddCategoryInput.value.trim();
+
+    if (!prompt) {
+      quickAddInput?.focus();
+      return;
+    }
+
+    await handleCreateQuickAdd({ prompt, notes, category });
+
+    if (quickAddInput) quickAddInput.value = "";
+    if (quickAddNotesInput) quickAddNotesInput.value = "";
+    if (quickAddCategoryInput) quickAddCategoryInput.value = "";
+    applyQuickAddNotesVisibility(true);
+  });
+
+  async function handleCreateQuickAdd({ prompt, notes, category }) {
+    try {
+      await createStudyItem({
+        prompt,
+        notes: notes || "",
+        category: category || "",
+        is_priming: false,
+        is_studying: true,
+        is_reviewing: false,
+      });
+      await refreshStudyItems({ refreshCategories: true });
+    } catch (error) {
+      console.error("Failed to create study item:", error);
+      alert("Failed to create study item.");
+    }
+  }
+
   const handleToggleArchived = () => {
     showArchived = !showArchived;
     renderList();
@@ -64,14 +151,11 @@ export function createStudyController() {
     StudyView.openForCreate();
   };
 
-  // Create header dropdown menu
   const getArchivedLabel = () =>
     showArchived ? "Hide Archived" : "Show Archived";
 
   const updateHeaderMenu = () => {
-    if (headerMenu) {
-      headerMenu.dispose();
-    }
+    if (headerMenu) headerMenu.dispose();
 
     const menuItems = [
       { label: "New Study Item", onSelect: handleCreateNew },
@@ -94,18 +178,21 @@ export function createStudyController() {
   async function handleSave() {
     const data = StudyView.readFormData();
 
-    if (!data.title) {
+    if (!data.prompt) {
       alert("Please enter a title for this study item");
       return;
     }
 
+    const combinedNotes = [data.description, data.notes]
+      .filter(Boolean)
+      .join("\n\n");
+
     if (editingItemId) {
       try {
         await updateStudyItem(editingItemId, {
-          title: data.title,
+          prompt: data.prompt,
           category: data.category,
-          description: data.description,
-          notes: data.notes,
+          notes: combinedNotes,
         });
         editingItemId = null;
         await refreshStudyItems({ refreshCategories: true });
@@ -115,15 +202,15 @@ export function createStudyController() {
         return;
       }
     } else {
-      const item = new StudyItem({
-        title: data.title,
-        category: data.category,
-        description: data.description,
-        notes: data.notes,
-      });
-
       try {
-        await createStudyItem(item.toJSON());
+        await createStudyItem({
+          prompt: data.prompt,
+          category: data.category,
+          notes: combinedNotes,
+          is_priming: false,
+          is_studying: true,
+          is_reviewing: false,
+        });
         await refreshStudyItems({ refreshCategories: true });
       } catch (error) {
         console.error("Failed to create study item:", error);
@@ -141,60 +228,20 @@ export function createStudyController() {
   }
 
   async function handleLogStudy(item) {
-    const itemIndex = studyItems.findIndex((s) => s.id === item.id);
-    if (itemIndex === -1) return;
-
     try {
-      await logStudyItem(item.id);
+      const updated = await logInteraction(item.id);
+      SoundManager.play("studyLogged");
+
+      const index = studyItems.findIndex((i) => i.id === item.id);
+      if (index !== -1) {
+        studyItems[index] = StudyItem.fromJSON(updated);
+      }
+
+      queueMicrotask(() => renderList());
     } catch (error) {
       console.error("Failed to log study:", error);
       alert("Failed to log study. Please try again.");
-      return;
     }
-
-    // Update local state
-    studyItems[itemIndex].logStudy();
-
-    // Play the sound
-    SoundManager.play("studyLogged");
-
-    // Add green border to the study item container immediately
-    const studyItemContainer = document.querySelector(
-      `.study-item[data-id="${item.id}"]`,
-    );
-    if (studyItemContainer) {
-      studyItemContainer.classList.add("study-item--logged");
-    }
-
-    // Show brief confirmation on button
-    const btn = byId(`log-study-${item.id}`);
-    if (btn) {
-      const originalText = btn.textContent;
-      btn.textContent = "Logged! ✓";
-      btn.disabled = true;
-
-      setTimeout(() => {
-        btn.textContent = originalText;
-        btn.disabled = false;
-      }, 1000);
-    }
-
-    // Wait 1 second before re-rendering to move item and update stats
-    setTimeout(() => {
-      renderList();
-
-      // Re-apply green border after render (item may have moved)
-      const newStudyItemContainer = document.querySelector(
-        `.study-item[data-id="${item.id}"]`,
-      );
-      if (newStudyItemContainer) {
-        newStudyItemContainer.classList.add("study-item--logged");
-
-        setTimeout(() => {
-          newStudyItemContainer.classList.remove("study-item--logged");
-        }, 1000);
-      }
-    }, 1000);
   }
 
   function handleEdit(item) {
@@ -203,7 +250,7 @@ export function createStudyController() {
   }
 
   async function handleDelete(item) {
-    if (!confirm(`Delete "${item.title}"?`)) return;
+    if (!confirm(`Delete "${item.prompt}"?`)) return;
     try {
       await deleteStudyItem(item.id);
       await refreshStudyItems({ refreshCategories: true });
@@ -216,13 +263,13 @@ export function createStudyController() {
   async function handleArchive(item) {
     if (
       !confirm(
-        `Archive "${item.title}"? You can restore it later from archived items.`,
+        `Archive "${item.prompt}"? You can restore it later from archived items.`,
       )
     )
       return;
 
     try {
-      await updateStudyItem(item.id, { archived: true });
+      await updateStudyItem(item.id, { is_archived: true });
       await refreshStudyItems({ refreshCategories: true });
     } catch (error) {
       console.error("Failed to archive study item:", error);
@@ -232,7 +279,7 @@ export function createStudyController() {
 
   async function handleRestore(item) {
     try {
-      await updateStudyItem(item.id, { archived: false });
+      await updateStudyItem(item.id, { is_archived: false });
       await refreshStudyItems({ refreshCategories: true });
     } catch (error) {
       console.error("Failed to restore study item:", error);
@@ -241,28 +288,34 @@ export function createStudyController() {
   }
 
   async function handleConvertToReview(item) {
-    if (
-      !confirm(
-        `Convert "${item.title}" to a review item? The study item will be archived.`,
-      )
-    )
-      return;
+    if (!confirm(`Convert "${item.prompt}" to review mode?`)) return;
 
-    const reviewItem = await convertStudyToReview(item.id);
-    if (reviewItem) {
+    try {
+      await transitionToReviewing(item.id);
       await refreshStudyItems({ refreshCategories: true });
-    } else {
+    } catch (error) {
+      console.error("Failed to convert study item:", error);
+      alert("Failed to convert study item. Please try again.");
+    }
+  }
+
+  async function handleConvertToPriming(item) {
+    if (!confirm(`Convert "${item.prompt}" to priming mode?`)) return;
+
+    try {
+      await transitionToPriming(item.id);
+      await refreshStudyItems({ refreshCategories: true });
+    } catch (error) {
+      console.error("Failed to convert study item:", error);
       alert("Failed to convert study item. Please try again.");
     }
   }
 
   async function handleNotesUpdate(item, newNotes) {
-    // Only update if notes actually changed
     if (item.notes === newNotes) return;
 
     try {
       await updateStudyItem(item.id, { notes: newNotes });
-      // Update local state without re-rendering
       const itemIndex = studyItems.findIndex((s) => s.id === item.id);
       if (itemIndex !== -1) {
         studyItems[itemIndex].notes = newNotes;
@@ -273,10 +326,9 @@ export function createStudyController() {
   }
 
   function renderList() {
-    // Filter items based on showArchived toggle
     const itemsToShow = showArchived
-      ? studyItems.filter((item) => item.archived)
-      : studyItems.filter((item) => !item.archived);
+      ? studyItems.filter((item) => item.isArchived)
+      : studyItems.filter((item) => !item.isArchived);
 
     StudyView.renderList(
       itemsToShow,
@@ -286,13 +338,13 @@ export function createStudyController() {
         onDelete: handleDelete,
         onArchive: showArchived ? handleRestore : handleArchive,
         onConvertToReview: handleConvertToReview,
+        onConvertToPriming: handleConvertToPriming,
         onNotesUpdate: handleNotesUpdate,
       },
       showArchived,
     );
   }
 
-  // Return API for external use
   return {
     getStudyItems: () => [...studyItems],
     refresh: renderList,

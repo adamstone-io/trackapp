@@ -147,13 +147,17 @@
   font-size: 0.813rem;
   font-weight: 500;
   flex-shrink: 0;
-  transition: box-shadow 0.2s ease, border-color 0.2s ease;
+  transition:
+    box-shadow 0.2s ease,
+    border-color 0.2s ease;
 }
 
 .study-item__notes-btn--active {
   border-color: var(--color-success);
   box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.3);
-  transition: border-color 0.1s ease, box-shadow 0.1s ease;
+  transition:
+    border-color 0.1s ease,
+    box-shadow 0.1s ease;
 }
 
 .study-item__cipher-btn {
@@ -162,13 +166,17 @@
   font-size: 0.813rem;
   font-weight: 500;
   flex-shrink: 0;
-  transition: box-shadow 0.2s ease, border-color 0.2s ease;
+  transition:
+    box-shadow 0.2s ease,
+    border-color 0.2s ease;
 }
 
 .study-item__cipher-btn--active {
   border-color: var(--color-success);
   box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.3);
-  transition: border-color 0.1s ease, box-shadow 0.1s ease;
+  transition:
+    border-color 0.1s ease,
+    box-shadow 0.1s ease;
 }
 
 /* Cipher section */
@@ -258,6 +266,50 @@
   margin: 0;
 }
 
+.study-header__quick-add {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  width: 100%;
+}
+
+.study-header__quick-add textarea {
+  width: 100%;
+  padding: 0.625rem 0.875rem;
+  font-size: 0.938rem;
+  border: 2px solid var(--color-border, #e0e0e0);
+  border-radius: 4px;
+  background: var(--color-bg, #ffffff);
+  color: var(--color-text, #333);
+  font-family: inherit;
+  transition: border-color 0.2s ease;
+  resize: none;
+  overflow: hidden;
+  max-height: none;
+  min-height: 2.5rem;
+  line-height: 1.4;
+}
+
+.study-header__quick-add textarea:focus {
+  outline: none;
+  border-color: var(--color-primary, #2563eb);
+}
+
+.study-header__quick-add textarea::placeholder {
+  color: var(--color-text-muted, #999);
+}
+
+.study-header__bottom-row {
+  display: flex;
+  gap: 0.75rem;
+  align-items: flex-start;
+  width: 100%;
+}
+
+.study-header__bottom-row button {
+  margin-left: auto;
+}
+
 /* Modal form */
 .study-form {
   display: flex;
@@ -321,4 +373,22 @@
   .study-header__top {
     width: 100%;
   }
+}
+
+.study-item__image-row {
+  margin-top: 8px;
+}
+
+.study-item__image {
+  display: block;
+  max-width: 100%;
+  height: auto;
+  margin: 0 auto;
+  border-radius: 8px;
+}
+
+.study-item__title {
+  overflow-wrap: anywhere;
+  word-break: break-word;
+  max-width: 100%;
 }

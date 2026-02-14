@@ -47,13 +47,11 @@
 .icon-btn {
   background: none;
   border: none;
-  padding: 0.25rem;
   border-radius: var(--radius-sm);
   cursor: pointer;
-
   display: inline-flex;
-  align-items: center;
-  justify-content: center;
+  /* align-items: center; */
+  /* justify-content: center; */
 
   color: #9ca3af; /* gray-400 default */
 }

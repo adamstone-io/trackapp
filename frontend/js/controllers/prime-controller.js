@@ -290,7 +290,9 @@ export function createPrimeController() {
   async function handleConvertToStudy(item) {
     try {
       await transitionToStudying(item.id);
-      await refreshPrimeItems();
+
+      studyItems = studyItems.filter((i) => i.id !== item.id);
+      renderList({ showSentinel: hasNextPage });
     } catch (error) {
       console.error("Failed to transition to study:", error);
       alert("Failed to convert to study.");

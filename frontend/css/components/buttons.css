@@ -72,10 +72,9 @@
   background: transparent;
   border: none;
   cursor: pointer;
-  padding: var(--spacing-sm);
+  margin-top: 0.5rem;
   border-radius: var(--radius-sm);
   display: inline-flex;
-  align-items: center;
   justify-content: center;
   transition: background-color 0.15s ease;
   min-width: var(--touch-target-min);

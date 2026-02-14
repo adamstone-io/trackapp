@@ -35,7 +35,6 @@
   padding: 1rem 1.25rem;
   display: flex;
   flex-direction: column;
-  gap: 1rem;
   transition: background-color 0.2s ease;
   width: 100%;
   box-sizing: border-box;
@@ -384,7 +383,7 @@
 .icon-btn {
   background: transparent;
   border: none;
-  padding: 0.5rem;
+  /* padding: 0.5rem; */
   cursor: pointer;
   color: var(--color-text-muted);
   transition: color 0.2s ease;
@@ -465,6 +464,7 @@
   align-items: center;
   width: 100%;
   gap: 1.5rem;
+  margin-top: 1rem;
 }
 
 .prime-item__header {
@@ -476,7 +476,6 @@
 }
 
 .prime-item__image-row {
-  margin-top: 8px;
 }
 
 .prime-item__image {

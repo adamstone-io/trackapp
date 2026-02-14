@@ -340,7 +340,6 @@
 .icon-btn {
   background: transparent;
   border: none;
-  padding: 0.5rem;
   cursor: pointer;
   color: var(--color-text-muted);
   transition: color 0.2s ease;

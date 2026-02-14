@@ -19,4 +19,13 @@ export const studyIds = {
   // Modal
   studyModal: "study-modal",
   studyModalTitle: "study-modal-title",
+
+  // Quick add
+  quickAddStudyInput: "quick-add-study-input",
+  quickAddNotesWrap: "quick-add-notes-wrap",
+  quickAddNotesInput: "quick-add-notes-input",
+  quickAddNotesToggleBtn: "quick-add-notes-toggle-btn",
+  quickAddCategoryInput: "quick-add-category-input",
+  quickAddCategoryDropdown: "category-dropdown",
+  addStudyBtn: "add-study-btn",
 };
