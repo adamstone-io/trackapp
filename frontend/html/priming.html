@@ -108,6 +108,14 @@
               maxlength="2000"
               rows="1"
             ></textarea>
+            <div id="quick-add-notes-wrap" class="quick-add-notes hidden">
+              <textarea
+                id="quick-add-notes-input"
+                placeholder="Notes (optional)"
+                maxlength="500"
+                rows="2"
+              ></textarea>
+            </div>
             <div
               id="quick-add-image-preview"
               class="quick-add-image-preview hidden"
@@ -129,7 +137,13 @@
                     class="category-dropdown hidden"
                   ></div>
                 </div>
-
+                <button
+                  id="quick-add-notes-toggle-btn"
+                  class="btn btn--outline"
+                  type="button"
+                >
+                  Add Notes
+                </button>
                 <button
                   id="quick-add-image-btn"
                   class="btn btn--outline"

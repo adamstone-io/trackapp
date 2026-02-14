@@ -528,3 +528,15 @@
   display: block;
   margin: 0 auto;
 }
+
+.quick-add-notes {
+  width: 100%;
+}
+
+#quick-add-notes-toggle-btn {
+  flex: 0 0 auto;
+  width: auto;
+  min-width: unset;
+  padding: 0.5rem 0.6rem;
+  font-size: 0.95rem;
+}

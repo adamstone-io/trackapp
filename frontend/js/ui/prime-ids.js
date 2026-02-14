@@ -42,4 +42,8 @@ export const primeIds = {
   quickAddImageInput: "quick-add-image-input",
   quickAddImagePreview: "quick-add-image-preview",
   quickAddImagePreviewImg: "quick-add-image-preview-img",
+
+  quickAddNotesToggleBtn: "quick-add-notes-toggle-btn",
+  quickAddNotesWrap: "quick-add-notes-wrap",
+  quickAddNotesInput: "quick-add-notes-input",
 };

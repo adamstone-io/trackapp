@@ -28,6 +28,7 @@ export function createPrimeController() {
   let showArchived = false;
   let currentCategoryFilter = "";
   let currentSearchQuery = "";
+  const QUICK_ADD_NOTES_DEFAULT_KEY = "primeQuickAddNotesDefault";
 
   const addBtn = byId(primeIds.addPrimeBtn);
   const quickAddInput = byId(primeIds.quickAddPrimeInput);
@@ -40,6 +41,34 @@ export function createPrimeController() {
   const quickAddCategoryDropdown = byId(primeIds.categoryDropdown);
   const modalCategoryInput = byId(primeIds.primeCategory);
   const modalCategoryDropdown = byId(primeIds.modalCategoryDropdown);
+  const quickAddNotesToggleBtn = byId(primeIds.quickAddNotesToggleBtn);
+  const quickAddNotesWrap = byId(primeIds.quickAddNotesWrap);
+  const quickAddNotesInput = byId(primeIds.quickAddNotesInput);
+
+  let quickAddNotesVisible = false;
+
+  function getQuickAddNotesDefault() {
+    return localStorage.getItem(QUICK_ADD_NOTES_DEFAULT_KEY) === "on";
+  }
+
+  function setQuickAddNotesDefault(value) {
+    localStorage.setItem(QUICK_ADD_NOTES_DEFAULT_KEY, value ? "on" : "off");
+  }
+
+  function applyQuickAddNotesVisibility(isVisible) {
+    quickAddNotesVisible = isVisible;
+    if (quickAddNotesWrap) {
+      quickAddNotesWrap.classList.toggle("hidden", !isVisible);
+    }
+    if (quickAddNotesToggleBtn) {
+      quickAddNotesToggleBtn.textContent = isVisible
+        ? "Hide Notes"
+        : "Add Notes";
+    }
+    if (!isVisible && quickAddNotesInput) {
+      quickAddNotesInput.value = "";
+    }
+  }
 
   const quickAddCategoryManager = new CategoryManager(
     quickAddCategoryInput,
@@ -56,7 +85,13 @@ export function createPrimeController() {
   let quickAddImageFile = null;
 
   bindAutoGrow(quickAddInput);
+  bindAutoGrow(quickAddNotesInput);
+  applyQuickAddNotesVisibility(getQuickAddNotesDefault());
   updateButtonText();
+
+  quickAddNotesToggleBtn?.addEventListener("click", () => {
+    applyQuickAddNotesVisibility(!quickAddNotesVisible);
+  });
 
   quickAddImageBtn.addEventListener("click", () => {
     quickAddImageInput.click();
@@ -86,7 +121,7 @@ export function createPrimeController() {
     await handleCreateNew({
       prompt: prompt || "",
       category: quickAddCategoryInput.value.trim(),
-      notes: "",
+      notes: quickAddNotesInput?.value.trim() || "",
       imageFile: quickAddImageFile,
     });
 
@@ -97,6 +132,8 @@ export function createPrimeController() {
     quickAddImagePreviewImg.src = "";
     quickAddImagePreview.classList.add("hidden");
     quickAddImageBtn.textContent = "Add Image";
+    quickAddNotesInput.value = "";
+    applyQuickAddNotesVisibility(getQuickAddNotesDefault());
   });
 
   function updateButtonText() {
@@ -178,6 +215,7 @@ export function createPrimeController() {
       SoundManager.play("primeLogged");
 
       const index = studyItems.findIndex((i) => i.id === item.id);
+      renderList();
       if (index !== -1) {
         studyItems[index] = StudyItem.fromJSON(updated);
         console.log("test");
@@ -275,6 +313,17 @@ export function createPrimeController() {
 
     headerMenu = createDropdownMenu({
       items: [
+        {
+          label: getQuickAddNotesDefault()
+            ? "Disable Notes by Default"
+            : "Enable Notes by Default",
+          onSelect: () => {
+            const next = !getQuickAddNotesDefault();
+            setQuickAddNotesDefault(next);
+            applyQuickAddNotesVisibility(next);
+            updateHeaderMenu();
+          },
+        },
         {
           label: showArchived ? "Hide Archived" : "Show Archived",
           onSelect: () => {
