@@ -5,16 +5,33 @@ const BASE = `${API_BASE}/study-items`;
 
 // ---------- LOAD ----------
 
-export async function loadStudyItems({ mode, category, search } = {}) {
+export async function loadStudyItems(options = {}) {
+  const { items } = await loadStudyItemsPage(options);
+  return items;
+}
+
+export async function loadStudyItemsPage({
+  mode,
+  category,
+  search,
+  page,
+} = {}) {
   const params = new URLSearchParams();
   if (mode) params.set("mode", mode);
   if (category) params.set("category", category);
   if (search) params.set("search", search);
+  if (page) params.set("page", page);
 
   const query = params.toString() ? `?${params.toString()}` : "";
   const data = await http(`${BASE}/${query}`);
 
-  return Array.isArray(data) ? data : data.results || [];
+  const items = Array.isArray(data) ? data : data.results || [];
+  return {
+    items,
+    next: data.next ?? null,
+    previous: data.previous ?? null,
+    count: data.count ?? items.length,
+  };
 }
 
 // ---------- CREATE ----------

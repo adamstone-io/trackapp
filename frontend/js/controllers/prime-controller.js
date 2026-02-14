@@ -8,8 +8,10 @@ import { CategoryManager } from "../utils/category-manager.js";
 import { SoundManager } from "../utils/sound-manager.js";
 import { isMobile } from "../utils/viewport.js";
 import { bindAutoGrow } from "../utils/textarea.js";
+
 import {
   loadStudyItems,
+  loadStudyItemsPage,
   createStudyItem,
   updateStudyItem,
   deleteStudyItem,
@@ -28,6 +30,29 @@ export function createPrimeController() {
   let showArchived = false;
   let currentCategoryFilter = "";
   let currentSearchQuery = "";
+  let currentPage = 1;
+  let hasNextPage = true;
+  let isLoadingPage = false;
+  let observer = null;
+  let observedSentinel = null;
+
+  function getActiveQuery() {
+    return {
+      mode: "priming",
+      category: currentCategoryFilter || undefined,
+      search: currentSearchQuery || undefined,
+    };
+  }
+
+  function resetAndLoad() {
+    currentPage = 1;
+    hasNextPage = true;
+    studyItems = [];
+    PrimeView.resetRenderState();
+    observer?.disconnect();
+    observedSentinel = null;
+    void loadPrimePage(1);
+  }
   const QUICK_ADD_NOTES_DEFAULT_KEY = "primeQuickAddNotesDefault";
 
   const addBtn = byId(primeIds.addPrimeBtn);
@@ -148,27 +173,64 @@ export function createPrimeController() {
 
   // ---------- LOAD ----------
 
+  async function loadPrimePage(
+    page,
+    { refreshCategories: shouldRefresh = true } = {},
+  ) {
+    if (isLoadingPage) return;
+    isLoadingPage = true;
+
+    try {
+      const { items, next } = await loadStudyItemsPage({
+        ...getActiveQuery(),
+        page,
+      });
+
+      const mapped = items.map((item) => StudyItem.fromJSON(item));
+
+      if (page === 1) {
+        studyItems = mapped;
+        PrimeView.resetRenderState();
+      } else {
+        studyItems = [...studyItems, ...mapped];
+      }
+
+      hasNextPage = Boolean(next);
+      currentPage = page;
+
+      if (shouldRefresh && page === 1) {
+        await refreshCategories();
+      }
+
+      renderList({ showSentinel: hasNextPage });
+      attachSentinelObserver();
+    } finally {
+      isLoadingPage = false;
+    }
+  }
+
+  function attachSentinelObserver() {
+    const sentinel = document.getElementById(primeIds.primeListSentinel);
+    if (!sentinel || observedSentinel === sentinel) return;
+
+    observer?.disconnect();
+    observer = new IntersectionObserver(
+      (entries) => {
+        if (entries.some((e) => e.isIntersecting) && hasNextPage) {
+          loadPrimePage(currentPage + 1, { refreshCategories: false });
+        }
+      },
+      { rootMargin: "200px 0px" },
+    );
+
+    observer.observe(sentinel);
+    observedSentinel = sentinel;
+  }
+
   async function refreshPrimeItems({
     refreshCategories: shouldRefresh = true,
   } = {}) {
-    try {
-      const data = await loadStudyItems({
-        mode: "priming",
-        category: currentCategoryFilter || undefined,
-        search: currentSearchQuery || undefined,
-      });
-
-      studyItems = data.map((item) => StudyItem.fromJSON(item));
-    } catch (error) {
-      console.error("Failed to load prime items:", error);
-      studyItems = [];
-    }
-
-    if (shouldRefresh) {
-      await refreshCategories();
-    }
-
-    renderList();
+    await loadPrimePage(1, { refreshCategories: shouldRefresh });
   }
 
   async function refreshCategories() {
@@ -182,7 +244,7 @@ export function createPrimeController() {
   }
 
   // Initial load
-  void refreshPrimeItems();
+  void loadPrimePage(1);
 
   // ---------- CREATE ----------
 
@@ -280,7 +342,7 @@ export function createPrimeController() {
 
   // ---------- RENDER ----------
 
-  function renderList() {
+  function renderList({ showSentinel = false } = {}) {
     const visibleItems = showArchived
       ? studyItems.filter((i) => i.isArchived)
       : studyItems.filter((i) => !i.isArchived);
@@ -296,6 +358,7 @@ export function createPrimeController() {
         onConvertToReview: handleConvertToReview,
       },
       showArchived,
+      { showSentinel },
     );
   }
 
@@ -341,6 +404,7 @@ export function createPrimeController() {
     refresh: refreshPrimeItems,
     dispose() {
       headerMenu?.dispose();
+      observer?.disconnect();
     },
   };
 }
