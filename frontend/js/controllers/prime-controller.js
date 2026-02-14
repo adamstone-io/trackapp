@@ -37,6 +37,21 @@ export function createPrimeController() {
   const quickAddImageInput = byId(primeIds.quickAddImageInput);
   const quickAddImagePreview = byId(primeIds.quickAddImagePreview);
   const quickAddImagePreviewImg = byId(primeIds.quickAddImagePreviewImg);
+  const quickAddCategoryDropdown = byId(primeIds.categoryDropdown);
+  const modalCategoryInput = byId(primeIds.primeCategory);
+  const modalCategoryDropdown = byId(primeIds.modalCategoryDropdown);
+
+  const quickAddCategoryManager = new CategoryManager(
+    quickAddCategoryInput,
+    quickAddCategoryDropdown,
+    null,
+  );
+
+  const modalCategoryManager = new CategoryManager(
+    modalCategoryInput,
+    modalCategoryDropdown,
+    null,
+  );
 
   let quickAddImageFile = null;
 
@@ -96,7 +111,9 @@ export function createPrimeController() {
 
   // ---------- LOAD ----------
 
-  async function refreshPrimeItems() {
+  async function refreshPrimeItems({
+    refreshCategories: shouldRefresh = true,
+  } = {}) {
     try {
       const data = await loadStudyItems({
         mode: "priming",
@@ -110,7 +127,21 @@ export function createPrimeController() {
       studyItems = [];
     }
 
+    if (shouldRefresh) {
+      await refreshCategories();
+    }
+
     renderList();
+  }
+
+  async function refreshCategories() {
+    try {
+      const categories = await loadCategories({ mode: "priming" });
+      quickAddCategoryManager.setCategories(categories);
+      modalCategoryManager.setCategories(categories);
+    } catch (error) {
+      console.error("Failed to load categories:", error);
+    }
   }
 
   // Initial load
