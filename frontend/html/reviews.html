@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
@@ -40,9 +40,23 @@
             >
           </li>
           <li class="nav__item nav__user-menu" id="nav-user-menu">
-            <button class="nav__link nav__user-btn" id="nav-user-btn" type="button">
+            <button
+              class="nav__link nav__user-btn"
+              id="nav-user-btn"
+              type="button"
+            >
               <span id="nav-user-name">&nbsp;</span>
-              <svg class="nav__user-arrow" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <svg
+                class="nav__user-arrow"
+                width="16"
+                height="16"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              >
                 <polyline points="6 9 12 15 18 9"></polyline>
               </svg>
             </button>
@@ -50,7 +64,7 @@
         </ul>
       </nav>
       <script>
-        (function() {
+        (function () {
           var u = localStorage.getItem("authUsername");
           if (u) {
             var nameEl = document.getElementById("nav-user-name");
@@ -85,42 +99,6 @@
               </svg>
             </button>
           </div>
-          <div class="review-header__quick-add">
-            <textarea
-              id="quick-add-review-input"
-              placeholder="What do you want to review?"
-              maxlength="500"
-              rows="1"
-            ></textarea>
-            <div class="review-header__bottom-row">
-              <div class="category-input-wrapper">
-                <input
-                  id="quick-add-category-input"
-                  type="text"
-                  placeholder="Category (optional)"
-                  maxlength="50"
-                  autocomplete="off"
-                />
-                <div
-                  id="category-dropdown"
-                  class="category-dropdown hidden"
-                ></div>
-              </div>
-              <button
-                id="add-review-btn"
-                class="btn btn--primary"
-                type="button"
-              >
-                Add
-              </button>
-            </div>
-          </div>
-          <input
-            type="file"
-            id="import-review-file"
-            accept=".txt,.md"
-            style="display: none"
-          />
         </div>
 
         <section>
