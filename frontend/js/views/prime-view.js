@@ -171,7 +171,17 @@ export class PrimeView {
             class="icon-btn"
             type="button"
           >
-            ⋮
+            <svg
+              class="icon"
+              width="16"
+              height="16"
+              viewBox="0 0 16 16"
+              aria-hidden="true"
+            >
+              <circle cx="8" cy="2" r="1.5" />
+              <circle cx="8" cy="8" r="1.5" />
+              <circle cx="8" cy="14" r="1.5" />
+            </svg>
           </button>
         </div>
 

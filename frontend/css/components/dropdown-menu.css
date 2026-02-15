@@ -44,28 +44,6 @@
    Icon Button (Three-dot menu trigger)
 ===================================================== */
 
-.icon-btn {
-  background: none;
-  border: none;
-  border-radius: var(--radius-sm);
-  cursor: pointer;
-  display: inline-flex;
-  /* align-items: center; */
-  /* justify-content: center; */
-
-  color: #9ca3af; /* gray-400 default */
-}
-
-.icon-btn:hover {
-  background: var(--color-bg-secondary);
-  color: #4b5563; /* gray-600 hover */
-}
-
-.icon-btn:focus-visible {
-  outline: 2px solid var(--color-primary);
-  outline-offset: 2px;
-}
-
 /* =====================================================
    Icons
 ===================================================== */
