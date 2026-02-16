@@ -2,6 +2,7 @@ from typing import Any
 from django.db import models
 from django.conf import settings
 from django.utils import timezone
+from datetime import timedelta
 from uuid import uuid4
 import os
 
@@ -124,9 +125,87 @@ class Habit(models.Model):
     is_active = models.BooleanField(default=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
+    
+    streak_count = models.IntegerField(default=0)
+    last_completed_date = models.DateField(null=True, blank=True)
+    last_logged_at = models.DateTimeField(null=True, blank=True)
+
     def __str__(self) -> str:
         return self.name
 
+  
+    def _start_of_week(self, day):
+        return day - timedelta(days=day.weekday())  
+
+    def _apply_resets(self, today, last_logged_date):
+        if last_logged_date != today:
+            self.daily_count = 0
+        if self._start_of_week(last_logged_date) != self._start_of_week(today):
+            self.weekly_count = 0
+        if (last_logged_date.year, last_logged_date.month) != (today.year, today.month):
+            self.monthly_count = 0
+
+    def log_progress(self, amount=1, now=None, user_timezone=None):
+        """
+        Log progress for this habit and update streak.
+        
+        Args:
+            amount: Amount to increment counts by
+            now: Current timestamp (defaults to timezone.now())
+            user_timezone: IANA timezone string (e.g., 'Australia/Brisbane')
+        """
+        if amount <= 0:
+            return False
+
+        now = now or timezone.now()
+        
+        # Convert to user's timezone for date calculations
+        if user_timezone:
+            import zoneinfo
+            try:
+                tz = zoneinfo.ZoneInfo(user_timezone)
+                local_now = now.astimezone(tz)
+                today = local_now.date()
+            except Exception:
+                # Fallback to UTC if timezone is invalid
+                tz = None
+                today = now.date()
+        else:
+            tz = None
+            today = now.date()
+
+        # Apply resets if needed
+        if self.last_logged_at:
+            # Convert last_logged_at to same timezone as 'today'
+            if tz:
+                last_logged_local = self.last_logged_at.astimezone(tz)
+                last_logged_date = last_logged_local.date()
+            else:
+                last_logged_date = self.last_logged_at.date()
+            
+            self._apply_resets(today, last_logged_date)
+
+        if not self.is_active:
+            return False
+
+        # Increment counts
+        self.daily_count += amount
+        self.weekly_count += amount
+        self.monthly_count += amount
+        self.last_logged_at = now  # Store in UTC
+
+        # Update streak if daily target completed
+        if self.daily_target > 0 and self.daily_count >= self.daily_target:
+            if self.last_completed_date != today:
+                # Check if it's consecutive
+                if self.last_completed_date == today - timedelta(days=1):
+                    self.streak_count += 1
+                else:
+                    # Streak broken, restart
+                    self.streak_count = 1
+                self.last_completed_date = today
+
+        return True
 
 
 def study_item_image_path(instance, filename):

@@ -20,10 +20,13 @@ export async function http(url, { method = "GET", headers = {}, body } = {}) {
   return response.json();
 }
 
-export function json(url, { method = "GET", body } = {}) {
+export function json(url, { method = "GET", body, headers = {} } = {}) {
   return http(url, {
     method,
-    headers: { "Content-Type": "application/json" },
+    headers: {
+      "Content-Type": "application/json",
+      ...headers,
+    },
     body: body ? JSON.stringify(body) : undefined,
   });
 }

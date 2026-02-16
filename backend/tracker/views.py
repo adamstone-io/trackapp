@@ -97,6 +97,49 @@ class HabitViewSet(UserOwnedViewSet):
     queryset = Habit.objects.all()
     serializer_class = HabitSerializer
 
+    @action(detail=True, methods=["post"])
+    def log(self, request, pk=None):
+        """
+        Log progress for a habit.
+        
+        Accepts optional 'X-User-Timezone' header with IANA timezone 
+        (e.g., 'Australia/Brisbane') to calculate streaks in user's local time.
+        """
+        habit = self.get_object()
+
+        # Parse amount
+        raw_amount = request.data.get("amount", 1) if request.data else 1
+        try:
+            amount = int(raw_amount)
+        except (TypeError, ValueError):
+            return Response(
+                {"detail": "amount must be an integer"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        if amount <= 0:
+            return Response(
+                {"detail": "amount must be positive"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        # Get user timezone from header
+        user_timezone = request.headers.get('X-User-Timezone', 'UTC')
+        
+        # Log progress with timezone awareness
+        habit.log_progress(amount=amount, user_timezone=user_timezone)
+        habit.save(update_fields=[
+            "daily_count",
+            "weekly_count",
+            "monthly_count",
+            "streak_count",
+            "last_completed_date",
+            "last_logged_at",
+        ])
+
+        serializer = self.get_serializer(habit)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
 
 class StudyItemViewSet(UserOwnedViewSet):
     queryset = StudyItem.objects.all().order_by("last_studied_at", "created_at")

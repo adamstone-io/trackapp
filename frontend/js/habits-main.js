@@ -2,7 +2,7 @@
 import { initNavigation } from "./controllers/nav-controller.js";
 import { HabitController } from "./controllers/habit-controller.js";
 import { SoundManager } from "./utils/sound-manager.js";
-import { ensureAuthenticated } from "./data/storage.js";
+import { ensureAuthenticated } from "./api/authApi.js";
 
 document.addEventListener("DOMContentLoaded", async () => {
   if (!(await ensureAuthenticated())) return;
