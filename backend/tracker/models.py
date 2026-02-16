@@ -172,8 +172,10 @@ class StudyItem(models.Model):
     first_reviewed_at = models.DateTimeField(null=True, blank=True)
     last_reviewed_at = models.DateTimeField(null=True, blank=True, db_index=True)
 
-    interaction_timestamps = models.JSONField(default=list, blank=True)
-
+    prime_timestamps = models.JSONField(default=list, blank=True)
+    study_timestamps = models.JSONField(default=list, blank=True)
+    review_timestamps = models.JSONField(default=list, blank=True)
+    
     prime_count = models.IntegerField(default=0)
     study_count = models.IntegerField(default=0)
     review_count = models.IntegerField(default=0)
@@ -243,38 +245,6 @@ class StudyItem(models.Model):
         if not self.first_reviewed_at:
             self.first_reviewed_at = timezone.now()
 
-    def log_interaction(self):
-
-        timestamp_ms = int(timezone.now().timestamp() * 1000)
-
-        interaction_timestamps = list(self.interaction_timestamps or [])
-        interaction_timestamps.append(timestamp_ms)
-        self.interaction_timestamps = interaction_timestamps
-
-        if self.is_priming:
-            self.prime_count += 1
-        elif self.is_studying:
-            self.study_count += 1
-        elif self.is_reviewing:
-            self.review_count += 1
-
-        timestamp_dt = timezone.datetime.fromtimestamp(timestamp_ms / 1000, tz=timezone.UTC)        
-
-        if self.is_priming:
-            self.last_primed_at = timezone.now()
-            if self.first_primed_at is None:
-                self.first_primed_at = timezone.now()
-        elif self.is_studying:
-            self.last_studied_at = timezone.now()
-            if self.first_studied_at is None:
-                self.first_studied_at = timezone.now()
-        elif self.is_reviewing:
-            self.last_reviewed_at = timezone.now()
-            if self.first_reviewed_at is None:
-                self.first_reviewed_at = timezone.now()
-
-
-        return timestamp_ms
 
     def clean(self):
         from django.core.exceptions import ValidationError
@@ -308,4 +278,28 @@ class StudyItem(models.Model):
         if self.image and os.path.exists(self.image.path):
             os.remove(self.image.path)
 
+    def log_interaction(self):
+        timestamp_ms = int(timezone.now().timestamp() * 1000)
 
+        if self.is_priming:
+            self.prime_count += 1
+            self.prime_timestamps = [*self.prime_timestamps, timestamp_ms]
+            self.last_primed_at = timezone.now()
+            if self.first_primed_at is None:
+                self.first_primed_at = timezone.now()
+
+        elif self.is_studying:
+            self.study_count += 1
+            self.study_timestamps = [*self.study_timestamps, timestamp_ms]
+            self.last_studied_at = timezone.now()
+            if self.first_studied_at is None:
+                self.first_studied_at = timezone.now()
+
+        elif self.is_reviewing:
+            self.review_count += 1
+            self.review_timestamps = [*self.review_timestamps, timestamp_ms]
+            self.last_reviewed_at = timezone.now()
+            if self.first_reviewed_at is None:
+                self.first_reviewed_at = timezone.now()
+
+        return timestamp_ms

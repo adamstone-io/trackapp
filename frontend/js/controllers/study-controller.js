@@ -288,8 +288,6 @@ export function createStudyController() {
   }
 
   async function handleConvertToReview(item) {
-    if (!confirm(`Convert "${item.prompt}" to review mode?`)) return;
-
     try {
       await transitionToReviewing(item.id);
       await refreshStudyItems({ refreshCategories: true });
@@ -300,8 +298,6 @@ export function createStudyController() {
   }
 
   async function handleConvertToPriming(item) {
-    if (!confirm(`Convert "${item.prompt}" to priming mode?`)) return;
-
     try {
       await transitionToPriming(item.id);
       await refreshStudyItems({ refreshCategories: true });

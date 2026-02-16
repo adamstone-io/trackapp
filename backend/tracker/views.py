@@ -153,7 +153,8 @@ class StudyItemViewSet(UserOwnedViewSet):
         item = self.get_object()
         item.log_interaction()
         item.save(update_fields=[
-            'interaction_timestamps', 'prime_count', 'study_count', 'review_count',
+            'prime_count', 'study_count', 'review_count',
+            'prime_timestamps', 'study_timestamps', 'review_timestamps',
             'last_primed_at', 'last_studied_at', 'last_reviewed_at',
             'first_primed_at', 'first_studied_at', 'first_reviewed_at',
         ])

@@ -19,7 +19,6 @@ export class StudyItem {
     isStudying = false,
     isReviewing = false,
     mode = "none",
-    interactionTimestamps = [],
     primeCount = 0,
     studyCount = 0,
     reviewCount = 0,
@@ -29,7 +28,6 @@ export class StudyItem {
     lastStudiedAt = null,
     firstReviewedAt = null,
     lastReviewedAt = null,
-    totalInteractions = 0,
     todayCount = 0,
     weekCount = 0,
     monthCount = 0,
@@ -48,8 +46,6 @@ export class StudyItem {
     this.isReviewing = isReviewing;
     this.mode = mode;
 
-    this.interactionTimestamps = interactionTimestamps;
-
     this.primeCount = primeCount;
     this.studyCount = studyCount;
     this.reviewCount = reviewCount;
@@ -61,7 +57,6 @@ export class StudyItem {
     this.firstReviewedAt = firstReviewedAt;
     this.lastReviewedAt = lastReviewedAt;
 
-    this.totalInteractions = totalInteractions;
     this.todayCount = todayCount;
     this.weekCount = weekCount;
     this.monthCount = monthCount;

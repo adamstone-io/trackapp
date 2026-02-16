@@ -139,7 +139,7 @@ export class PrimeView {
   }
 
   static renderPrimeItem(item, showArchived = false) {
-    const totalCount = item.getTotalCount();
+    const totalCount = item.getCurrentModeCount();
     const todayCount = item.getTodayCount();
     const weekCount = item.getWeekCount();
     const monthCount = item.getMonthCount();

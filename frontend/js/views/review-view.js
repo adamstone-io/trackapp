@@ -100,7 +100,7 @@ export class ReviewView {
   }
 
   static renderReviewItem(item, showArchived = false) {
-    const totalCount = item.getTotalCount();
+    const totalCount = item.getCurrentModeCount();
     const todayCount = item.getTodayCount();
     const weekCount = item.getWeekCount();
     const monthCount = item.getMonthCount();

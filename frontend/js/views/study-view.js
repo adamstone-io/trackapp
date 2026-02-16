@@ -143,7 +143,7 @@ export class StudyView {
   }
 
   static renderStudyItem(item, showArchived = false) {
-    const totalCount = item.getTotalCount();
+    const totalCount = item.getCurrentModeCount();
     const weekCount = item.getWeekCount();
     const monthCount = item.getMonthCount();
     const firstStudiedText = item.getFirstStudiedTimeAgo();
