@@ -9,6 +9,7 @@ from .views import (
     MomentViewSet,
     ProjectViewSet,
     RegisterView,
+    StatsView,
     StudyItemViewSet,
     TaskViewSet,
     TimeEntryViewSet,
@@ -30,4 +31,5 @@ urlpatterns = [
     path("api/auth/token/", CustomTokenObtainPairView.as_view(), name="token-obtain"),
     path("api/auth/token/refresh/", TokenRefreshView.as_view(), name="token-refresh"),
     path("api/today-entries/", TodayEntriesView.as_view(), name="today-entries"),
+    path("api/stats/", StatsView.as_view(), name="stats"),
 ]

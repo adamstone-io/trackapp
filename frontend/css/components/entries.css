@@ -62,6 +62,22 @@
   }
 }
 
+/* Stats Period Filter */
+.stats-period-filter {
+  display: flex;
+  gap: var(--spacing-sm);
+  margin-bottom: var(--spacing-lg);
+  flex-wrap: wrap;
+}
+
+@media (max-width: 640px) {
+  .stats-period-filter {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: var(--spacing-xs);
+  }
+}
+
 .stats-actions {
   display: flex;
   justify-content: flex-end;

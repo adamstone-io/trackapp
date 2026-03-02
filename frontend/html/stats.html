@@ -59,122 +59,69 @@
     <div class="container">
       <main class="timer-main">
         <section class="today-entries">
-          <!-- Summary Cards -->
+          <!-- Period Filter -->
+          <div id="stats-period-filter" class="stats-period-filter">
+            <button data-period="today" class="btn btn--primary" type="button">
+              Today
+            </button>
+            <button data-period="yesterday" class="btn btn--outline" type="button">
+              Yesterday
+            </button>
+            <button data-period="this_week" class="btn btn--outline" type="button">
+              This Week
+            </button>
+            <button data-period="this_month" class="btn btn--outline" type="button">
+              This Month
+            </button>
+          </div>
+
+          <!-- Summary Card -->
           <div class="stats-summary-cards">
             <div class="entry-card">
               <div class="entry-card__header">
-                <span class="entry-card__title">Primes Logged Today</span>
-                <span id="stats-primes-today" class="entry-card__duration"
-                  >0</span
-                >
-              </div>
-              <div class="entry-card__meta">
-                <span
-                  id="stats-primes-today-summary"
-                  class="entry-card__time"
-                ></span>
-              </div>
-            </div>
-
-            <div class="entry-card">
-              <div class="entry-card__header">
-                <span class="entry-card__title">Primes Logged Yesterday</span>
-                <span id="stats-primes-yesterday" class="entry-card__duration"
-                  >0</span
-                >
-              </div>
-              <div class="entry-card__meta">
-                <span
-                  id="stats-primes-yesterday-summary"
-                  class="entry-card__time"
-                ></span>
-              </div>
-            </div>
-
-            <div class="entry-card">
-              <div class="entry-card__header">
-                <span class="entry-card__title">Primes Logged This Week</span>
-                <span id="stats-primes-week" class="entry-card__duration"
-                  >0</span
-                >
-              </div>
-              <div class="entry-card__meta">
-                <span
-                  id="stats-primes-week-summary"
-                  class="entry-card__time"
-                ></span>
-              </div>
-            </div>
-
-            <div class="entry-card">
-              <div class="entry-card__header">
-                <span class="entry-card__title">Primes Logged Last Week</span>
-                <span id="stats-primes-last-week" class="entry-card__duration"
-                  >0</span
-                >
-              </div>
-              <div class="entry-card__meta">
-                <span
-                  id="stats-primes-last-week-summary"
-                  class="entry-card__time"
-                ></span>
-              </div>
-            </div>
-
-            <div class="entry-card">
-              <div class="entry-card__header">
-                <span class="entry-card__title">Reviews Logged Today</span>
-                <span id="stats-reviews-today" class="entry-card__duration"
-                  >0</span
-                >
-              </div>
-              <div class="entry-card__meta">
-                <span
-                  id="stats-reviews-today-summary"
-                  class="entry-card__time"
-                ></span>
-              </div>
-            </div>
-
-            <div class="entry-card">
-              <div class="entry-card__header">
-                <span class="entry-card__title">Reviews Logged This Week</span>
-                <span id="stats-reviews-week" class="entry-card__duration"
-                  >0</span
-                >
-              </div>
-              <div class="entry-card__meta">
-                <span
-                  id="stats-reviews-week-summary"
-                  class="entry-card__time"
-                ></span>
-              </div>
-            </div>
-
-            <div class="entry-card">
-              <div class="entry-card__header">
-                <span class="entry-card__title">Reviews Logged This Month</span>
-                <span id="stats-reviews-month" class="entry-card__duration"
-                  >0</span
-                >
-              </div>
-              <div class="entry-card__meta">
-                <span
-                  id="stats-reviews-month-summary"
-                  class="entry-card__time"
-                ></span>
-              </div>
-            </div>
-
-            <div class="entry-card">
-              <div class="entry-card__header">
-                <span class="entry-card__title">Time Logged Today</span>
-                <span id="stats-total-today" class="entry-card__duration"
+                <span class="entry-card__title">Time Logged</span>
+                <span id="stats-total-time" class="entry-card__duration"
                   >0m</span
                 >
               </div>
               <div class="entry-card__meta">
                 <span id="stats-summary" class="entry-card__time"></span>
+              </div>
+            </div>
+
+            <div class="entry-card">
+              <div class="entry-card__header">
+                <span class="entry-card__title">Primes Logged</span>
+                <span id="stats-prime-count" class="entry-card__duration"
+                  >0</span
+                >
+              </div>
+              <div class="entry-card__meta">
+                <span class="entry-card__time">Prime interactions</span>
+              </div>
+            </div>
+
+            <div class="entry-card">
+              <div class="entry-card__header">
+                <span class="entry-card__title">Studies Logged</span>
+                <span id="stats-study-count" class="entry-card__duration"
+                  >0</span
+                >
+              </div>
+              <div class="entry-card__meta">
+                <span class="entry-card__time">Study interactions</span>
+              </div>
+            </div>
+
+            <div class="entry-card">
+              <div class="entry-card__header">
+                <span class="entry-card__title">Reviews Logged</span>
+                <span id="stats-review-count" class="entry-card__duration"
+                  >0</span
+                >
+              </div>
+              <div class="entry-card__meta">
+                <span class="entry-card__time">Review interactions</span>
               </div>
             </div>
           </div>
@@ -189,7 +136,7 @@
             </button>
           </div>
 
-          <h2 class="today-entries__title">Time by Task (Today)</h2>
+          <h2 class="today-entries__title">Time by Task</h2>
 
           <div id="stats-by-task-list" class="today-entries__list"></div>
 
@@ -198,7 +145,7 @@
             class="today-entries__empty"
             style="display: none"
           >
-            No time entries logged today
+            No time entries logged for this period
           </div>
         </section>
       </main>
