@@ -56,10 +56,10 @@ class HabitSerializer(serializers.ModelSerializer):
 
 
 class StudyItemSerializer(serializers.ModelSerializer):
-    
-    
+
     mode = serializers.SerializerMethodField()
     image_url = serializers.SerializerMethodField()
+    note_image_url = serializers.SerializerMethodField()
     today_count = serializers.SerializerMethodField()
     week_count = serializers.SerializerMethodField()
     month_count = serializers.SerializerMethodField()
@@ -67,12 +67,13 @@ class StudyItemSerializer(serializers.ModelSerializer):
     is_priming = serializers.BooleanField(required=False, default=True)
     is_studying = serializers.BooleanField(required=False, default=False)
     is_reviewing = serializers.BooleanField(required=False, default=False)
-    
+
     class Meta:
         model = StudyItem
         fields = [
             'id', 'prompt', 'notes', 'category',
             'image', 'image_url',
+            'note_image', 'note_image_url',
             'is_priming', 'is_studying', 'is_reviewing', 'mode',
             'first_primed_at', 'last_primed_at',
             'first_studied_at', 'last_studied_at',
@@ -93,13 +94,17 @@ class StudyItemSerializer(serializers.ModelSerializer):
     def get_mode(self, obj):
         return obj.get_current_mode()
 
-    def get_image_url(self, obj):
-        if obj.image:
+    def _build_image_url(self, obj, field):
+        if field:
             request = self.context.get('request')
-            if request:
-                return request.build_absolute_uri(obj.image.url)
-            return obj.image.url
+            return request.build_absolute_uri(field.url) if request else field.url
         return None
+
+    def get_image_url(self, obj):
+        return self._build_image_url(obj, obj.image)
+
+    def get_note_image_url(self, obj):
+        return self._build_image_url(obj, obj.note_image)
 
 
 
@@ -127,8 +132,9 @@ class StudyItemSerializer(serializers.ModelSerializer):
 
         prompt = data.get('prompt', getattr(self.instance, 'prompt', ''))
         image = data.get('image', getattr(self.instance, 'image', None))
+        note_image = data.get('note_image', getattr(self.instance, 'note_image', None))
 
-        if not prompt and not image:
+        if not prompt and not image and not note_image:
             raise serializers.ValidationError(
                 'At least one of prompt or image must be provided'
             )
@@ -162,11 +168,12 @@ class StudyItemSerializer(serializers.ModelSerializer):
 
 class StudyItemListSerializer(StudyItemSerializer):
     """Optimized serializer for list views (excludes heavy fields)"""
-    
+
     class Meta(StudyItemSerializer.Meta):
         fields = [
             'id', 'prompt', 'notes', 'category',
             'image', 'image_url',
+            'note_image', 'note_image_url',
             'is_priming', 'is_studying', 'is_reviewing', 'mode',
             'first_primed_at', 'last_primed_at',
             'first_studied_at', 'last_studied_at',

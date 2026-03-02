@@ -209,17 +209,14 @@ class Habit(models.Model):
 
 
 def study_item_image_path(instance, filename):
-    """
-    Generate organized upload path for study item images.
-    Path: study_item_images/<user_id>/<item_id>_<random>.<ext>
-    """
-    # Get file extension
     ext = filename.split('.')[-1].lower()
-    
-    # Create unique filename using item ID + random string
     unique_filename = f"{instance.id}_{uuid4().hex[:8]}.{ext}"
-    
-    # Organize by user ID
+    return os.path.join('study_item_images', str(instance.user.id), unique_filename)
+
+
+def study_item_note_image_path(instance, filename):
+    ext = filename.split('.')[-1].lower()
+    unique_filename = f"{instance.id}_note_{uuid4().hex[:8]}.{ext}"
     return os.path.join('study_item_images', str(instance.user.id), unique_filename)
 
 class StudyItem(models.Model):
@@ -237,6 +234,7 @@ class StudyItem(models.Model):
     category = models.CharField(max_length=300, blank=True)
 
     image = models.ImageField(upload_to=study_item_image_path, null=True, blank=True)
+    note_image = models.ImageField(upload_to=study_item_note_image_path, null=True, blank=True)
 
     is_priming = models.BooleanField(default=True)
     is_studying = models.BooleanField(default=False)
@@ -338,24 +336,23 @@ class StudyItem(models.Model):
         super().save(*args, **kwargs)
 
     def delete(self, *args, **kwargs):
-        self._delete_image_file()
+        self._delete_image_file(self.image)
+        self._delete_image_file(self.note_image)
         super().delete(*args, **kwargs)
 
     def remove_image(self):
-        """
-        Remove the image from this item (but keep the item itself).
-        Deletes the file from the disk and clears the image field.
-        """
-        self._delete_image_file()
+        self._delete_image_file(self.image)
         self.image = None
         self.save(update_fields=["image"])
 
-    def _delete_image_file(self):
-        """
-        Delete the physical file from the storage.
-        """
-        if self.image and os.path.exists(self.image.path):
-            os.remove(self.image.path)
+    def remove_note_image(self):
+        self._delete_image_file(self.note_image)
+        self.note_image = None
+        self.save(update_fields=["note_image"])
+
+    def _delete_image_file(self, field):
+        if field and os.path.exists(field.path):
+            os.remove(field.path)
 
     def log_interaction(self):
         timestamp_ms = int(timezone.now().timestamp() * 1000)

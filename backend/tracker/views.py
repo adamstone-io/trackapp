@@ -312,6 +312,49 @@ class StudyItemViewSet(UserOwnedViewSet):
         serializer = self.get_serializer(item)
         return Response(serializer.data)
 
+    @action(detail=True, methods=['post'], parser_classes=[MultiPartParser, FormParser])
+    def upload_note_image(self, request, pk=None):
+        item = self.get_object()
+        image_file = request.FILES.get('note_image')
+
+        if not image_file:
+            return Response({'detail': 'No image file provided'}, status=status.HTTP_400_BAD_REQUEST)
+
+        allowed_types = ['image/jpeg', 'image/png', 'image/gif', 'image/webp']
+        if image_file.content_type not in allowed_types:
+            return Response(
+                {'detail': 'Invalid image type. Allowed: JPEG, PNG, GIF, WebP'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        if image_file.size > 10 * 1024 * 1024:
+            return Response(
+                {'detail': 'Image too large. Maximum size: 10MB'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        if item.note_image:
+            item.remove_note_image()
+
+        item.note_image = image_file
+        item.save(update_fields=['note_image'])
+
+        serializer = self.get_serializer(item)
+        return Response(serializer.data)
+
+    @action(detail=True, methods=['delete'])
+    def remove_note_image(self, request, pk=None):
+        item = self.get_object()
+
+        if not item.note_image:
+            return Response(
+                {'detail': 'No note image to remove'},
+                status=status.HTTP_404_NOT_FOUND
+            )
+
+        item.remove_note_image()
+        serializer = self.get_serializer(item)
+        return Response(serializer.data)
+
 class TodayEntriesView(APIView):
     """
     Optimized endpoint that returns today's time entries and moments in a single call.

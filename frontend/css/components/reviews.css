@@ -208,7 +208,6 @@
 }
 
 .review-item__notes {
-  border-top: 1px solid var(--border);
   padding-top: 0.75rem;
 }
 
@@ -228,6 +227,13 @@
   line-height: 1.6;
   resize: vertical;
   box-sizing: border-box;
+}
+
+.review-item__note-image {
+  display: block;
+  max-width: 100%;
+  height: auto;
+  border-radius: 8px;
 }
 
 .review-item__image-row {

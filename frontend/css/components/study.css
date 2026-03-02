@@ -88,7 +88,6 @@
 
 /* Notes section */
 .study-item__notes {
-  border-top: 1px solid var(--border);
   padding-top: 0.75rem;
 }
 
@@ -119,6 +118,13 @@
 
 .study-item__notes-textarea::placeholder {
   color: var(--color-text-muted, #999);
+}
+
+.study-item__note-image {
+  display: block;
+  max-width: 100%;
+  height: auto;
+  border-radius: 8px;
 }
 
 /* Header section */

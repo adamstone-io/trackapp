@@ -60,13 +60,12 @@ export class StudyView {
       const menuBtn = byId(`menu-study-${item.id}`);
       const notesToggle = byId(`notes-toggle-${item.id}`);
       const notesSection = byId(`notes-section-${item.id}`);
-      const notesTextarea = byId(`notes-textarea-${item.id}`);
+      const notesTextarea = document.getElementById(`notes-textarea-${item.id}`);
       const cipherToggle = byId(`cipher-toggle-${item.id}`);
       const cipherSection = byId(`cipher-section-${item.id}`);
-
       if (logBtn) logBtn.addEventListener("click", () => onLogStudy(item));
 
-      if (notesToggle && notesSection && notesTextarea) {
+      if (notesToggle && notesSection) {
         notesToggle.addEventListener("click", () => {
           const isHidden = notesSection.classList.contains("hidden");
           notesSection.classList.toggle("hidden");
@@ -74,21 +73,23 @@ export class StudyView {
             "study-item__notes-btn--active",
             isHidden,
           );
-          if (isHidden) notesTextarea.focus();
+          if (isHidden && notesTextarea) notesTextarea.focus();
         });
 
-        let notesTimer = null;
-        notesTextarea.addEventListener("input", () => {
-          clearTimeout(notesTimer);
-          notesTimer = setTimeout(() => {
+        if (notesTextarea) {
+          let notesTimer = null;
+          notesTextarea.addEventListener("input", () => {
+            clearTimeout(notesTimer);
+            notesTimer = setTimeout(() => {
+              onNotesUpdate(item, notesTextarea.value);
+            }, 800);
+          });
+
+          notesTextarea.addEventListener("blur", () => {
+            clearTimeout(notesTimer);
             onNotesUpdate(item, notesTextarea.value);
-          }, 800);
-        });
-
-        notesTextarea.addEventListener("blur", () => {
-          clearTimeout(notesTimer);
-          onNotesUpdate(item, notesTextarea.value);
-        });
+          });
+        }
       }
 
       if (cipherToggle && cipherSection) {
@@ -251,17 +252,26 @@ export class StudyView {
         </div>
 
         <div id="notes-section-${item.id}" class="study-item__notes hidden">
-          <textarea
-            id="notes-textarea-${item.id}"
-            class="study-item__notes-textarea"
-            placeholder="Add study notes..."
-            rows="4"
-          >${this.escapeHtml(item.notes || "")}</textarea>
+          ${
+            item.noteImageUrl
+              ? `<img
+                  class="study-item__note-image"
+                  src="${item.noteImageUrl}"
+                  alt="Note image"
+                />`
+              : `<textarea
+                  id="notes-textarea-${item.id}"
+                  class="study-item__notes-textarea"
+                  placeholder="Add study notes..."
+                  rows="4"
+                >${this.escapeHtml(item.notes || "")}</textarea>`
+          }
         </div>
 
         <div id="cipher-section-${item.id}" class="study-item__cipher hidden">
           <pre class="study-item__cipher-text">${this.cipherText(item.notes || "")}</pre>
         </div>
+
       </div>
     `;
   }

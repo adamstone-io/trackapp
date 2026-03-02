@@ -63,6 +63,10 @@ export function createPrimeController() {
   const quickAddImageInput = byId(primeIds.quickAddImageInput);
   const quickAddImagePreview = byId(primeIds.quickAddImagePreview);
   const quickAddImagePreviewImg = byId(primeIds.quickAddImagePreviewImg);
+  const quickAddNoteImageBtn = byId(primeIds.quickAddNoteImageBtn);
+  const quickAddNoteImageInput = byId(primeIds.quickAddNoteImageInput);
+  const quickAddNoteImagePreview = byId(primeIds.quickAddNoteImagePreview);
+  const quickAddNoteImagePreviewImg = byId(primeIds.quickAddNoteImagePreviewImg);
   const quickAddCategoryDropdown = byId(primeIds.categoryDropdown);
   const modalCategoryInput = byId(primeIds.primeCategory);
   const modalCategoryDropdown = byId(primeIds.modalCategoryDropdown);
@@ -108,6 +112,7 @@ export function createPrimeController() {
   );
 
   let quickAddImageFile = null;
+  let quickAddNoteImageFile = null;
 
   bindAutoGrow(quickAddInput);
   bindAutoGrow(quickAddNotesInput);
@@ -134,6 +139,26 @@ export function createPrimeController() {
     }
 
     updateButtonText();
+    syncInputVisibility();
+  });
+
+  quickAddNoteImageBtn.addEventListener("click", () => {
+    quickAddNoteImageInput.click();
+  });
+
+  quickAddNoteImageInput.addEventListener("change", () => {
+    quickAddNoteImageFile = quickAddNoteImageInput.files?.[0] ?? null;
+
+    if (quickAddNoteImageFile) {
+      quickAddNoteImagePreviewImg.src = URL.createObjectURL(quickAddNoteImageFile);
+      quickAddNoteImagePreview.classList.remove("hidden");
+    } else {
+      quickAddNoteImagePreviewImg.src = "";
+      quickAddNoteImagePreview.classList.add("hidden");
+    }
+
+    updateButtonText();
+    syncInputVisibility();
   });
 
   addBtn.addEventListener("click", async () => {
@@ -148,6 +173,7 @@ export function createPrimeController() {
       category: quickAddCategoryInput.value.trim(),
       notes: quickAddNotesInput?.value.trim() || "",
       imageFile: quickAddImageFile,
+      noteImageFile: quickAddNoteImageFile,
     });
 
     quickAddInput.value = "";
@@ -156,16 +182,34 @@ export function createPrimeController() {
     quickAddImageFile = null;
     quickAddImagePreviewImg.src = "";
     quickAddImagePreview.classList.add("hidden");
-    quickAddImageBtn.textContent = "Add Image";
+    quickAddNoteImageInput.value = "";
+    quickAddNoteImageFile = null;
+    quickAddNoteImagePreviewImg.src = "";
+    quickAddNoteImagePreview.classList.add("hidden");
     quickAddNotesInput.value = "";
     applyQuickAddNotesVisibility(getQuickAddNotesDefault());
+    updateButtonText();
+    syncInputVisibility();
   });
+
+  function syncInputVisibility() {
+    quickAddInput.classList.toggle("hidden", !!quickAddImageFile);
+    quickAddNotesWrap.classList.toggle("hidden", !!quickAddNoteImageFile);
+    if (quickAddNoteImageFile) {
+      quickAddNotesToggleBtn.textContent = "Hide Notes";
+    }
+  }
 
   function updateButtonText() {
     if (quickAddImageFile) {
-      quickAddImageBtn.textContent = isMobile(480) ? "📷 ✓" : "Change Image";
+      quickAddImageBtn.textContent = isMobile(480) ? "📷 ✓" : "Change Prompt Image";
     } else {
-      quickAddImageBtn.textContent = isMobile(480) ? "📷" : "Add Image";
+      quickAddImageBtn.textContent = isMobile(480) ? "📷" : "Prompt Image";
+    }
+    if (quickAddNoteImageFile) {
+      quickAddNoteImageBtn.textContent = isMobile(480) ? "🗒️ ✓" : "Change Note Image";
+    } else {
+      quickAddNoteImageBtn.textContent = isMobile(480) ? "🗒️" : "Note Image";
     }
   }
 
@@ -260,6 +304,7 @@ export function createPrimeController() {
           is_reviewing: false,
         },
         data.imageFile ?? null,
+        data.noteImageFile ?? null,
       );
 
       await refreshPrimeItems();

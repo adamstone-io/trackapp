@@ -15,6 +15,8 @@ export class StudyItem {
     category = "",
     image = null,
     imageUrl = null,
+    noteImage = null,
+    noteImageUrl = null,
     isPriming = false,
     isStudying = false,
     isReviewing = false,
@@ -40,6 +42,8 @@ export class StudyItem {
     this.category = category?.trim().toLowerCase() || "";
     this.image = image;
     this.imageUrl = imageUrl;
+    this.noteImage = noteImage;
+    this.noteImageUrl = noteImageUrl;
 
     this.isPriming = isPriming;
     this.isStudying = isStudying;
@@ -221,6 +225,8 @@ export class StudyItem {
       category: data.category,
       image: data.image,
       imageUrl: data.image_url || data.imageUrl,
+      noteImage: data.note_image,
+      noteImageUrl: data.note_image_url || data.noteImageUrl,
       isPriming: data.is_priming ?? data.isPriming,
       isStudying: data.is_studying ?? data.isStudying,
       isReviewing: data.is_reviewing ?? data.isReviewing,

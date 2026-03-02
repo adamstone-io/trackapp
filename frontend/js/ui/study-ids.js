@@ -28,4 +28,16 @@ export const studyIds = {
   quickAddCategoryInput: "quick-add-category-input",
   quickAddCategoryDropdown: "category-dropdown",
   addStudyBtn: "add-study-btn",
+
+  // Quick add prompt image
+  quickAddImageBtn: "quick-add-image-btn",
+  quickAddImageInput: "quick-add-image-input",
+  quickAddImagePreview: "quick-add-image-preview",
+  quickAddImagePreviewImg: "quick-add-image-preview-img",
+
+  // Quick add note image
+  quickAddNoteImageBtn: "quick-add-note-image-btn",
+  quickAddNoteImageInput: "quick-add-note-image-input",
+  quickAddNoteImagePreview: "quick-add-note-image-preview",
+  quickAddNoteImagePreviewImg: "quick-add-note-image-preview-img",
 };

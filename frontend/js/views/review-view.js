@@ -193,11 +193,19 @@ export class ReviewView {
         </div>
 
         <div id="notes-section-${item.id}" class="review-item__notes hidden">
-          <textarea
-            class="review-item__notes-textarea"
-            rows="4"
-            readonly
-          >${this.escapeHtml(item.notes || "")}</textarea>
+          ${
+            item.noteImageUrl
+              ? `<img
+                  class="review-item__note-image"
+                  src="${item.noteImageUrl}"
+                  alt="Note image"
+                />`
+              : `<textarea
+                  class="review-item__notes-textarea"
+                  rows="4"
+                  readonly
+                >${this.escapeHtml(item.notes || "")}</textarea>`
+          }
         </div>
       </div>
     `;

@@ -108,6 +108,12 @@
               maxlength="2000"
               rows="1"
             ></textarea>
+            <div
+              id="quick-add-image-preview"
+              class="quick-add-image-preview hidden"
+            >
+              <img id="quick-add-image-preview-img" alt="" />
+            </div>
             <div id="quick-add-notes-wrap" class="quick-add-notes hidden">
               <textarea
                 id="quick-add-notes-input"
@@ -117,10 +123,10 @@
               ></textarea>
             </div>
             <div
-              id="quick-add-image-preview"
+              id="quick-add-note-image-preview"
               class="quick-add-image-preview hidden"
             >
-              <img id="quick-add-image-preview-img" alt="" />
+              <img id="quick-add-note-image-preview-img" alt="" />
             </div>
             <div class="priming-header__bottom-row">
               <div class="quick-add-row">
@@ -149,11 +155,24 @@
                   class="btn btn--outline"
                   type="button"
                 >
-                  Add Image
+                  Prompt Image
                 </button>
                 <input
                   type="file"
                   id="quick-add-image-input"
+                  accept="image/*"
+                  hidden
+                />
+                <button
+                  id="quick-add-note-image-btn"
+                  class="btn btn--outline"
+                  type="button"
+                >
+                  Note Image
+                </button>
+                <input
+                  type="file"
+                  id="quick-add-note-image-input"
                   accept="image/*"
                   hidden
                 />

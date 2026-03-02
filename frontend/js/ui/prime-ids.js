@@ -43,6 +43,12 @@ export const primeIds = {
   quickAddImagePreview: "quick-add-image-preview",
   quickAddImagePreviewImg: "quick-add-image-preview-img",
 
+  // Quick add note image
+  quickAddNoteImageBtn: "quick-add-note-image-btn",
+  quickAddNoteImageInput: "quick-add-note-image-input",
+  quickAddNoteImagePreview: "quick-add-note-image-preview",
+  quickAddNoteImagePreviewImg: "quick-add-note-image-preview-img",
+
   quickAddNotesToggleBtn: "quick-add-notes-toggle-btn",
   quickAddNotesWrap: "quick-add-notes-wrap",
   quickAddNotesInput: "quick-add-notes-input",

@@ -36,14 +36,15 @@ export async function loadStudyItemsPage({
 
 // ---------- CREATE ----------
 
-export async function createStudyItem(payload, imageFile = null) {
-  if (imageFile) {
+export async function createStudyItem(payload, imageFile = null, noteImageFile = null) {
+  if (imageFile || noteImageFile) {
     const formData = new FormData();
     Object.entries(payload).forEach(([key, value]) => {
       if (value === undefined || value === null) return;
       formData.append(key, value);
     });
-    formData.append("image", imageFile);
+    if (imageFile) formData.append("image", imageFile);
+    if (noteImageFile) formData.append("note_image", noteImageFile);
 
     return http(`${BASE}/`, {
       method: "POST",
@@ -99,6 +100,23 @@ export async function transitionToStudying(id) {
 export async function transitionToReviewing(id) {
   return http(`${BASE}/${id}/transition_to_reviewing/`, {
     method: "POST",
+  });
+}
+
+// ---------- NOTE IMAGE ----------
+
+export async function uploadNoteImage(id, imageFile) {
+  const formData = new FormData();
+  formData.append("note_image", imageFile);
+  return http(`${BASE}/${id}/upload_note_image/`, {
+    method: "POST",
+    body: formData,
+  });
+}
+
+export async function removeNoteImage(id) {
+  return http(`${BASE}/${id}/remove_note_image/`, {
+    method: "DELETE",
   });
 }
 

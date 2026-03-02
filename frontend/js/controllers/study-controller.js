@@ -62,6 +62,64 @@ export function createStudyController() {
     applyQuickAddNotesVisibility(!quickAddNotesVisible);
   });
 
+  const quickAddImageBtn = byId(studyIds.quickAddImageBtn);
+  const quickAddImageInput = byId(studyIds.quickAddImageInput);
+  const quickAddImagePreview = byId(studyIds.quickAddImagePreview);
+  const quickAddImagePreviewImg = byId(studyIds.quickAddImagePreviewImg);
+  const quickAddNoteImageBtn = byId(studyIds.quickAddNoteImageBtn);
+  const quickAddNoteImageInput = byId(studyIds.quickAddNoteImageInput);
+  const quickAddNoteImagePreview = byId(studyIds.quickAddNoteImagePreview);
+  const quickAddNoteImagePreviewImg = byId(studyIds.quickAddNoteImagePreviewImg);
+
+  let quickAddImageFile = null;
+  let quickAddNoteImageFile = null;
+
+  function updateImageButtonText() {
+    if (quickAddImageBtn) {
+      quickAddImageBtn.textContent = quickAddImageFile
+        ? "Change Prompt Image"
+        : "Prompt Image";
+    }
+    if (quickAddNoteImageBtn) {
+      quickAddNoteImageBtn.textContent = quickAddNoteImageFile
+        ? "Change Note Image"
+        : "Note Image";
+    }
+  }
+
+  quickAddImageBtn?.addEventListener("click", () => quickAddImageInput?.click());
+  quickAddImageInput?.addEventListener("change", () => {
+    quickAddImageFile = quickAddImageInput.files?.[0] ?? null;
+    if (quickAddImageFile) {
+      quickAddImagePreviewImg.src = URL.createObjectURL(quickAddImageFile);
+      quickAddImagePreview.classList.remove("hidden");
+    } else {
+      quickAddImagePreviewImg.src = "";
+      quickAddImagePreview.classList.add("hidden");
+    }
+    updateImageButtonText();
+    syncInputVisibility();
+  });
+
+  quickAddNoteImageBtn?.addEventListener("click", () => quickAddNoteImageInput?.click());
+  quickAddNoteImageInput?.addEventListener("change", () => {
+    quickAddNoteImageFile = quickAddNoteImageInput.files?.[0] ?? null;
+    if (quickAddNoteImageFile) {
+      quickAddNoteImagePreviewImg.src = URL.createObjectURL(quickAddNoteImageFile);
+      quickAddNoteImagePreview.classList.remove("hidden");
+    } else {
+      quickAddNoteImagePreviewImg.src = "";
+      quickAddNoteImagePreview.classList.add("hidden");
+    }
+    updateImageButtonText();
+    syncInputVisibility();
+  });
+
+  function syncInputVisibility() {
+    if (quickAddInput) quickAddInput.classList.toggle("hidden", !!quickAddImageFile);
+    if (quickAddNotesWrap) quickAddNotesWrap.classList.toggle("hidden", !!quickAddNoteImageFile);
+  }
+
   const quickAddCategoryManager = new CategoryManager(
     quickAddCategoryInput,
     quickAddCategoryDropdown,
@@ -110,29 +168,49 @@ export function createStudyController() {
     const notes = quickAddNotesInput.value.trim();
     const category = quickAddCategoryInput.value.trim();
 
-    if (!prompt) {
+    if (!prompt && !quickAddImageFile) {
       quickAddInput?.focus();
       return;
     }
 
-    await handleCreateQuickAdd({ prompt, notes, category });
+    await handleCreateQuickAdd({
+      prompt,
+      notes,
+      category,
+      imageFile: quickAddImageFile,
+      noteImageFile: quickAddNoteImageFile,
+    });
 
     if (quickAddInput) quickAddInput.value = "";
     if (quickAddNotesInput) quickAddNotesInput.value = "";
     if (quickAddCategoryInput) quickAddCategoryInput.value = "";
+    if (quickAddImageInput) quickAddImageInput.value = "";
+    quickAddImageFile = null;
+    quickAddImagePreviewImg.src = "";
+    quickAddImagePreview.classList.add("hidden");
+    if (quickAddNoteImageInput) quickAddNoteImageInput.value = "";
+    quickAddNoteImageFile = null;
+    quickAddNoteImagePreviewImg.src = "";
+    quickAddNoteImagePreview.classList.add("hidden");
+    updateImageButtonText();
+    syncInputVisibility();
     applyQuickAddNotesVisibility(true);
   });
 
-  async function handleCreateQuickAdd({ prompt, notes, category }) {
+  async function handleCreateQuickAdd({ prompt, notes, category, imageFile = null, noteImageFile = null }) {
     try {
-      await createStudyItem({
-        prompt,
-        notes: notes || "",
-        category: category || "",
-        is_priming: false,
-        is_studying: true,
-        is_reviewing: false,
-      });
+      await createStudyItem(
+        {
+          prompt: prompt || "",
+          notes: notes || "",
+          category: category || "",
+          is_priming: false,
+          is_studying: true,
+          is_reviewing: false,
+        },
+        imageFile,
+        noteImageFile,
+      );
       await refreshStudyItems({ refreshCategories: true });
     } catch (error) {
       console.error("Failed to create study item:", error);

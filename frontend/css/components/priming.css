@@ -584,3 +584,9 @@
   padding: 0.5rem 0.6rem;
   font-size: 0.95rem;
 }
+
+@media (max-width: 768px) {
+  .prime-item__log-btn {
+    width: 100%;
+  }
+}
