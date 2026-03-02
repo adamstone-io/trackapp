@@ -260,6 +260,67 @@
           <div id="entry-details" class="entry-preview__details"></div>
         </section>
 
+        <!-- Quick Add Entry -->
+        <section class="quick-add-entry">
+          <div class="quick-add-entry__row">
+            <div class="qae-task-wrap">
+              <input
+                id="qae-task-name"
+                type="text"
+                class="quick-add-entry__task"
+                placeholder="Task name"
+                autocomplete="off"
+                maxlength="100"
+              />
+              <div id="qae-task-name-dropdown" class="task-name-dropdown hidden"></div>
+            </div>
+            <div class="qae-time-wrap">
+              <input
+                id="qae-start-time"
+                type="time"
+                class="quick-add-entry__time"
+                step="60"
+              />
+              <button
+                id="qae-start-btn"
+                type="button"
+                class="qae-clock-btn"
+                aria-label="Pick start time"
+              >
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>
+                </svg>
+              </button>
+            </div>
+            <div class="qae-time-wrap">
+              <input
+                id="qae-end-time"
+                type="time"
+                class="quick-add-entry__time"
+                step="60"
+              />
+              <button
+                id="qae-end-btn"
+                type="button"
+                class="qae-clock-btn"
+                aria-label="Pick end time"
+              >
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>
+                </svg>
+              </button>
+            </div>
+            <button
+              id="qae-add-btn"
+              class="btn btn--primary quick-add-entry__btn"
+              type="button"
+            >
+              Add
+            </button>
+          </div>
+          <p id="qae-error" class="quick-add-entry__error hidden"></p>
+        </section>
+
         <!-- Today's Entries -->
         <section class="today-entries">
           <h2 class="today-entries__title">Today's Time Entries</h2>
