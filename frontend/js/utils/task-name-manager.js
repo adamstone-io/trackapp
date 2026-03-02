@@ -51,6 +51,7 @@ export class TaskNameManager {
   }
 
   _handleInput() {
+    if (this._justSelected) return;
     this.selectedIndex = -1;
     this._renderDropdown(this.input.value);
   }
@@ -115,9 +116,11 @@ export class TaskNameManager {
   }
 
   _select(title) {
+    this._justSelected = true;
     this.input.value = title;
     this._hide();
     this.input.dispatchEvent(new Event("input", { bubbles: true }));
+    setTimeout(() => { this._justSelected = false; }, 0);
   }
 
   _hide() {
