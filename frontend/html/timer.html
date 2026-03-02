@@ -160,13 +160,16 @@
         <!-- Task Input Section (visible when not running) -->
         <div id="task-input-section" class="timer__input-section">
           <div class="timer__input-group">
-            <input
-              type="text"
-              id="task-name"
-              placeholder="What are you working on?"
-              autocomplete="off"
-              maxlength="100"
-            />
+            <div class="task-name-wrapper">
+              <input
+                type="text"
+                id="task-name"
+                placeholder="What are you working on?"
+                autocomplete="off"
+                maxlength="100"
+              />
+              <div id="task-name-dropdown" class="task-name-dropdown hidden"></div>
+            </div>
           </div>
 
           <div class="timer__input-group">

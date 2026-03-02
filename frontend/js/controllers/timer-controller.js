@@ -15,6 +15,7 @@ import {
 } from "../data/storage.js";
 import { createBreakModal } from "../views/components/break-modal.js";
 import { SoundManager } from "../utils/sound-manager.js";
+import { TaskNameManager } from "../utils/task-name-manager.js";
 
 let activeEntry = null;
 let activeTask = null;
@@ -115,6 +116,17 @@ export function createTimerController({ onEntryAdded }) {
 
   document.addEventListener("timer:modeChange", handleModeChange);
   document.addEventListener("countdown:durationChange", handleDurationChange);
+
+  // Task name autocomplete
+  const taskNameInput = document.getElementById("task-name");
+  const taskNameDropdown = document.getElementById("task-name-dropdown");
+  const taskNameManager = taskNameInput && taskNameDropdown
+    ? new TaskNameManager(taskNameInput, taskNameDropdown)
+    : null;
+
+  loadTasks()
+    .then((tasks) => taskNameManager?.setTasks(tasks))
+    .catch(() => {});
 
   // Bind timer controls
   const unbind = TimerView.bind({
@@ -464,6 +476,7 @@ export function createTimerController({ onEntryAdded }) {
     unbind();
     unsubTimer();
     unsubTask();
+    taskNameManager?.dispose();
     document.removeEventListener("timer:modeChange", handleModeChange);
     document.removeEventListener(
       "countdown:durationChange",

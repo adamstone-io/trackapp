@@ -22,6 +22,8 @@ class ProjectSerializer(serializers.ModelSerializer):
 
 
 class TaskSerializer(serializers.ModelSerializer):
+    entry_count = serializers.IntegerField(read_only=True, default=0)
+
     class Meta:
         model = Task
         fields = "__all__"

@@ -82,6 +82,11 @@ class TaskViewSet(UserOwnedViewSet):
     queryset = Task.objects.all()
     serializer_class = TaskSerializer
 
+    def get_queryset(self):
+        return Task.objects.filter(user=self.request.user).annotate(
+            entry_count=Count("time_entries")
+        )
+
 
 class TimeEntryViewSet(UserOwnedViewSet):
     queryset = TimeEntry.objects.all()
