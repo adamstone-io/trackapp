@@ -45,6 +45,91 @@
   }
 }
 
+/* Inline editing */
+.entry-card__editable {
+  cursor: text;
+  border-radius: 3px;
+  transition: background 0.1s ease;
+}
+
+.entry-card__editable:hover {
+  background: var(--color-bg-secondary, #f3f4f6);
+}
+
+.entry-card__editing {
+  display: inline-flex;
+  align-items: center;
+}
+
+.entry-inline-input {
+  background: var(--background, #fff);
+  border: 1px solid var(--primary, #6366f1);
+  border-radius: 4px;
+  font-family: inherit;
+  color: inherit;
+  padding: 0.05rem 0.25rem;
+  outline: none;
+  line-height: 1.2;
+}
+
+.entry-inline-input--title {
+  font-size: var(--font-size-base);
+  font-weight: 600;
+  width: 12rem;
+  min-width: 6rem;
+}
+
+.entry-inline-input--time {
+  font-size: var(--font-size-sm);
+  width: 5.4rem;
+  padding-right: 1.2rem;
+  padding-left: 0.25rem;
+}
+
+.entry-inline-input--time::-webkit-calendar-picker-indicator {
+  display: none;
+}
+
+.entry-inline-input--time::-webkit-datetime-edit {
+  padding: 0;
+}
+
+.entry-time-input-wrap {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+}
+
+.entry-clock-btn {
+  position: absolute;
+  right: 0.2rem;
+  top: 50%;
+  transform: translateY(-50%);
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 0;
+  color: var(--color-text-muted, #9ca3af);
+  display: flex;
+  align-items: center;
+  line-height: 1;
+}
+
+.entry-clock-btn:hover {
+  color: var(--text-primary);
+}
+
+.entry-inline-time-wrap {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.entry-inline-sep {
+  color: var(--color-text-muted, #9ca3af);
+  font-size: var(--font-size-sm);
+}
+
 /* Stats Summary Cards */
 .stats-summary-cards {
   display: grid;
