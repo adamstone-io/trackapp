@@ -128,6 +128,37 @@ export function createTimerController({ onEntryAdded }) {
     .then((tasks) => taskNameManager?.setTasks(tasks))
     .catch(() => {});
 
+  const launchParams = new URLSearchParams(window.location.search);
+  let seededWorkspaceTask = null;
+  {
+    const seededId = launchParams.get("taskId");
+    const seededTitle = (launchParams.get("taskTitle") || "").trim();
+    const seededCategory = (launchParams.get("taskCategory") || "").trim();
+    const seededProjectId =
+      (launchParams.get("taskProjectId") || "").trim() || null;
+
+    if (seededId && seededTitle) {
+      const nameInput = CurrentTaskView.nameInput();
+      const categorySelect = CurrentTaskView.categorySelect();
+      nameInput.value = seededTitle;
+
+      if (seededCategory) {
+        const normalizedCategory = seededCategory.toLowerCase();
+        const match = Array.from(categorySelect.options).find(
+          (opt) => (opt.value || "").toLowerCase() === normalizedCategory,
+        );
+        categorySelect.value = match ? match.value : seededCategory;
+      }
+
+      seededWorkspaceTask = {
+        id: seededId,
+        title: seededTitle,
+        category: seededCategory,
+        projectId: seededProjectId,
+      };
+    }
+  }
+
   // Bind timer controls
   const unbind = TimerView.bind({
     onStart: handleStart,
@@ -193,7 +224,21 @@ export function createTimerController({ onEntryAdded }) {
         taskData.title = "Untitled";
       }
 
-      const task = new Task(taskData);
+      const normalizedTitle = taskData.title.trim().toLowerCase();
+      const normalizedCategory = String(taskData.category || "Other")
+        .trim()
+        .toLowerCase();
+      const shouldUseSeededTask =
+        !!seededWorkspaceTask &&
+        normalizedTitle === seededWorkspaceTask.title.trim().toLowerCase() &&
+        (!seededWorkspaceTask.category ||
+          normalizedCategory === seededWorkspaceTask.category.trim().toLowerCase());
+
+      const task = new Task({
+        ...taskData,
+        id: shouldUseSeededTask ? seededWorkspaceTask.id : undefined,
+        projectId: shouldUseSeededTask ? seededWorkspaceTask.projectId : null,
+      });
 
       currentTask.setCurrentTask(task);
       clearPauseTracking();
@@ -219,6 +264,7 @@ export function createTimerController({ onEntryAdded }) {
         taskTitle: task.title,
         startedAt: new Date().toISOString(),
       });
+      seededWorkspaceTask = null;
     } catch (err) {
       console.error("Failed to start timer:", err);
 
@@ -236,6 +282,12 @@ export function createTimerController({ onEntryAdded }) {
     } finally {
       isStarting = false;
     }
+  }
+
+  if (launchParams.get("autoStart") === "1" && seededWorkspaceTask) {
+    queueMicrotask(() => {
+      void handleStart();
+    });
   }
 
   async function ensureTaskExists(task) {

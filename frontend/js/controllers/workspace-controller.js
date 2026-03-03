@@ -49,18 +49,30 @@ export function createWorkspaceController() {
     WorkspaceView.renderTasks(scheduledTasks, projects, taskTimeMap);
   }
 
+  function entryTaskId(e) {
+    // API returns the task FK as `task` (UUID string), not `taskId`
+    return e.task ?? e.taskId ?? null;
+  }
+
+  function entryDuration(e) {
+    // API returns snake_case `duration_seconds`
+    return e.duration_seconds ?? e.durationSeconds ?? 0;
+  }
+
   function calculateProjectStats() {
     const stats = new Map();
 
     for (const project of projects) {
       const projectTasks = tasks.filter(
-        (t) => t.projectId === project.id && !t.archived,
+        (t) => (t.project ?? t.projectId) === project.id && !t.archived,
       );
       const taskIds = new Set(projectTasks.map((t) => t.id));
 
-      const projectEntries = timeEntries.filter((e) => taskIds.has(e.taskId));
+      const projectEntries = timeEntries.filter((e) =>
+        taskIds.has(entryTaskId(e)),
+      );
       const totalSeconds = projectEntries.reduce(
-        (sum, e) => sum + (e.durationSeconds || 0),
+        (sum, e) => sum + entryDuration(e),
         0,
       );
 
@@ -77,8 +89,9 @@ export function createWorkspaceController() {
     const taskTimeMap = new Map();
 
     for (const entry of timeEntries) {
-      const current = taskTimeMap.get(entry.taskId) || 0;
-      taskTimeMap.set(entry.taskId, current + (entry.durationSeconds || 0));
+      const id = entryTaskId(entry);
+      if (!id) continue;
+      taskTimeMap.set(id, (taskTimeMap.get(id) || 0) + entryDuration(entry));
     }
 
     return taskTimeMap;
@@ -156,8 +169,8 @@ export function createWorkspaceController() {
   }
 
   async function handleDeleteTask(id) {
-    if (!confirm("Delete this task? Time entries will be preserved.")) return;
-    await deleteTask(id);
+    if (!confirm("Remove this task from your schedule? Time entries will be preserved.")) return;
+    await updateTask(id, { archived: true });
     await refresh();
   }
 
@@ -169,6 +182,9 @@ export function createWorkspaceController() {
     const params = new URLSearchParams({
       taskId: task.id,
       taskTitle: task.title,
+      taskCategory: task.category ?? "",
+      taskProjectId: String(task.projectId ?? task.project ?? ""),
+      autoStart: "1",
     });
     window.location.href = `timer.html?${params.toString()}`;
   }

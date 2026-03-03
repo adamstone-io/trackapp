@@ -295,11 +295,12 @@ export const WorkspaceView = {
         const noProjectTasks = [];
 
         for (const task of activeTasks) {
-            if (task.projectId && projectMap.has(task.projectId)) {
-                if (!groups.has(task.projectId)) {
-                    groups.set(task.projectId, []);
+            const pid = task.projectId ?? task.project ?? null;
+            if (pid && projectMap.has(pid)) {
+                if (!groups.has(pid)) {
+                    groups.set(pid, []);
                 }
-                groups.get(task.projectId).push(task);
+                groups.get(pid).push(task);
             } else {
                 noProjectTasks.push(task);
             }
@@ -421,7 +422,7 @@ export const WorkspaceView = {
         if (task) {
             title.textContent = "Edit Task";
             titleInput.value = task.title;
-            projectSelect.value = task.projectId || "";
+            projectSelect.value = task.projectId ?? task.project ?? "";
             categoryInput.value = task.category || "";
             notesInput.value = task.notes || "";
             plannedStartInput.value = task.plannedStart ? task.plannedStart.slice(0, 16) : "";
