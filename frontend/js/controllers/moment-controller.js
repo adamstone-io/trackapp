@@ -32,6 +32,7 @@ export function createMomentController({
     try {
       const savedMoment = await createMoment(moment.toJSON());
       moments = await loadMoments();
+      if (taskNameInput) taskNameInput.value = "";
       if (typeof onMomentsChanged === "function") {
         onMomentsChanged(savedMoment);
       } else if (typeof onMomentAdded === "function") {
