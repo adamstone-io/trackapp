@@ -17,6 +17,7 @@ import { TaskNameManager } from "../utils/task-name-manager.js";
 
 export function createEntriesController() {
   let cachedTasks = [];
+  let cachedMoments = [];
   loadTasks()
     .then((t) => {
       cachedTasks = t;
@@ -124,21 +125,21 @@ export function createEntriesController() {
       const entry = entries.find((e) => e.id === entryId);
       if (!entry) return;
 
-      const menu = createDropdownMenu({
-        items: [
-          {
-            label: "Edit",
-            onSelect: () => modal.openEdit(entry),
+      const menuItems = [
+        {
+          label: "Edit",
+          onSelect: () => modal.openEdit(entry),
+        },
+        {
+          label: "Delete",
+          onSelect: async () => {
+            await deleteTimeEntry(entry.id);
+            await refresh();
           },
-          {
-            label: "Delete",
-            onSelect: async () => {
-              await deleteTimeEntry(entry.id);
-              await refresh();
-            },
-          },
-        ],
-      });
+        },
+      ];
+
+      const menu = createDropdownMenu({ items: menuItems });
 
       menu.attachTo(btn);
       menuDisposers.push(() => menu.dispose());
@@ -287,6 +288,7 @@ export function createEntriesController() {
       attachEntryMenus(entriesWithProject);
       attachMomentMenus(moments);
 
+      cachedMoments = moments;
       loadTasks()
         .then((t) => {
           cachedTasks = t;
@@ -362,6 +364,7 @@ export function createEntriesController() {
       onSelect: () => input.blur(),
     });
     taskManager.setTasks(cachedTasks);
+    taskManager.setMoments(cachedMoments);
     if (!cachedTasks.length) {
       loadTasks()
         .then((tasks) => {

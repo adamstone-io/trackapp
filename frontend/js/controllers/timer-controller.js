@@ -10,6 +10,7 @@ import { formatTime } from "../utils/time.js";
 import {
   loadTasks,
   loadTimeEntries,
+  loadMoments,
   createTask,
   createTimeEntry,
 } from "../data/storage.js";
@@ -126,6 +127,9 @@ export function createTimerController({ onEntryAdded }) {
 
   loadTasks()
     .then((tasks) => taskNameManager?.setTasks(tasks))
+    .catch(() => {});
+  loadMoments()
+    .then((moments) => taskNameManager?.setMoments(moments))
     .catch(() => {});
 
   const launchParams = new URLSearchParams(window.location.search);

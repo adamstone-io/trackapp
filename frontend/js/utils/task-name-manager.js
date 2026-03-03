@@ -27,15 +27,41 @@ export class TaskNameManager {
    * @param {Array<{title: string, entry_count: number}>} tasks
    */
   setTasks(tasks = []) {
+    this._rawTasks = tasks;
+    this._rebuild();
+  }
+
+  /**
+   * Feed moment data so descriptions appear as suggestions.
+   * @param {Array<{description: string}>} moments
+   */
+  setMoments(moments = []) {
+    this._rawMoments = moments;
+    this._rebuild();
+  }
+
+  _rebuild() {
     const seen = new Map();
-    for (const t of tasks) {
+
+    for (const t of (this._rawTasks ?? [])) {
       const title = (t.title || "").trim();
       if (!title) continue;
       const count = Number(t.entry_count ?? 0);
-      const existing = seen.get(title.toLowerCase()) ?? { title, entryCount: 0 };
+      const key = title.toLowerCase();
+      const existing = seen.get(key) ?? { title, entryCount: 0 };
       existing.entryCount += Number.isFinite(count) ? count : 0;
-      seen.set(title.toLowerCase(), existing);
+      seen.set(key, existing);
     }
+
+    for (const m of (this._rawMoments ?? [])) {
+      const title = (m.description || "").trim();
+      if (!title) continue;
+      const key = title.toLowerCase();
+      const existing = seen.get(key) ?? { title, entryCount: 0 };
+      existing.entryCount += 1;
+      seen.set(key, existing);
+    }
+
     this.tasks = [...seen.values()].sort((a, b) => b.entryCount - a.entryCount);
 
     if (document.activeElement === this.input) {

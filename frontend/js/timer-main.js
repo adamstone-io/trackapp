@@ -7,7 +7,7 @@ import { createMainTimeEntryWindowController } from "./controllers/main-time-ent
 import { createManualEntryController } from "./controllers/manual-time-entry-controller.js";
 import { SoundManager } from "./utils/sound-manager.js";
 import { initNavigation } from "./controllers/nav-controller.js";
-import { ensureAuthenticated, loadTodayEntries, loadTasks } from "./data/storage.js";
+import { ensureAuthenticated, loadTodayEntries, loadTasks, loadMoments } from "./data/storage.js";
 import { TaskNameManager } from "./utils/task-name-manager.js";
 
 document.addEventListener("DOMContentLoaded", async () => {
@@ -20,6 +20,8 @@ document.addEventListener("DOMContentLoaded", async () => {
     { volume: 0.9 },
   );
 
+  let momentController = null;
+
   const entriesController = createEntriesController();
   const countdownDispose = createCountdownController();
   const timerDispose = createTimerController({
@@ -28,7 +30,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     },
   });
 
-  const momentController = createMomentController({
+  momentController = createMomentController({
     onMomentsChanged: async () => {
       await entriesController.refresh();
     },
@@ -58,6 +60,9 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   loadTasks()
     .then((tasks) => qaeTaskManager?.setTasks(tasks))
+    .catch(() => {});
+  loadMoments()
+    .then((moments) => qaeTaskManager?.setMoments(moments))
     .catch(() => {});
 
   function bindClockToggle(input, btn) {
@@ -168,6 +173,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     onManualEntrySaved: async (manualEntry) => {
       await manualEntryController.addManualEntry(manualEntry);
     },
+    onAddMoment: (prefill) => momentController?.openManual(prefill),
   });
 
   if (window.location.hostname === "localhost") {

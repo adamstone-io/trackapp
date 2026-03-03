@@ -18,13 +18,42 @@ export function createMomentController({
 
   const logMomentBtn = byId(momentIds.logMomentBtn);
 
-  const handleOpen = () => {
+  // Quick-log: save immediately using the task-name input value as description
+  const handleQuickLog = async () => {
+    const taskNameInput = document.getElementById("task-name");
+    const description = (taskNameInput?.value ?? "").trim() || "Untitled";
+    const taskSnapshot = currentTask.getSnapshot();
+    const moment = new Moment({
+      description,
+      category: "general",
+      taskId: taskSnapshot.task?.id || null,
+      taskTitle: taskSnapshot.task?.title || null,
+    });
+    try {
+      const savedMoment = await createMoment(moment.toJSON());
+      moments = await loadMoments();
+      if (typeof onMomentsChanged === "function") {
+        onMomentsChanged(savedMoment);
+      } else if (typeof onMomentAdded === "function") {
+        onMomentAdded(savedMoment);
+      }
+    } catch (error) {
+      console.error("Failed to log moment:", error);
+      alert("Failed to log moment. Please try again.");
+    }
+  };
+
+  // Manual: open modal for full moment details
+  function openManual(prefillDescription = "") {
     editingMomentId = null;
     editingMomentBase = null;
     MomentView.openForCreate();
-  };
+    if (prefillDescription) {
+      MomentView.setForm({ description: prefillDescription });
+    }
+  }
 
-  logMomentBtn.addEventListener("click", handleOpen);
+  logMomentBtn.addEventListener("click", handleQuickLog);
 
   const unbindModal = MomentView.bind({
     onSave: handleSave,
@@ -115,13 +144,14 @@ export function createMomentController({
       editingMomentBase = moment;
       MomentView.openForEdit(moment);
     },
+    openManual,
     refresh: async () => {
       moments = await loadMoments();
       return moments;
     },
     dispose: () => {
       unbindModal();
-      logMomentBtn.removeEventListener("click", handleOpen);
+      logMomentBtn.removeEventListener("click", handleQuickLog);
     },
   };
 }

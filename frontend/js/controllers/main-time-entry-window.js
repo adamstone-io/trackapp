@@ -3,7 +3,7 @@ import { createTimeEntryModal } from "../views/components/time-entry-modal.js";
 import { createDataManagementMenu } from "./data-management-controller.js";
 
 export function createMainTimeEntryWindowController(options = {}) {
-  const { onManualEntrySaved } = options;
+  const { onManualEntrySaved, onAddMoment } = options;
 
   const menuButton = document.getElementById("timer-menu-btn");
   let menu = null;
@@ -21,17 +21,25 @@ export function createMainTimeEntryWindowController(options = {}) {
 
     dataMenu = createDataManagementMenu();
 
-    menu = createDropdownMenu({
-      items: [
-        {
-          label: "Add manual time entry",
-          onSelect: () => {
-            manualEntryModal.open();
-          },
+    const items = [
+      {
+        label: "Add manual time entry",
+        onSelect: () => {
+          manualEntryModal.open();
         },
-        ...dataMenu.items,
-      ],
-    });
+      },
+    ];
+
+    if (typeof onAddMoment === "function") {
+      items.push({
+        label: "Add manual moment",
+        onSelect: () => onAddMoment(""),
+      });
+    }
+
+    items.push(...dataMenu.items);
+
+    menu = createDropdownMenu({ items });
 
     menu.attachTo(menuButton);
   }
