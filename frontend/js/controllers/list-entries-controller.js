@@ -5,6 +5,7 @@ import {
   loadTasks,
   loadProjects,
   updateTimeEntry,
+  updateMoment,
   deleteTimeEntry,
   deleteMoment,
   updateTask,
@@ -325,6 +326,21 @@ export function createEntriesController() {
       const editable = e.target.closest(".entry-card__editable");
       if (!editable) return;
 
+      // Moment card inline edit
+      const momentCard = editable.closest("[data-moment-id]");
+      if (momentCard) {
+        const momentId = momentCard.dataset.momentId;
+        const field = editable.dataset.momentField;
+        if (field === "description") {
+          e.stopPropagation();
+          startMomentDescriptionEdit(editable, momentId, momentCard.dataset.momentDescription);
+        } else if (field === "time") {
+          startMomentTimeEdit(editable, momentId, momentCard.dataset.momentTimestampMs);
+        }
+        return;
+      }
+
+      // Time entry card inline edit
       const card = editable.closest("[data-entry-id]");
       if (!card) return;
 
@@ -334,12 +350,130 @@ export function createEntriesController() {
       const endedAt = card.dataset.endedAt;
 
       if (editable.classList.contains("entry-card__title")) {
-        e.stopPropagation(); // prevent this click reaching document and closing the dropdown
+        e.stopPropagation();
         startTitleEdit(editable, entryId, currentTitle);
       } else if (editable.classList.contains("entry-card__time")) {
         startTimeEdit(editable, entryId, startedAt, endedAt);
       }
     });
+  }
+
+  function startMomentDescriptionEdit(span, momentId, currentDescription) {
+    if (span.querySelector("input")) return;
+
+    const wrap = document.createElement("span");
+    wrap.className = "entry-inline-title-wrap";
+
+    const input = document.createElement("input");
+    input.type = "text";
+    input.value = currentDescription;
+    input.className = "entry-inline-input entry-inline-input--title";
+    input.setAttribute("autocomplete", "off");
+    sizeInputToContent(input);
+    input.addEventListener("input", () => sizeInputToContent(input));
+
+    const dropdown = document.createElement("div");
+    dropdown.className = "entry-title-dropdown hidden";
+
+    wrap.appendChild(input);
+    wrap.appendChild(dropdown);
+
+    const taskManager = new TaskNameManager(input, dropdown, {
+      onSelect: () => input.blur(),
+    });
+    taskManager.setTasks(cachedTasks);
+    taskManager.setMoments(cachedMoments);
+
+    let saved = false;
+    const cleanup = () => taskManager.dispose();
+
+    async function save() {
+      if (saved) return;
+      saved = true;
+      cleanup();
+      const newDescription = input.value.trim();
+      if (newDescription && newDescription !== currentDescription) {
+        try {
+          await updateMoment(momentId, { description: newDescription });
+          await refresh();
+        } catch {
+          await refresh();
+        }
+      } else {
+        span.textContent = currentDescription;
+        span.classList.remove("entry-card__editing");
+      }
+    }
+
+    input.addEventListener("keydown", (e) => {
+      if (e.key === "Enter") input.blur();
+      if (e.key === "Escape") {
+        saved = true;
+        cleanup();
+        span.textContent = currentDescription;
+        span.classList.remove("entry-card__editing");
+      }
+    });
+    input.addEventListener("blur", save);
+
+    span.textContent = "";
+    span.classList.add("entry-card__editing");
+    span.appendChild(wrap);
+    input.focus();
+    input.select();
+  }
+
+  function startMomentTimeEdit(span, momentId, timestampMsStr) {
+    if (span.querySelector("input")) return;
+
+    const timestampMs = Number(timestampMsStr);
+    const date = Number.isFinite(timestampMs) ? new Date(timestampMs) : new Date();
+    const currentTimeValue = `${String(date.getHours()).padStart(2, "0")}:${String(date.getMinutes()).padStart(2, "0")}`;
+
+    const input = document.createElement("input");
+    input.type = "time";
+    input.value = currentTimeValue;
+    input.className = "entry-inline-input entry-inline-input--time";
+
+    const wrap = makeTimeInputWrap(input);
+
+    let saved = false;
+
+    async function save() {
+      if (saved) return;
+      saved = true;
+      const newTimeValue = input.value;
+      if (newTimeValue && newTimeValue !== currentTimeValue) {
+        try {
+          const [hh, mm] = newTimeValue.split(":").map(Number);
+          const updated = new Date(date);
+          updated.setHours(hh, mm, 0, 0);
+          await updateMoment(momentId, { timestampMs: updated.getTime() });
+          await refresh();
+        } catch {
+          await refresh();
+        }
+      } else {
+        const fmt = new Intl.DateTimeFormat(undefined, { hour: "2-digit", minute: "2-digit" });
+        span.textContent = fmt.format(date);
+        span.classList.remove("entry-card__editing");
+      }
+    }
+
+    input.addEventListener("blur", save);
+    input.addEventListener("keydown", (e) => {
+      if (e.key === "Enter") input.blur();
+      if (e.key === "Escape") { saved = true; refresh(); }
+    });
+
+    span.textContent = "";
+    span.classList.add("entry-card__editing");
+    span.appendChild(wrap);
+    input.focus();
+  }
+
+  function sizeInputToContent(input) {
+    input.size = Math.max(4, input.value.length + 1);
   }
 
   function startTitleEdit(span, entryId, currentTitle) {
@@ -353,6 +487,8 @@ export function createEntriesController() {
     input.value = currentTitle;
     input.className = "entry-inline-input entry-inline-input--title";
     input.setAttribute("autocomplete", "off");
+    sizeInputToContent(input);
+    input.addEventListener("input", () => sizeInputToContent(input));
 
     const dropdown = document.createElement("div");
     dropdown.className = "entry-title-dropdown hidden";

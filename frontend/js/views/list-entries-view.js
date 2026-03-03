@@ -142,17 +142,21 @@ function renderMoment(moment) {
 
   const timeLabel = createdAt ? fmt.format(createdAt) : "";
 
+  const timestampMs = Number.isFinite(moment.timestampMs) ? moment.timestampMs : "";
+
   return `
-        <div class="entry-card" data-moment-id="${escapeHtml(moment.id ?? "")}">
+        <div class="entry-card" data-moment-id="${escapeHtml(moment.id ?? "")}"
+             data-moment-description="${escapeHtml(description)}"
+             data-moment-timestamp-ms="${escapeHtml(String(timestampMs))}">
             <div class="entry-card__header">
-            <div class="entry-card__title">${description}</div>
-           
+            <span class="entry-card__title entry-card__editable" data-moment-field="description">${escapeHtml(description)}</span>
+            <div class="entry-card__meta">
             ${
               timeLabel
-                ? `<span class="entry-card__time">${escapeHtml(timeLabel)}
-               </span>`
+                ? `<span class="entry-card__time entry-card__editable" data-moment-field="time">${escapeHtml(timeLabel)}</span>`
                 : ""
-            }          <span>
+            }
+                <span>
                 <button
                     class="icon-btn entry-card__menu-btn"
                     type="button"
@@ -165,8 +169,8 @@ function renderMoment(moment) {
                         <circle cx="8" cy="14" r="1.5" />
                     </svg>
                 </button>
-            </span>
-
+                </span>
+            </div>
             </div>
         </div>
     `;

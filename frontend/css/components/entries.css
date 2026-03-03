@@ -83,15 +83,17 @@
 .entry-inline-title-wrap {
   position: relative;
   display: inline-flex;
-  flex: 1 1 auto;
+  flex: 0 0 auto;
+  max-width: 100%;
   min-width: 0;
 }
 
 .entry-inline-input--title {
   font-size: var(--font-size-base);
   font-weight: 600;
-  width: 100%;
-  min-width: 6rem;
+  width: auto;
+  min-width: 4rem;
+  max-width: 100%;
 }
 
 .entry-title-dropdown {
