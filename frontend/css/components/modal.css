@@ -35,6 +35,19 @@
     width: 100%;
 }
 
+.moment-description-wrap {
+    position: relative;
+    width: 100%;
+}
+
+.moment-description-wrap input {
+    width: 100%;
+}
+
+.moment-description-wrap .entry-title-dropdown {
+    z-index: 1100;
+}
+
 .modal-content select,
 .modal__content select {
     padding: 0.75rem;

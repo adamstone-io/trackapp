@@ -343,12 +343,17 @@
 
         <form id="moment-form">
           <div class="form-group">
-            <textarea
-              id="moment-description"
-              placeholder="What happened?"
-              maxlength="500"
-              required
-            ></textarea>
+            <div class="moment-description-wrap">
+              <input
+                type="text"
+                id="moment-description"
+                placeholder="What happened?"
+                maxlength="500"
+                autocomplete="off"
+                required
+              />
+              <div id="moment-description-dropdown" class="entry-title-dropdown hidden"></div>
+            </div>
           </div>
 
           <div class="form-group">
