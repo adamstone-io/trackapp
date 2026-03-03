@@ -373,7 +373,8 @@ class TodayEntriesView(APIView):
 
     def get(self, request):
         user_timezone = request.headers.get('X-User-Timezone', 'UTC')
-        today_start = self._get_today_start(user_timezone)
+        date_str = request.query_params.get('date')  # optional YYYY-MM-DD
+        today_start = self._get_day_start(user_timezone, date_str)
         today_end = today_start + timedelta(days=1)
 
         time_entries = self._get_time_entries(request.user, today_start, today_end)
@@ -383,28 +384,27 @@ class TodayEntriesView(APIView):
 
         return Response(combined_entries)
 
-    def _get_today_start(self, user_timezone):
+    def _get_day_start(self, user_timezone, date_str=None):
         """
-        Get the start of today at 00:00:00 in the user's timezone.
-        
-        Args:
-            user_timezone: IANA timezone string (e.g., 'Australia/Brisbane')
-        
-        Returns:
-            Timezone-aware datetime at midnight in the user's timezone
+        Get the start of a day at 00:00:00 in the user's timezone.
+        If date_str (YYYY-MM-DD) is provided, use that date; otherwise use today.
         """
         import zoneinfo
-        
+        import datetime as dt
+
         try:
             tz = zoneinfo.ZoneInfo(user_timezone)
         except Exception:
-            # Fallback to UTC if timezone is invalid
             tz = zoneinfo.ZoneInfo('UTC')
-        
-        # Get current time in user's timezone
+
+        if date_str:
+            try:
+                d = dt.date.fromisoformat(date_str)
+                return dt.datetime(d.year, d.month, d.day, 0, 0, 0, tzinfo=tz)
+            except ValueError:
+                pass
+
         now_in_tz = timezone.now().astimezone(tz)
-        
-        # Get midnight in user's timezone
         return now_in_tz.replace(hour=0, minute=0, second=0, microsecond=0)
 
     def _get_time_entries(self, user, start, end):

@@ -378,16 +378,14 @@ export async function loadTimeEntries() {
   return fetchAllPages("/time-entries/");
 }
 
-export async function loadTodayEntries() {
+export async function loadTodayEntries(dateStr = null) {
   try {
-    // Get user's IANA timezone (e.g., 'Australia/Brisbane')
     const userTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
-
-    // Pass timezone via header so "today" is calculated in user's local time
-    const entries = await apiRequest("/today-entries/", {
-      headers: {
-        "X-User-Timezone": userTimezone,
-      },
+    const url = dateStr
+      ? `/today-entries/?date=${encodeURIComponent(dateStr)}`
+      : "/today-entries/";
+    const entries = await apiRequest(url, {
+      headers: { "X-User-Timezone": userTimezone },
     });
     return entries || [];
   } catch (error) {

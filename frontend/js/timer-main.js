@@ -142,10 +142,12 @@ document.addEventListener("DOMContentLoaded", async () => {
     if (!startVal) { qaeShowError("Start time is required."); return; }
     if (!endVal) { qaeShowError("End time is required."); return; }
 
-    const now = new Date();
-    const today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
-    const startedAt = new Date(`${today}T${startVal}`);
-    const endedAt = new Date(`${today}T${endVal}`);
+    const dateForEntry = entriesDatePicker?.value || (() => {
+      const now = new Date();
+      return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
+    })();
+    const startedAt = new Date(`${dateForEntry}T${startVal}`);
+    const endedAt = new Date(`${dateForEntry}T${endVal}`);
 
     if (endedAt <= startedAt) {
       qaeShowError("End time must be after start time.");
@@ -168,6 +170,41 @@ document.addEventListener("DOMContentLoaded", async () => {
       qaeAddBtn.disabled = false;
     }
   });
+
+  // Date picker for browsing past entries
+  const entriesDatePicker = document.getElementById("entries-date-picker");
+  const entriesDateLabel = document.getElementById("entries-date-label");
+
+  if (entriesDatePicker) {
+    const todayStr = (() => {
+      const d = new Date();
+      return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+    })();
+
+    entriesDatePicker.value = todayStr;
+    entriesDatePicker.max = todayStr;
+
+    entriesDatePicker.addEventListener("change", () => {
+      const val = entriesDatePicker.value;
+      const isToday = val === todayStr;
+
+      entriesController.setDate(isToday ? null : val);
+
+      if (entriesDateLabel) {
+        if (isToday) {
+          entriesDateLabel.textContent = "Today's Time Entries";
+        } else {
+          const d = new Date(`${val}T00:00:00`);
+          const label = new Intl.DateTimeFormat(undefined, {
+            weekday: "long",
+            month: "long",
+            day: "numeric",
+          }).format(d);
+          entriesDateLabel.textContent = `${label}`;
+        }
+      }
+    });
+  }
 
   createMainTimeEntryWindowController({
     onManualEntrySaved: async (manualEntry) => {

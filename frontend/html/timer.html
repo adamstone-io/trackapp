@@ -323,14 +323,22 @@
 
         <!-- Today's Entries -->
         <section class="today-entries">
-          <h2 class="today-entries__title">Today's Time Entries</h2>
+          <div class="today-entries__header">
+            <h2 class="today-entries__title" id="entries-date-label">Today's Time Entries</h2>
+            <input
+              type="date"
+              id="entries-date-picker"
+              class="today-entries__date-picker"
+              aria-label="View entries for date"
+            />
+          </div>
           <div id="entries-list" class="today-entries__list"></div>
           <div
             id="entries-empty"
             class="today-entries__empty"
             style="display: none"
           >
-            No entries logged today
+            No entries logged
           </div>
         </section>
       </main>

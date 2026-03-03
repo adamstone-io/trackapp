@@ -229,6 +229,9 @@ export function createEntriesController() {
     return null;
   }
 
+  // null = today; a YYYY-MM-DD string = a specific past date
+  let selectedDate = null;
+
   /**
    * Refresh the entries list
    * Uses optimized single API call that includes enriched data (project info).
@@ -236,8 +239,7 @@ export function createEntriesController() {
    */
   async function refresh() {
     try {
-      // Single optimized API call - backend returns enriched data
-      const todayData = await loadTodayEntries();
+      const todayData = await loadTodayEntries(selectedDate);
 
       // Separate entries and moments with enriched data from backend
       const entriesWithProject = [];
@@ -333,9 +335,17 @@ export function createEntriesController() {
         const field = editable.dataset.momentField;
         if (field === "description") {
           e.stopPropagation();
-          startMomentDescriptionEdit(editable, momentId, momentCard.dataset.momentDescription);
+          startMomentDescriptionEdit(
+            editable,
+            momentId,
+            momentCard.dataset.momentDescription,
+          );
         } else if (field === "time") {
-          startMomentTimeEdit(editable, momentId, momentCard.dataset.momentTimestampMs);
+          startMomentTimeEdit(
+            editable,
+            momentId,
+            momentCard.dataset.momentTimestampMs,
+          );
         }
         return;
       }
@@ -427,7 +437,9 @@ export function createEntriesController() {
     if (span.querySelector("input")) return;
 
     const timestampMs = Number(timestampMsStr);
-    const date = Number.isFinite(timestampMs) ? new Date(timestampMs) : new Date();
+    const date = Number.isFinite(timestampMs)
+      ? new Date(timestampMs)
+      : new Date();
     const currentTimeValue = `${String(date.getHours()).padStart(2, "0")}:${String(date.getMinutes()).padStart(2, "0")}`;
 
     const input = document.createElement("input");
@@ -454,7 +466,10 @@ export function createEntriesController() {
           await refresh();
         }
       } else {
-        const fmt = new Intl.DateTimeFormat(undefined, { hour: "2-digit", minute: "2-digit" });
+        const fmt = new Intl.DateTimeFormat(undefined, {
+          hour: "2-digit",
+          minute: "2-digit",
+        });
         span.textContent = fmt.format(date);
         span.classList.remove("entry-card__editing");
       }
@@ -463,7 +478,10 @@ export function createEntriesController() {
     input.addEventListener("blur", save);
     input.addEventListener("keydown", (e) => {
       if (e.key === "Enter") input.blur();
-      if (e.key === "Escape") { saved = true; refresh(); }
+      if (e.key === "Escape") {
+        saved = true;
+        refresh();
+      }
     });
 
     span.textContent = "";
@@ -676,6 +694,10 @@ export function createEntriesController() {
 
   return {
     refresh,
+    setDate: (dateStr) => {
+      selectedDate = dateStr || null;
+      refresh();
+    },
     setMomentEditor: (handler) => {
       onEditMoment = typeof handler === "function" ? handler : null;
     },
