@@ -13,13 +13,21 @@ import {
 import { createDropdownMenu } from "../views/components/dropdown-menu.js";
 import { createTimeEntryModal } from "../views/components/time-entry-modal.js";
 import { Task } from "../domain/task.js";
+import { TaskNameManager } from "../utils/task-name-manager.js";
 
 export function createEntriesController() {
+  let cachedTasks = [];
+  loadTasks()
+    .then((t) => {
+      cachedTasks = t;
+    })
+    .catch(() => {});
+
   const modal = createTimeEntryModal({
     onSave: async (payload) => {
       if (payload.id) {
         const durationSeconds = Math.round(
-          (new Date(payload.endedAt) - new Date(payload.startedAt)) / 1000
+          (new Date(payload.endedAt) - new Date(payload.startedAt)) / 1000,
         );
 
         await updateTimeEntry(payload.id, {
@@ -278,11 +286,17 @@ export function createEntriesController() {
       // Attach menus
       attachEntryMenus(entriesWithProject);
       attachMomentMenus(moments);
+
+      loadTasks()
+        .then((t) => {
+          cachedTasks = t;
+        })
+        .catch(() => {});
     } catch (error) {
       console.error("Failed to refresh entries:", error);
       // Optionally show error in UI
       EntriesView.renderError(
-        "Failed to load entries. Please refresh the page."
+        "Failed to load entries. Please refresh the page.",
       );
     }
   }
@@ -318,6 +332,7 @@ export function createEntriesController() {
       const endedAt = card.dataset.endedAt;
 
       if (editable.classList.contains("entry-card__title")) {
+        e.stopPropagation(); // prevent this click reaching document and closing the dropdown
         startTitleEdit(editable, entryId, currentTitle);
       } else if (editable.classList.contains("entry-card__time")) {
         startTimeEdit(editable, entryId, startedAt, endedAt);
@@ -328,19 +343,47 @@ export function createEntriesController() {
   function startTitleEdit(span, entryId, currentTitle) {
     if (span.querySelector("input")) return;
 
+    const wrap = document.createElement("span");
+    wrap.className = "entry-inline-title-wrap";
+
     const input = document.createElement("input");
     input.type = "text";
     input.value = currentTitle;
     input.className = "entry-inline-input entry-inline-input--title";
+    input.setAttribute("autocomplete", "off");
+
+    const dropdown = document.createElement("div");
+    dropdown.className = "entry-title-dropdown hidden";
+
+    wrap.appendChild(input);
+    wrap.appendChild(dropdown);
+
+    const taskManager = new TaskNameManager(input, dropdown, {
+      onSelect: () => input.blur(),
+    });
+    taskManager.setTasks(cachedTasks);
+    if (!cachedTasks.length) {
+      loadTasks()
+        .then((tasks) => {
+          cachedTasks = tasks;
+          taskManager.setTasks(tasks);
+        })
+        .catch(() => {});
+    }
 
     let saved = false;
+    function cleanup() {
+      taskManager.dispose();
+    }
+
     async function save() {
       if (saved) return;
       saved = true;
+      cleanup();
       const newTitle = input.value.trim();
       if (newTitle && newTitle !== currentTitle) {
         try {
-          const tasks = await loadTasks();
+          const tasks = cachedTasks.length ? cachedTasks : await loadTasks();
           const normalized = newTitle.toLowerCase();
           let task = tasks.find(
             (t) => (t.title ?? "").trim().toLowerCase() === normalized,
@@ -351,7 +394,10 @@ export function createEntriesController() {
             delete payload.projectId;
             task = await createTask(payload);
           }
-          await updateTimeEntry(entryId, { taskTitle: newTitle, task: task.id });
+          await updateTimeEntry(entryId, {
+            taskTitle: newTitle,
+            task: task.id,
+          });
           await refresh();
         } catch {
           await refresh();
@@ -364,13 +410,18 @@ export function createEntriesController() {
 
     input.addEventListener("keydown", (e) => {
       if (e.key === "Enter") input.blur();
-      if (e.key === "Escape") { saved = true; span.textContent = currentTitle; span.classList.remove("entry-card__editing"); }
+      if (e.key === "Escape") {
+        saved = true;
+        cleanup();
+        span.textContent = currentTitle;
+        span.classList.remove("entry-card__editing");
+      }
     });
     input.addEventListener("blur", save);
 
     span.textContent = "";
     span.classList.add("entry-card__editing");
-    span.appendChild(input);
+    span.appendChild(wrap);
     input.focus();
     input.select();
   }
@@ -395,7 +446,9 @@ export function createEntriesController() {
     });
     btn.addEventListener("click", () => {
       input.focus();
-      try { input.showPicker(); } catch {}
+      try {
+        input.showPicker();
+      } catch {}
     });
 
     wrap.appendChild(input);
@@ -434,13 +487,26 @@ export function createEntriesController() {
     function scheduleSave() {
       clearTimeout(saveTimer);
       saveTimer = setTimeout(async () => {
-        if (document.activeElement === startInput || document.activeElement === endInput) return;
+        if (
+          document.activeElement === startInput ||
+          document.activeElement === endInput
+        )
+          return;
         const newStart = buildIso(startedAt, startInput.value);
         const newEnd = buildIso(endedAt, endInput.value);
-        const duration = Math.round((new Date(newEnd) - new Date(newStart)) / 1000);
-        if (duration <= 0) { await refresh(); return; }
+        const duration = Math.round(
+          (new Date(newEnd) - new Date(newStart)) / 1000,
+        );
+        if (duration <= 0) {
+          await refresh();
+          return;
+        }
         try {
-          await updateTimeEntry(entryId, { startedAt: newStart, endedAt: newEnd, durationSeconds: duration });
+          await updateTimeEntry(entryId, {
+            startedAt: newStart,
+            endedAt: newEnd,
+            durationSeconds: duration,
+          });
           await refresh();
         } catch {
           await refresh();

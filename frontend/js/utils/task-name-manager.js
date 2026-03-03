@@ -4,11 +4,12 @@
  * as the user types.
  */
 export class TaskNameManager {
-  constructor(inputElement, dropdownElement) {
+  constructor(inputElement, dropdownElement, { onSelect } = {}) {
     this.input = inputElement;
     this.dropdown = dropdownElement;
     this.tasks = []; // [{ title, entryCount }]
     this.selectedIndex = -1;
+    this._onSelect = typeof onSelect === "function" ? onSelect : null;
 
     this._onInputBound = () => this._handleInput();
     this._onFocusBound = () => this._handleInput();
@@ -121,6 +122,7 @@ export class TaskNameManager {
     this._hide();
     this.input.dispatchEvent(new Event("input", { bubbles: true }));
     setTimeout(() => { this._justSelected = false; }, 0);
+    this._onSelect?.(title);
   }
 
   _hide() {
