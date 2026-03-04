@@ -4,7 +4,7 @@ export const reviewIds = {
   reviewTitle: "review-title",
   reviewCategory: "review-category",
   modalCategoryDropdown: "modal-category-dropdown",
-  reviewDescription: "review-description",
+  reviewNotes: "review-notes",
   reviewCancelBtn: "review-cancel-btn",
   reviewSaveBtn: "review-save-btn",
   

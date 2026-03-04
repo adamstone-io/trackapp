@@ -232,12 +232,12 @@ export class ReviewView {
     const title = byId(reviewIds.reviewModalTitle);
     const titleInput = byId(reviewIds.reviewTitle);
     const categoryInput = byId(reviewIds.reviewCategory);
-    const descInput = byId(reviewIds.reviewDescription);
+    const notesInput = byId(reviewIds.reviewNotes);
 
     title.textContent = "Edit Review Item";
     titleInput.value = item.prompt;
     categoryInput.value = item.category || "";
-    descInput.value = item.notes || "";
+    if (notesInput) notesInput.value = item.notes || "";
 
     modal.classList.remove("hidden");
     titleInput.focus();
@@ -251,12 +251,12 @@ export class ReviewView {
   static readFormData() {
     const titleInput = byId(reviewIds.reviewTitle);
     const categoryInput = byId(reviewIds.reviewCategory);
-    const descInput = byId(reviewIds.reviewDescription);
+    const notesInput = byId(reviewIds.reviewNotes);
 
     return {
       prompt: titleInput.value.trim(),
       category: categoryInput.value.trim(),
-      notes: descInput.value.trim(),
+      notes: notesInput?.value.trim() ?? "",
     };
   }
 

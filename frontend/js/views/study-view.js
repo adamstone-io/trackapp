@@ -299,14 +299,12 @@ export class StudyView {
     const title = byId(studyIds.studyModalTitle);
     const titleInput = byId(studyIds.studyTitle);
     const categoryInput = byId(studyIds.studyCategory);
-    const descInput = byId(studyIds.studyDescription);
     const notesInput = byId(studyIds.studyNotes);
 
     title.textContent = "Edit Study Item";
     titleInput.value = item.prompt;
     categoryInput.value = item.category || "";
-    descInput.value = "";
-    notesInput.value = item.notes || "";
+    if (notesInput) notesInput.value = item.notes || "";
 
     StudyView._setupModalImages(item.imageUrl ?? null, item.noteImageUrl ?? null);
 
@@ -410,14 +408,12 @@ export class StudyView {
   static readFormData() {
     const titleInput = byId(studyIds.studyTitle);
     const categoryInput = byId(studyIds.studyCategory);
-    const descInput = byId(studyIds.studyDescription);
     const notesInput = byId(studyIds.studyNotes);
 
     return {
       prompt: titleInput.value.trim(),
       category: categoryInput.value.trim(),
-      description: descInput.value.trim(),
-      notes: notesInput.value,
+      notes: notesInput?.value ?? "",
     };
   }
 

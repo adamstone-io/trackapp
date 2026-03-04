@@ -265,9 +265,7 @@ export function createStudyController() {
       return;
     }
 
-    const combinedNotes = [data.description, data.notes]
-      .filter(Boolean)
-      .join("\n\n");
+    const combinedNotes = data.notes || "";
 
     if (editingItemId) {
       const imageState = StudyView.readModalImageState();

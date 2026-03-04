@@ -273,12 +273,12 @@ export class PrimeView {
     const modalTitle = byId(primeIds.primeModalTitle);
     const titleInput = byId(primeIds.primeTitle);
     const categoryInput = byId(primeIds.primeCategory);
-    const descInput = byId(primeIds.primeDescription);
+    const notesInput = byId(primeIds.primeNotes);
 
     modalTitle.textContent = "Edit Prime Item";
     titleInput.value = item.prompt ?? "";
     categoryInput.value = item.category ?? "";
-    descInput.value = item.notes ?? "";
+    if (notesInput) notesInput.value = item.notes ?? "";
 
     PrimeView._setupModalImages(item.imageUrl ?? null, item.noteImageUrl ?? null);
 
@@ -291,12 +291,12 @@ export class PrimeView {
     const modalTitle = byId(primeIds.primeModalTitle);
     const titleInput = byId(primeIds.primeTitle);
     const categoryInput = byId(primeIds.primeCategory);
-    const descInput = byId(primeIds.primeDescription);
+    const notesInput = byId(primeIds.primeNotes);
 
     modalTitle.textContent = "Add Prime Item";
     titleInput.value = "";
     categoryInput.value = "";
-    descInput.value = "";
+    if (notesInput) notesInput.value = "";
 
     PrimeView._setupModalImages(null, null);
 
@@ -313,7 +313,7 @@ export class PrimeView {
     return {
       prompt: byId(primeIds.primeTitle)?.value.trim() ?? "",
       category: byId(primeIds.primeCategory)?.value.trim() ?? "",
-      notes: byId(primeIds.primeDescription)?.value.trim() ?? "",
+      notes: byId(primeIds.primeNotes)?.value.trim() ?? "",
     };
   }
 

@@ -10,7 +10,7 @@ export const primeIds = {
   primeTitle: "prime-title",
   primeCategory: "prime-category",
   modalCategoryDropdown: "modal-category-dropdown",
-  primeDescription: "prime-description",
+  primeNotes: "prime-notes",
   primeCancelBtn: "prime-cancel-btn",
   primeSaveBtn: "prime-save-btn",
 
