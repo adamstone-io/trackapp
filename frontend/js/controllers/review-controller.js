@@ -165,7 +165,6 @@ export function createReviewController() {
   }
 
   async function handleDelete(item) {
-    if (!confirm(`Delete "${item.prompt}"?`)) return;
     try {
       await deleteStudyItem(item.id);
       await refreshReviewItems({ refreshCategories: true });

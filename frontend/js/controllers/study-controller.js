@@ -346,7 +346,6 @@ export function createStudyController() {
   }
 
   async function handleDelete(item) {
-    if (!confirm(`Delete "${item.prompt}"?`)) return;
     try {
       await deleteStudyItem(item.id);
       await refreshStudyItems({ refreshCategories: true });
