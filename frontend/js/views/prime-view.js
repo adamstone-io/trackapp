@@ -11,6 +11,8 @@ export class PrimeView {
   static resetRenderState() {
     renderedItemIds.clear();
     lastRenderCount = 0;
+    const listEl = byId(primeIds.primeList);
+    if (listEl) listEl.innerHTML = "";
   }
 
   static renderList(

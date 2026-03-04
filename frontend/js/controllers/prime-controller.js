@@ -30,9 +30,11 @@ let studyItems = [];
 export function createPrimeController() {
   studyItems = [];
 
+  const CATEGORY_FILTER_KEY = "primeCategoryFilter";
+
   let editingItemId = null;
   let showArchived = false;
-  let currentCategoryFilter = "";
+  let currentCategoryFilter = localStorage.getItem(CATEGORY_FILTER_KEY) || "";
   let currentSearchQuery = "";
   let currentPage = 1;
   let hasNextPage = true;
@@ -416,13 +418,41 @@ export function createPrimeController() {
 
   // ---------- HEADER MENU ----------
 
+  const categoryFilterModal = createCategoryFilterModal({
+    title: "Filter by Category",
+    onFilter: (category) => {
+      currentCategoryFilter = category;
+      if (category) {
+        localStorage.setItem(CATEGORY_FILTER_KEY, category);
+      } else {
+        localStorage.removeItem(CATEGORY_FILTER_KEY);
+      }
+      updateHeaderMenu();
+      resetAndLoad();
+    },
+  });
+
   let headerMenu = null;
 
   function updateHeaderMenu() {
     if (headerMenu) headerMenu.dispose();
 
+    const filterLabel = currentCategoryFilter
+      ? `Category: ${currentCategoryFilter}`
+      : "Filter by Category";
+
     headerMenu = createDropdownMenu({
       items: [
+        {
+          label: filterLabel,
+          onSelect: async () => {
+            const categories = await loadCategories({ mode: "priming" }).catch(() => []);
+            categoryFilterModal.open(categories, currentCategoryFilter);
+          },
+        },
+        ...(currentCategoryFilter
+          ? [{ label: "Clear Filter", onSelect: () => { currentCategoryFilter = ""; localStorage.removeItem(CATEGORY_FILTER_KEY); updateHeaderMenu(); resetAndLoad(); } }]
+          : []),
         {
           label: getQuickAddNotesDefault()
             ? "Disable Notes by Default"
@@ -508,6 +538,7 @@ export function createPrimeController() {
     refresh: refreshPrimeItems,
     dispose() {
       headerMenu?.dispose();
+      categoryFilterModal.dispose();
       observer?.disconnect();
     },
   };
