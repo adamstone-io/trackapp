@@ -29,7 +29,7 @@ let pauseStartMs = null;
 let pauseTickerId = null;
 let isStarting = false;
 
-export function createTimerController({ onEntryAdded }) {
+export function createTimerController({ onEntryAdded, countdownController = null }) {
   const timer = new Timer();
   const breakModal = createBreakModal({
     onSave: async ({ label }) => {
@@ -363,18 +363,18 @@ export function createTimerController({ onEntryAdded }) {
     });
 
     // Restore countdown mode if needed
-    if (record.mode === "countdown" && record.target_duration) {
-      document.dispatchEvent(
-        new CustomEvent("timer:modeChange", {
-          detail: { mode: "countdown", targetDuration: record.target_duration },
-        }),
-      );
-      document.dispatchEvent(
-        new CustomEvent("countdown:durationChange", {
-          detail: { duration: record.target_duration },
-        }),
-      );
-      targetDuration = record.target_duration;
+    if (record.mode === "countdown") {
+      if (countdownController) {
+        countdownController.activateCountdown(record.target_duration || undefined);
+      } else {
+        // Fallback: drive via events if controller reference not available
+        document.dispatchEvent(
+          new CustomEvent("timer:modeChange", {
+            detail: { mode: "countdown", targetDuration: record.target_duration },
+          }),
+        );
+      }
+      targetDuration = record.target_duration || 0;
       countdownMode = true;
     }
 

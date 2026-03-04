@@ -28,6 +28,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     onEntryAdded: async () => {
       await entriesController.refresh();
     },
+    countdownController,
   });
 
   document.addEventListener("timer:runningChange", (e) => {
