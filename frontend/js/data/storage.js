@@ -294,6 +294,30 @@ export async function deleteMoment(id) {
   return apiRequest(`/moments/${id}/`, { method: "DELETE" });
 }
 
+// ========== ACTIVE TIMER ==========
+
+export async function getActiveTimer() {
+  return apiRequest("/active-timer/", { method: "GET" });
+}
+
+export async function createActiveTimer(payload) {
+  return apiRequest("/active-timer/", {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
+}
+
+export async function updateActiveTimer(patch) {
+  return apiRequest("/active-timer/", {
+    method: "PATCH",
+    body: JSON.stringify(patch),
+  });
+}
+
+export async function deleteActiveTimer() {
+  return apiRequest("/active-timer/", { method: "DELETE" });
+}
+
 // ========== TASKS ==========
 
 export async function createTask(payload) {

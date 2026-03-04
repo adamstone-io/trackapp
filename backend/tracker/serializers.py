@@ -5,6 +5,7 @@ from rest_framework import serializers
 from django.utils import timezone
 
 from .models import (
+    ActiveTimer,
     Habit,
     Moment,
     Project,
@@ -26,6 +27,13 @@ class TaskSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Task
+        fields = "__all__"
+        read_only_fields = ("user", "created_at")
+
+
+class ActiveTimerSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = ActiveTimer
         fields = "__all__"
         read_only_fields = ("user", "created_at")
 

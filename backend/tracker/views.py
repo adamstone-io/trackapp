@@ -9,6 +9,7 @@ from django.db.models import Count, Q, F
 from rest_framework.parsers import JSONParser, MultiPartParser, FormParser
 
 from .models import (
+    ActiveTimer,
     Habit,
     Moment,
     Project,
@@ -17,6 +18,7 @@ from .models import (
     TimeEntry,
 )
 from .serializers import (
+    ActiveTimerSerializer,
     HabitSerializer,
     MomentSerializer,
     ProjectSerializer,
@@ -639,3 +641,44 @@ class StatsView(APIView):
             return None
 
         return None
+
+
+class ActiveTimerView(APIView):
+    """
+    GET    /api/active-timer/  — return the user's active timer, or 404
+    POST   /api/active-timer/  — create or replace the active timer
+    PATCH  /api/active-timer/  — update fields (pause / resume)
+    DELETE /api/active-timer/  — clear the active timer (timer stopped)
+    """
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request):
+        try:
+            timer = ActiveTimer.objects.get(user=request.user)
+        except ActiveTimer.DoesNotExist:
+            return Response(None, status=status.HTTP_200_OK)
+        return Response(ActiveTimerSerializer(timer).data)
+
+    def post(self, request):
+        # Replace any existing active timer for this user
+        ActiveTimer.objects.filter(user=request.user).delete()
+        serializer = ActiveTimerSerializer(data=request.data)
+        if serializer.is_valid():
+            serializer.save(user=request.user)
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+    def patch(self, request):
+        try:
+            timer = ActiveTimer.objects.get(user=request.user)
+        except ActiveTimer.DoesNotExist:
+            return Response(status=status.HTTP_404_NOT_FOUND)
+        serializer = ActiveTimerSerializer(timer, data=request.data, partial=True)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+    def delete(self, request):
+        ActiveTimer.objects.filter(user=request.user).delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)

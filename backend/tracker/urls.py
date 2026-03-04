@@ -4,6 +4,7 @@ from rest_framework_simplejwt.views import TokenRefreshView
 
 from .token_views import CustomTokenObtainPairView
 from .views import (
+    ActiveTimerView,
     CurrentUserView,
     HabitViewSet,
     MomentViewSet,
@@ -32,4 +33,5 @@ urlpatterns = [
     path("api/auth/token/refresh/", TokenRefreshView.as_view(), name="token-refresh"),
     path("api/today-entries/", TodayEntriesView.as_view(), name="today-entries"),
     path("api/stats/", StatsView.as_view(), name="stats"),
+    path("api/active-timer/", ActiveTimerView.as_view(), name="active-timer"),
 ]

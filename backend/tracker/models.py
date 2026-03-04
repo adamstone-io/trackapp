@@ -50,6 +50,44 @@ class Task(models.Model):
     def __str__(self):
         return self.title
 
+
+class ActiveTimer(models.Model):
+    """Persists a single in-progress timer session per user.
+
+    Created when the timer starts, deleted when it stops.
+    On page reload the client restores state from this record.
+    """
+    MODE_STOPWATCH = "stopwatch"
+    MODE_COUNTDOWN = "countdown"
+    MODE_CHOICES = [
+        (MODE_STOPWATCH, "Stopwatch"),
+        (MODE_COUNTDOWN, "Countdown"),
+    ]
+
+    user = models.OneToOneField(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="active_timer",
+    )
+    task_title = models.CharField(max_length=255)
+    task = models.ForeignKey(
+        Task,
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="active_timers",
+    )
+    started_at = models.DateTimeField()
+    elapsed_seconds = models.IntegerField(default=0)
+    is_paused = models.BooleanField(default=False)
+    mode = models.CharField(max_length=20, choices=MODE_CHOICES, default=MODE_STOPWATCH)
+    target_duration = models.IntegerField(null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"ActiveTimer({self.user}, {self.task_title})"
+
+
 class TimeEntry(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid4, editable=False)
     user = models.ForeignKey(
