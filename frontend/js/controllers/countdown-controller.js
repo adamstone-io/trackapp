@@ -165,9 +165,7 @@ export function createCountdownController() {
       }
     });
 
-    if (state.targetDuration === 0 && favorites.length > 0) {
-      selectFavorite(favorites[0]);
-    }
+    // No favourite auto-selected on load — clock starts at 00:00:00
   }
 
   function handleClockClick(event) {
@@ -413,10 +411,8 @@ export function createCountdownController() {
       state.selectedFavoriteId = null;
       updateClockInputs(state.targetDuration);
       updateFavoritesSelection();
-    } else if (state.targetDuration === 0) {
-      state.targetDuration = 25 * 60;
-      updateClockInputs(state.targetDuration);
     }
+    // If no duration given and nothing set, clock stays at 00:00:00
     setMode("countdown");
   }
 
