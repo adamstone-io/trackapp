@@ -407,6 +407,10 @@ export function createCountdownController() {
     setMode("countdown");
   }
 
+  function activateStopwatch() {
+    setMode("stopwatch");
+  }
+
   /**
    * Get current target duration
    */
@@ -434,6 +438,7 @@ export function createCountdownController() {
   // Public API
   return {
     activateCountdown,
+    activateStopwatch,
     getTargetDuration,
     getMode,
     dispose,

@@ -3,7 +3,7 @@ import { createTimerController } from "./controllers/timer-controller.js";
 import { createMomentController } from "./controllers/moment-controller.js";
 import { createEntriesController } from "./controllers/list-entries-controller.js";
 import { createCountdownController } from "./controllers/countdown-controller.js";
-import { createMainTimeEntryWindowController } from "./controllers/main-time-entry-window.js";
+import { createMainTimeEntryWindowController, getTimerDefaultMode } from "./controllers/main-time-entry-window.js";
 import { createManualEntryController } from "./controllers/manual-time-entry-controller.js";
 import { SoundManager } from "./utils/sound-manager.js";
 import { initNavigation } from "./controllers/nav-controller.js";
@@ -30,11 +30,16 @@ document.addEventListener("DOMContentLoaded", async () => {
     },
   });
 
-  // If launched from the workspace "Start" button, activate countdown mode automatically
+  // If launched from the workspace "Start" button, activate countdown mode automatically.
+  // Otherwise, apply the user's saved default mode preference.
   const launchSearch = new URLSearchParams(window.location.search);
-  if (launchSearch.get("autoCountdown") === "1") {
+  const isWorkspaceLaunch = launchSearch.get("autoCountdown") === "1";
+
+  if (isWorkspaceLaunch) {
     const durationParam = parseInt(launchSearch.get("countdownDuration") || "0", 10);
     countdownController.activateCountdown(durationParam || undefined);
+  } else if (getTimerDefaultMode() === "countdown") {
+    countdownController.activateCountdown();
   }
 
   // Strip workspace launch params from the URL so a page refresh doesn't
@@ -240,6 +245,13 @@ document.addEventListener("DOMContentLoaded", async () => {
       await manualEntryController.addManualEntry(manualEntry);
     },
     onAddMoment: (prefill) => momentController?.openManual(prefill),
+    onDefaultModeChanged: (mode) => {
+      if (mode === "countdown") {
+        countdownController.activateCountdown();
+      } else {
+        countdownController.activateStopwatch();
+      }
+    },
   });
 
   if (window.location.hostname === "localhost") {
