@@ -373,9 +373,13 @@ export class PrimeView {
     const linkedGroup = linkedFieldId
       ? byId(linkedFieldId)?.closest(".form-group")
       : null;
+    const linkedField = linkedFieldId ? byId(linkedFieldId) : null;
     const setLinkedFieldVisible = (visible) => {
       if (!linkedGroup) return;
       linkedGroup.style.display = visible ? "" : "none";
+      if (linkedField && linkedField.required !== undefined) {
+        linkedField.required = visible;
+      }
     };
 
     const uploadLabel = input?.parentElement;

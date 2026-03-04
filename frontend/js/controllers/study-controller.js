@@ -260,7 +260,16 @@ export function createStudyController() {
   async function handleSave() {
     const data = StudyView.readFormData();
 
-    if (!data.prompt) {
+    if (editingItemId) {
+      const imageState = StudyView.readModalImageState();
+      const hasPromptImage = imageState.newPromptFile ||
+        (!imageState.removePromptImage && studyItems.find(i => i.id === editingItemId)?.imageUrl);
+
+      if (!data.prompt && !hasPromptImage) {
+        alert("Please enter a prompt or upload a prompt image.");
+        return;
+      }
+    } else if (!data.prompt) {
       alert("Please enter a title for this study item");
       return;
     }

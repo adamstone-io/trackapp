@@ -458,9 +458,12 @@ export function createPrimeController() {
   primeForm?.addEventListener("submit", async (e) => {
     e.preventDefault();
     const data = PrimeView.readFormData();
-    if (!data.prompt) return;
-
     const imageState = PrimeView.readModalImageState();
+
+    const hasPromptImage = imageState.newPromptFile ||
+      (!imageState.removePromptImage && studyItems.find(i => i.id === editingItemId)?.imageUrl);
+
+    if (!data.prompt && !hasPromptImage) return;
 
     try {
       if (editingItemId) {

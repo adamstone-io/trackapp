@@ -332,6 +332,7 @@ export class StudyView {
       studyIds.modalPromptImageRemoveBtn,
       studyIds.modalPromptImageInput,
       currentPromptUrl,
+      studyIds.studyTitle,
     );
     StudyView._setupModalImageSlot(
       studyIds.modalNoteImagePreview,
@@ -339,10 +340,11 @@ export class StudyView {
       studyIds.modalNoteImageRemoveBtn,
       studyIds.modalNoteImageInput,
       currentNoteUrl,
+      studyIds.studyNotes,
     );
   }
 
-  static _setupModalImageSlot(previewId, previewImgId, removeBtnId, inputId, currentUrl) {
+  static _setupModalImageSlot(previewId, previewImgId, removeBtnId, inputId, currentUrl, linkedFieldId = null) {
     const _replace = (id) => {
       const el = byId(id);
       if (!el) return null;
@@ -361,6 +363,20 @@ export class StudyView {
     delete preview.dataset.pendingRemove;
     if (input) input.value = "";
 
+    const linkedGroup = linkedFieldId
+      ? byId(linkedFieldId)?.closest(".form-group")
+      : null;
+    const linkedField = linkedFieldId ? byId(linkedFieldId) : null;
+    const setLinkedFieldVisible = (visible) => {
+      if (!linkedGroup) return;
+      linkedGroup.style.display = visible ? "" : "none";
+      // Disable required validation on hidden fields so the browser
+      // doesn't block form submission with an unfocusable error
+      if (linkedField && linkedField.required !== undefined) {
+        linkedField.required = visible;
+      }
+    };
+
     const uploadLabel = input?.parentElement;
     const setLabelText = (hasImage) => {
       if (!uploadLabel) return;
@@ -376,10 +392,12 @@ export class StudyView {
       if (previewImg) previewImg.src = currentUrl;
       preview.classList.remove("hidden");
       setLabelText(true);
+      setLinkedFieldVisible(false);
     } else {
       if (previewImg) previewImg.src = "";
       preview.classList.add("hidden");
       setLabelText(false);
+      setLinkedFieldVisible(true);
     }
 
     removeBtn?.addEventListener("click", () => {
@@ -387,6 +405,7 @@ export class StudyView {
       preview.classList.add("hidden");
       if (previewImg) previewImg.src = "";
       setLabelText(false);
+      setLinkedFieldVisible(true);
     });
 
     input?.addEventListener("change", () => {
@@ -396,6 +415,7 @@ export class StudyView {
         if (previewImg) previewImg.src = URL.createObjectURL(file);
         preview.classList.remove("hidden");
         setLabelText(true);
+        setLinkedFieldVisible(false);
       }
     });
   }
