@@ -338,6 +338,7 @@ export class PrimeView {
       primeIds.modalPromptImageRemoveBtn,
       primeIds.modalPromptImageInput,
       currentPromptUrl,
+      primeIds.primeTitle,
     );
     PrimeView._setupModalImageSlot(
       primeIds.modalNoteImagePreview,
@@ -345,10 +346,11 @@ export class PrimeView {
       primeIds.modalNoteImageRemoveBtn,
       primeIds.modalNoteImageInput,
       currentNoteUrl,
+      primeIds.primeNotes,
     );
   }
 
-  static _setupModalImageSlot(previewId, previewImgId, removeBtnId, inputId, currentUrl) {
+  static _setupModalImageSlot(previewId, previewImgId, removeBtnId, inputId, currentUrl, linkedFieldId = null) {
     const _replace = (id) => {
       const el = byId(id);
       if (!el) return null;
@@ -367,10 +369,18 @@ export class PrimeView {
     delete preview.dataset.pendingRemove;
     if (input) input.value = "";
 
+    // The linked text field's form-group to hide when an image is active
+    const linkedGroup = linkedFieldId
+      ? byId(linkedFieldId)?.closest(".form-group")
+      : null;
+    const setLinkedFieldVisible = (visible) => {
+      if (!linkedGroup) return;
+      linkedGroup.style.display = visible ? "" : "none";
+    };
+
     const uploadLabel = input?.parentElement;
     const setLabelText = (hasImage) => {
       if (!uploadLabel) return;
-      // Update only the text node, leaving the hidden input intact
       for (const node of uploadLabel.childNodes) {
         if (node.nodeType === Node.TEXT_NODE) {
           node.textContent = hasImage ? " Change Image " : " Upload Image ";
@@ -383,10 +393,12 @@ export class PrimeView {
       if (previewImg) previewImg.src = currentUrl;
       preview.classList.remove("hidden");
       setLabelText(true);
+      setLinkedFieldVisible(false);
     } else {
       if (previewImg) previewImg.src = "";
       preview.classList.add("hidden");
       setLabelText(false);
+      setLinkedFieldVisible(true);
     }
 
     removeBtn?.addEventListener("click", () => {
@@ -394,6 +406,7 @@ export class PrimeView {
       preview.classList.add("hidden");
       if (previewImg) previewImg.src = "";
       setLabelText(false);
+      setLinkedFieldVisible(true);
     });
 
     input?.addEventListener("change", () => {
@@ -403,6 +416,7 @@ export class PrimeView {
         if (previewImg) previewImg.src = URL.createObjectURL(file);
         preview.classList.remove("hidden");
         setLabelText(true);
+        setLinkedFieldVisible(false);
       }
     });
   }
