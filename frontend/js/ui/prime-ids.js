@@ -52,4 +52,14 @@ export const primeIds = {
   quickAddNotesToggleBtn: "quick-add-notes-toggle-btn",
   quickAddNotesWrap: "quick-add-notes-wrap",
   quickAddNotesInput: "quick-add-notes-input",
+
+  // Modal image editing
+  modalPromptImagePreview: "modal-prompt-image-preview",
+  modalPromptImagePreviewImg: "modal-prompt-image-preview-img",
+  modalPromptImageRemoveBtn: "modal-prompt-image-remove-btn",
+  modalPromptImageInput: "modal-prompt-image-input",
+  modalNoteImagePreview: "modal-note-image-preview",
+  modalNoteImagePreviewImg: "modal-note-image-preview-img",
+  modalNoteImageRemoveBtn: "modal-note-image-remove-btn",
+  modalNoteImageInput: "modal-note-image-input",
 };

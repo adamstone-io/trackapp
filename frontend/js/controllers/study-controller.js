@@ -16,6 +16,10 @@ import {
   transitionToPriming,
   transitionToReviewing,
   loadCategories,
+  uploadPromptImage,
+  removePromptImage,
+  uploadNoteImage,
+  removeNoteImage,
 } from "../api/studyItemApi.js";
 
 let studyItems = [];
@@ -266,12 +270,26 @@ export function createStudyController() {
       .join("\n\n");
 
     if (editingItemId) {
+      const imageState = StudyView.readModalImageState();
       try {
         await updateStudyItem(editingItemId, {
           prompt: data.prompt,
           category: data.category,
           notes: combinedNotes,
         });
+
+        if (imageState.removePromptImage) {
+          await removePromptImage(editingItemId).catch(() => {});
+        } else if (imageState.newPromptFile) {
+          await uploadPromptImage(editingItemId, imageState.newPromptFile);
+        }
+
+        if (imageState.removeNoteImage) {
+          await removeNoteImage(editingItemId).catch(() => {});
+        } else if (imageState.newNoteFile) {
+          await uploadNoteImage(editingItemId, imageState.newNoteFile);
+        }
+
         editingItemId = null;
         await refreshStudyItems({ refreshCategories: true });
       } catch (error) {

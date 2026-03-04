@@ -103,6 +103,23 @@ export async function transitionToReviewing(id) {
   });
 }
 
+// ---------- PROMPT IMAGE ----------
+
+export async function uploadPromptImage(id, imageFile) {
+  const formData = new FormData();
+  formData.append("image", imageFile);
+  return http(`${BASE}/${id}/upload_image/`, {
+    method: "POST",
+    body: formData,
+  });
+}
+
+export async function removePromptImage(id) {
+  return http(`${BASE}/${id}/remove_image/`, {
+    method: "DELETE",
+  });
+}
+
 // ---------- NOTE IMAGE ----------
 
 export async function uploadNoteImage(id, imageFile) {

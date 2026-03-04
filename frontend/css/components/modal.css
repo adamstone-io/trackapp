@@ -92,3 +92,31 @@
         flex-direction: column;
     }
 }
+
+/* Modal image editing */
+.modal-image-section {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-sm, 8px);
+    flex-wrap: wrap;
+}
+
+.modal-image-preview {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-sm, 8px);
+}
+
+.modal-image-preview__img {
+    width: 80px;
+    height: 60px;
+    object-fit: cover;
+    border-radius: var(--radius-sm, 4px);
+    border: 1px solid var(--color-border, #e0e0e0);
+}
+
+.modal-image-upload-label {
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+}

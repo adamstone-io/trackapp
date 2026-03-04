@@ -40,4 +40,14 @@ export const studyIds = {
   quickAddNoteImageInput: "quick-add-note-image-input",
   quickAddNoteImagePreview: "quick-add-note-image-preview",
   quickAddNoteImagePreviewImg: "quick-add-note-image-preview-img",
+
+  // Modal image editing
+  modalPromptImagePreview: "modal-prompt-image-preview",
+  modalPromptImagePreviewImg: "modal-prompt-image-preview-img",
+  modalPromptImageRemoveBtn: "modal-prompt-image-remove-btn",
+  modalPromptImageInput: "modal-prompt-image-input",
+  modalNoteImagePreview: "modal-note-image-preview",
+  modalNoteImagePreviewImg: "modal-note-image-preview-img",
+  modalNoteImageRemoveBtn: "modal-note-image-remove-btn",
+  modalNoteImageInput: "modal-note-image-input",
 };

@@ -280,6 +280,8 @@ export class PrimeView {
     categoryInput.value = item.category ?? "";
     descInput.value = item.notes ?? "";
 
+    PrimeView._setupModalImages(item.imageUrl ?? null, item.noteImageUrl ?? null);
+
     modal.classList.remove("hidden");
     titleInput.focus();
   }
@@ -296,6 +298,8 @@ export class PrimeView {
     categoryInput.value = "";
     descInput.value = "";
 
+    PrimeView._setupModalImages(null, null);
+
     modal.classList.remove("hidden");
     titleInput.focus();
   }
@@ -311,6 +315,96 @@ export class PrimeView {
       category: byId(primeIds.primeCategory)?.value.trim() ?? "",
       notes: byId(primeIds.primeDescription)?.value.trim() ?? "",
     };
+  }
+
+  static readModalImageState() {
+    const promptInput = byId(primeIds.modalPromptImageInput);
+    const promptPreview = byId(primeIds.modalPromptImagePreview);
+    const noteInput = byId(primeIds.modalNoteImageInput);
+    const notePreview = byId(primeIds.modalNoteImagePreview);
+    return {
+      newPromptFile: promptInput?.files?.[0] ?? null,
+      removePromptImage: promptPreview?.dataset.pendingRemove === "true",
+      newNoteFile: noteInput?.files?.[0] ?? null,
+      removeNoteImage: notePreview?.dataset.pendingRemove === "true",
+    };
+  }
+
+  /** Wire up image preview/remove/upload for modal. Called on every open. */
+  static _setupModalImages(currentPromptUrl, currentNoteUrl) {
+    PrimeView._setupModalImageSlot(
+      primeIds.modalPromptImagePreview,
+      primeIds.modalPromptImagePreviewImg,
+      primeIds.modalPromptImageRemoveBtn,
+      primeIds.modalPromptImageInput,
+      currentPromptUrl,
+    );
+    PrimeView._setupModalImageSlot(
+      primeIds.modalNoteImagePreview,
+      primeIds.modalNoteImagePreviewImg,
+      primeIds.modalNoteImageRemoveBtn,
+      primeIds.modalNoteImageInput,
+      currentNoteUrl,
+    );
+  }
+
+  static _setupModalImageSlot(previewId, previewImgId, removeBtnId, inputId, currentUrl) {
+    const _replace = (id) => {
+      const el = byId(id);
+      if (!el) return null;
+      const clone = el.cloneNode(true);
+      el.parentNode.replaceChild(clone, el);
+      return clone;
+    };
+
+    const preview = _replace(previewId);
+    const previewImg = byId(previewImgId);
+    const removeBtn = _replace(removeBtnId);
+    const input = _replace(inputId);
+
+    if (!preview) return;
+
+    delete preview.dataset.pendingRemove;
+    if (input) input.value = "";
+
+    const uploadLabel = input?.parentElement;
+    const setLabelText = (hasImage) => {
+      if (!uploadLabel) return;
+      // Update only the text node, leaving the hidden input intact
+      for (const node of uploadLabel.childNodes) {
+        if (node.nodeType === Node.TEXT_NODE) {
+          node.textContent = hasImage ? " Change Image " : " Upload Image ";
+          return;
+        }
+      }
+    };
+
+    if (currentUrl) {
+      if (previewImg) previewImg.src = currentUrl;
+      preview.classList.remove("hidden");
+      setLabelText(true);
+    } else {
+      if (previewImg) previewImg.src = "";
+      preview.classList.add("hidden");
+      setLabelText(false);
+    }
+
+    removeBtn?.addEventListener("click", () => {
+      preview.dataset.pendingRemove = "true";
+      preview.classList.add("hidden");
+      if (previewImg) previewImg.src = "";
+      setLabelText(false);
+    });
+
+    input?.addEventListener("change", () => {
+      const file = input.files?.[0];
+      if (file) {
+        delete preview.dataset.pendingRemove;
+        if (previewImg) previewImg.src = URL.createObjectURL(file);
+        preview.classList.remove("hidden");
+        setLabelText(true);
+      }
+    });
   }
 
   static escapeHtml(text) {

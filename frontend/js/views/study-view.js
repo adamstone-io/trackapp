@@ -308,8 +308,98 @@ export class StudyView {
     descInput.value = "";
     notesInput.value = item.notes || "";
 
+    StudyView._setupModalImages(item.imageUrl ?? null, item.noteImageUrl ?? null);
+
     modal.classList.remove("hidden");
     titleInput.focus();
+  }
+
+  static readModalImageState() {
+    const promptInput = byId(studyIds.modalPromptImageInput);
+    const promptPreview = byId(studyIds.modalPromptImagePreview);
+    const noteInput = byId(studyIds.modalNoteImageInput);
+    const notePreview = byId(studyIds.modalNoteImagePreview);
+    return {
+      newPromptFile: promptInput?.files?.[0] ?? null,
+      removePromptImage: promptPreview?.dataset.pendingRemove === "true",
+      newNoteFile: noteInput?.files?.[0] ?? null,
+      removeNoteImage: notePreview?.dataset.pendingRemove === "true",
+    };
+  }
+
+  static _setupModalImages(currentPromptUrl, currentNoteUrl) {
+    StudyView._setupModalImageSlot(
+      studyIds.modalPromptImagePreview,
+      studyIds.modalPromptImagePreviewImg,
+      studyIds.modalPromptImageRemoveBtn,
+      studyIds.modalPromptImageInput,
+      currentPromptUrl,
+    );
+    StudyView._setupModalImageSlot(
+      studyIds.modalNoteImagePreview,
+      studyIds.modalNoteImagePreviewImg,
+      studyIds.modalNoteImageRemoveBtn,
+      studyIds.modalNoteImageInput,
+      currentNoteUrl,
+    );
+  }
+
+  static _setupModalImageSlot(previewId, previewImgId, removeBtnId, inputId, currentUrl) {
+    const _replace = (id) => {
+      const el = byId(id);
+      if (!el) return null;
+      const clone = el.cloneNode(true);
+      el.parentNode.replaceChild(clone, el);
+      return clone;
+    };
+
+    const preview = _replace(previewId);
+    const previewImg = byId(previewImgId);
+    const removeBtn = _replace(removeBtnId);
+    const input = _replace(inputId);
+
+    if (!preview) return;
+
+    delete preview.dataset.pendingRemove;
+    if (input) input.value = "";
+
+    const uploadLabel = input?.parentElement;
+    const setLabelText = (hasImage) => {
+      if (!uploadLabel) return;
+      for (const node of uploadLabel.childNodes) {
+        if (node.nodeType === Node.TEXT_NODE) {
+          node.textContent = hasImage ? " Change Image " : " Upload Image ";
+          return;
+        }
+      }
+    };
+
+    if (currentUrl) {
+      if (previewImg) previewImg.src = currentUrl;
+      preview.classList.remove("hidden");
+      setLabelText(true);
+    } else {
+      if (previewImg) previewImg.src = "";
+      preview.classList.add("hidden");
+      setLabelText(false);
+    }
+
+    removeBtn?.addEventListener("click", () => {
+      preview.dataset.pendingRemove = "true";
+      preview.classList.add("hidden");
+      if (previewImg) previewImg.src = "";
+      setLabelText(false);
+    });
+
+    input?.addEventListener("change", () => {
+      const file = input.files?.[0];
+      if (file) {
+        delete preview.dataset.pendingRemove;
+        if (previewImg) previewImg.src = URL.createObjectURL(file);
+        preview.classList.remove("hidden");
+        setLabelText(true);
+      }
+    });
   }
 
   static close() {

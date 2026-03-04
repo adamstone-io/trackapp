@@ -19,6 +19,10 @@ import {
   transitionToStudying,
   transitionToReviewing,
   loadCategories,
+  uploadPromptImage,
+  removePromptImage,
+  uploadNoteImage,
+  removeNoteImage,
 } from "../api/studyItemApi.js";
 
 let studyItems = [];
@@ -458,6 +462,8 @@ export function createPrimeController() {
     const data = PrimeView.readFormData();
     if (!data.prompt) return;
 
+    const imageState = PrimeView.readModalImageState();
+
     try {
       if (editingItemId) {
         await updateStudyItem(editingItemId, {
@@ -465,6 +471,18 @@ export function createPrimeController() {
           category: data.category,
           notes: data.notes,
         });
+
+        if (imageState.removePromptImage) {
+          await removePromptImage(editingItemId).catch(() => {});
+        } else if (imageState.newPromptFile) {
+          await uploadPromptImage(editingItemId, imageState.newPromptFile);
+        }
+
+        if (imageState.removeNoteImage) {
+          await removeNoteImage(editingItemId).catch(() => {});
+        } else if (imageState.newNoteFile) {
+          await uploadNoteImage(editingItemId, imageState.newNoteFile);
+        }
       } else {
         await handleCreateNew(data);
       }
