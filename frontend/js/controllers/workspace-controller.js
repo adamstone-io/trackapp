@@ -21,6 +21,58 @@ export function createWorkspaceController() {
   let editingProjectId = null;
   let editingTaskId = null;
 
+  // Date picker for filtering scheduled tasks
+  const datePicker = document.getElementById("tasks-date-picker");
+  const dateLabel = document.getElementById("tasks-date-label");
+
+  const todayStr = (() => {
+    const d = new Date();
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+  })();
+
+  if (datePicker) {
+    datePicker.value = todayStr;
+    datePicker.addEventListener("change", () => {
+      updateDateLabel();
+      renderScheduledTasks();
+    });
+  }
+
+  function getSelectedDateStr() {
+    return datePicker?.value || todayStr;
+  }
+
+  function updateDateLabel() {
+    if (!dateLabel) return;
+    const val = getSelectedDateStr();
+    if (val === todayStr) {
+      dateLabel.textContent = "Scheduled Tasks — Today";
+    } else {
+      const d = new Date(`${val}T00:00:00`);
+      const label = new Intl.DateTimeFormat(undefined, {
+        weekday: "long", month: "long", day: "numeric",
+      }).format(d);
+      dateLabel.textContent = `Scheduled Tasks — ${label}`;
+    }
+  }
+
+  function taskMatchesDate(task, dateStr) {
+    const rawStart = task.planned_start ?? task.plannedStart ?? null;
+    if (!rawStart) return false;
+    const taskDate = new Date(rawStart);
+    const y = taskDate.getFullYear();
+    const m = String(taskDate.getMonth() + 1).padStart(2, "0");
+    const day = String(taskDate.getDate()).padStart(2, "0");
+    return `${y}-${m}-${day}` === dateStr;
+  }
+
+  function renderScheduledTasks() {
+    const taskTimeMap = calculateTaskTime();
+    const dateStr = getSelectedDateStr();
+    const scheduled = tasks.filter((t) => !t.archived && !taskTimeMap.has(t.id) && taskMatchesDate(t, dateStr));
+    WorkspaceView.renderTasks(scheduled, [], projects, taskTimeMap);
+  }
+
   const unbind = WorkspaceView.bind({
     onAddProject: handleAddProject,
     onEditProject: handleEditProject,
@@ -42,11 +94,9 @@ export function createWorkspaceController() {
     timeEntries = await loadTimeEntries();
 
     const projectStats = calculateProjectStats();
-    const taskTimeMap = calculateTaskTime();
-    const scheduledTasks = tasks.filter((t) => !taskTimeMap.has(t.id));
-
     WorkspaceView.renderProjects(projects, projectStats);
-    WorkspaceView.renderTasks(scheduledTasks, projects, taskTimeMap);
+    updateDateLabel();
+    renderScheduledTasks();
   }
 
   function entryTaskId(e) {

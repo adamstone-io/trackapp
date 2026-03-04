@@ -364,10 +364,11 @@ export function createTimerController({ onEntryAdded, countdownController = null
 
     // Restore countdown mode if needed
     if (record.mode === "countdown") {
+      // Hide favourites first so they don't flash when the countdown section is revealed
+      hideCountdownFavorites();
       if (countdownController) {
         countdownController.activateCountdown(record.target_duration || undefined);
       } else {
-        // Fallback: drive via events if controller reference not available
         document.dispatchEvent(
           new CustomEvent("timer:modeChange", {
             detail: { mode: "countdown", targetDuration: record.target_duration },

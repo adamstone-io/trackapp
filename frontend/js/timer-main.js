@@ -7,7 +7,13 @@ import { createMainTimeEntryWindowController, getTimerDefaultMode } from "./cont
 import { createManualEntryController } from "./controllers/manual-time-entry-controller.js";
 import { SoundManager } from "./utils/sound-manager.js";
 import { initNavigation } from "./controllers/nav-controller.js";
-import { ensureAuthenticated, loadTodayEntries, loadTasks, loadMoments } from "./data/storage.js";
+import {
+  ensureAuthenticated,
+  loadTodayEntries,
+  loadTasks,
+  loadMoments,
+  getActiveTimer,
+} from "./data/storage.js";
 import { TaskNameManager } from "./utils/task-name-manager.js";
 
 document.addEventListener("DOMContentLoaded", async () => {
@@ -36,14 +42,23 @@ document.addEventListener("DOMContentLoaded", async () => {
   });
 
   // If launched from the workspace "Start" button, activate countdown mode automatically.
-  // Otherwise, apply the user's saved default mode preference.
+  // Otherwise, apply the saved default mode only when there is no active timer to restore.
   const launchSearch = new URLSearchParams(window.location.search);
   const isWorkspaceLaunch = launchSearch.get("autoCountdown") === "1";
+  let hasServerActiveTimer = false;
 
   if (isWorkspaceLaunch) {
     const durationParam = parseInt(launchSearch.get("countdownDuration") || "0", 10);
     countdownController.activateCountdown(durationParam || undefined);
-  } else if (getTimerDefaultMode() === "countdown") {
+  } else {
+    try {
+      hasServerActiveTimer = !!(await getActiveTimer());
+    } catch {
+      hasServerActiveTimer = false;
+    }
+  }
+
+  if (!isWorkspaceLaunch && !hasServerActiveTimer && getTimerDefaultMode() === "countdown") {
     countdownController.activateCountdown();
   }
 

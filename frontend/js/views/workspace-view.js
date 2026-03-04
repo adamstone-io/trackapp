@@ -271,15 +271,15 @@ export const WorkspaceView = {
         });
     },
 
-    renderTasks(tasks, projects, taskTimeMap) {
+    renderTasks(tasks, unscheduledTasks, projects, taskTimeMap) {
         const listEl = this.taskListEl();
         const emptyEl = this.taskListEmptyEl();
 
         if (!listEl || !emptyEl) return;
 
-        const activeTasks = tasks.filter(t => !t.archived);
+        const hasAny = tasks.length > 0 || unscheduledTasks.length > 0;
 
-        if (activeTasks.length === 0) {
+        if (!hasAny) {
             listEl.innerHTML = "";
             listEl.style.display = "none";
             emptyEl.style.display = "block";
@@ -289,34 +289,37 @@ export const WorkspaceView = {
         emptyEl.style.display = "none";
         listEl.style.display = "flex";
 
-        // Group tasks by project
         const projectMap = new Map(projects.map(p => [p.id, p]));
-        const groups = new Map();
-        const noProjectTasks = [];
+        let html = "";
 
-        for (const task of activeTasks) {
-            const pid = task.projectId ?? task.project ?? null;
-            if (pid && projectMap.has(pid)) {
-                if (!groups.has(pid)) {
-                    groups.set(pid, []);
+        // Render date-filtered tasks grouped by project
+        if (tasks.length > 0) {
+            const groups = new Map();
+            const noProjectTasks = [];
+
+            for (const task of tasks) {
+                const pid = task.projectId ?? task.project ?? null;
+                if (pid && projectMap.has(pid)) {
+                    if (!groups.has(pid)) groups.set(pid, []);
+                    groups.get(pid).push(task);
+                } else {
+                    noProjectTasks.push(task);
                 }
-                groups.get(pid).push(task);
-            } else {
-                noProjectTasks.push(task);
+            }
+
+            for (const [projectId, projectTasks] of groups) {
+                const project = projectMap.get(projectId);
+                html += this.renderTaskGroup(project.name, project.color, projectTasks, taskTimeMap);
+            }
+
+            if (noProjectTasks.length > 0) {
+                html += this.renderTaskGroup("No Project", "#888888", noProjectTasks, taskTimeMap);
             }
         }
 
-        let html = "";
-
-        // Render grouped tasks
-        for (const [projectId, projectTasks] of groups) {
-            const project = projectMap.get(projectId);
-            html += this.renderTaskGroup(project.name, project.color, projectTasks, taskTimeMap);
-        }
-
-        // Render ungrouped tasks
-        if (noProjectTasks.length > 0) {
-            html += this.renderTaskGroup("No Project", "#888888", noProjectTasks, taskTimeMap);
+        // Render unscheduled tasks (no planned_start) in a separate group
+        if (unscheduledTasks.length > 0) {
+            html += this.renderTaskGroup("Unscheduled", "#aaaaaa", unscheduledTasks, taskTimeMap);
         }
 
         listEl.innerHTML = html;
@@ -341,7 +344,6 @@ export const WorkspaceView = {
                                 ${plannedDuration ? `<span class="task-item__duration">${plannedDuration}</span>` : ""}
                             </div>
                         </div>
-                        <span class="task-item__time-spent">${timeFormatted}</span>
                         <div class="task-item__actions">
                             <button class="btn btn--primary" data-action="start-task" data-id="${task.id}">Start</button>
                             <button class="btn btn--outline" data-action="edit-task" data-id="${task.id}">Edit</button>
@@ -355,8 +357,6 @@ export const WorkspaceView = {
         return `
             <div class="task-group">
                 <div class="task-group__header">
-                    <div class="task-group__color" style="background-color: ${color}"></div>
-                    <h3 class="task-group__name">${this.escapeHtml(groupName)}</h3>
                     <span class="task-group__count">${tasks.length} task${tasks.length === 1 ? "" : "s"}</span>
                 </div>
                 ${taskItems}
@@ -436,7 +436,9 @@ export const WorkspaceView = {
             projectSelect.value = "";
             categoryInput.value = "";
             notesInput.value = "";
-            plannedStartInput.value = "";
+            const now = new Date();
+            const pad = (n) => String(n).padStart(2, "0");
+            plannedStartInput.value = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}T${pad(now.getHours())}:${pad(now.getMinutes())}`;
             plannedDurationInput.value = "";
         }
 
