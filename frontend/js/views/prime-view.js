@@ -268,6 +268,51 @@ export class PrimeView {
     }
   }
 
+  static openForEdit(item) {
+    const modal = byId(primeIds.primeModal);
+    const modalTitle = byId(primeIds.primeModalTitle);
+    const titleInput = byId(primeIds.primeTitle);
+    const categoryInput = byId(primeIds.primeCategory);
+    const descInput = byId(primeIds.primeDescription);
+
+    modalTitle.textContent = "Edit Prime Item";
+    titleInput.value = item.prompt ?? "";
+    categoryInput.value = item.category ?? "";
+    descInput.value = item.notes ?? "";
+
+    modal.classList.remove("hidden");
+    titleInput.focus();
+  }
+
+  static openForCreate() {
+    const modal = byId(primeIds.primeModal);
+    const modalTitle = byId(primeIds.primeModalTitle);
+    const titleInput = byId(primeIds.primeTitle);
+    const categoryInput = byId(primeIds.primeCategory);
+    const descInput = byId(primeIds.primeDescription);
+
+    modalTitle.textContent = "Add Prime Item";
+    titleInput.value = "";
+    categoryInput.value = "";
+    descInput.value = "";
+
+    modal.classList.remove("hidden");
+    titleInput.focus();
+  }
+
+  static close() {
+    const modal = byId(primeIds.primeModal);
+    modal.classList.add("hidden");
+  }
+
+  static readFormData() {
+    return {
+      prompt: byId(primeIds.primeTitle)?.value.trim() ?? "",
+      category: byId(primeIds.primeCategory)?.value.trim() ?? "",
+      notes: byId(primeIds.primeDescription)?.value.trim() ?? "",
+    };
+  }
+
   static escapeHtml(text) {
     const div = document.createElement("div");
     div.textContent = text;

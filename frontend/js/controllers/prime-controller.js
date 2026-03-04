@@ -398,7 +398,10 @@ export function createPrimeController() {
       visibleItems,
       {
         onLogPrime: handleLog,
-        onEdit: (item) => PrimeView.openForEdit(item),
+        onEdit: (item) => {
+          editingItemId = item.id;
+          PrimeView.openForEdit(item);
+        },
         onDelete: handleDelete,
         onArchive: showArchived ? handleRestore : handleArchive,
         onConvertToStudy: handleConvertToStudy,
@@ -444,6 +447,41 @@ export function createPrimeController() {
   }
 
   updateHeaderMenu();
+
+  // ---------- MODAL FORM (create / edit) ----------
+
+  const primeForm = byId(primeIds.primeForm);
+  const primeCancelBtn = byId(primeIds.primeCancelBtn);
+
+  primeForm?.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const data = PrimeView.readFormData();
+    if (!data.prompt) return;
+
+    try {
+      if (editingItemId) {
+        await updateStudyItem(editingItemId, {
+          prompt: data.prompt,
+          category: data.category,
+          notes: data.notes,
+        });
+      } else {
+        await handleCreateNew(data);
+      }
+    } catch (err) {
+      console.error("Failed to save prime item:", err);
+      alert("Failed to save prime item.");
+    } finally {
+      editingItemId = null;
+      PrimeView.close();
+      await refreshPrimeItems();
+    }
+  });
+
+  primeCancelBtn?.addEventListener("click", () => {
+    editingItemId = null;
+    PrimeView.close();
+  });
 
   // ---------- PUBLIC API ----------
 
