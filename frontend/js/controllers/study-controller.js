@@ -4,6 +4,7 @@ import { StudyView } from "../views/study-view.js";
 import { byId } from "../ui/ui-core.js";
 import { studyIds } from "../ui/study-ids.js";
 import { createDropdownMenu } from "../views/components/dropdown-menu.js";
+import { createCategoryFilterModal } from "../views/components/category-filter-modal.js";
 import { CategoryManager } from "../utils/category-manager.js";
 import { SoundManager } from "../utils/sound-manager.js";
 import { bindAutoGrow } from "../utils/textarea.js";
@@ -26,8 +27,11 @@ let studyItems = [];
 
 export function createStudyController() {
   studyItems = [];
+  const CATEGORY_FILTER_KEY = "studyCategoryFilter";
+
   let editingItemId = null;
   let showArchived = false;
+  let currentCategoryFilter = localStorage.getItem(CATEGORY_FILTER_KEY) || "";
 
   const quickAddInput = byId(studyIds.quickAddStudyInput);
   const quickAddNotesWrap = byId(studyIds.quickAddNotesWrap);
@@ -150,7 +154,10 @@ export function createStudyController() {
     refreshCategories: shouldRefresh = true,
   } = {}) {
     try {
-      const data = await loadStudyItems({ mode: "studying" });
+      const data = await loadStudyItems({
+        mode: "studying",
+        category: currentCategoryFilter || undefined,
+      });
       studyItems = data.map((item) => StudyItem.fromJSON(item));
     } catch (error) {
       console.error("Failed to load study items:", error);
@@ -162,6 +169,11 @@ export function createStudyController() {
     }
 
     renderList();
+  }
+
+  function resetAndLoad() {
+    studyItems = [];
+    void refreshStudyItems({ refreshCategories: false });
   }
 
   // Initial load
@@ -236,10 +248,46 @@ export function createStudyController() {
   const getArchivedLabel = () =>
     showArchived ? "Hide Archived" : "Show Archived";
 
+  const categoryFilterModal = createCategoryFilterModal({
+    title: "Filter by Category",
+    onFilter: (category) => {
+      currentCategoryFilter = category;
+      if (category) {
+        localStorage.setItem(CATEGORY_FILTER_KEY, category);
+      } else {
+        localStorage.removeItem(CATEGORY_FILTER_KEY);
+      }
+      updateHeaderMenu();
+      resetAndLoad();
+    },
+  });
+
   const updateHeaderMenu = () => {
     if (headerMenu) headerMenu.dispose();
 
+    const filterLabel = currentCategoryFilter
+      ? `Category: ${currentCategoryFilter}`
+      : "Filter by Category";
+
     const menuItems = [
+      {
+        label: filterLabel,
+        onSelect: async () => {
+          const categories = await loadCategories({ mode: "studying" }).catch(() => []);
+          categoryFilterModal.open(categories, currentCategoryFilter);
+        },
+      },
+      ...(currentCategoryFilter
+        ? [{
+            label: "Clear Filter",
+            onSelect: () => {
+              currentCategoryFilter = "";
+              localStorage.removeItem(CATEGORY_FILTER_KEY);
+              updateHeaderMenu();
+              resetAndLoad();
+            },
+          }]
+        : []),
       { label: "New Study Item", onSelect: handleCreateNew },
       { label: getArchivedLabel(), onSelect: handleToggleArchived },
     ];
@@ -450,6 +498,7 @@ export function createStudyController() {
       unbindModal();
       headerMenu?.dispose();
       modalCategoryManager?.dispose();
+      categoryFilterModal.dispose();
     },
   };
 }
