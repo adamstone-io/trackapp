@@ -390,6 +390,24 @@ export function createCountdownController() {
   }
 
   /**
+   * Programmatically activate countdown mode (e.g. when launched from workspace).
+   * @param {number} [durationSeconds] - Explicit duration; falls back to first
+   *   saved favorite, then a 25-minute default.
+   */
+  function activateCountdown(durationSeconds) {
+    if (durationSeconds > 0) {
+      state.targetDuration = durationSeconds;
+      state.selectedFavoriteId = null;
+      updateClockInputs(state.targetDuration);
+      updateFavoritesSelection();
+    } else if (state.targetDuration === 0) {
+      state.targetDuration = 25 * 60;
+      updateClockInputs(state.targetDuration);
+    }
+    setMode("countdown");
+  }
+
+  /**
    * Get current target duration
    */
   function getTargetDuration() {
@@ -415,6 +433,7 @@ export function createCountdownController() {
 
   // Public API
   return {
+    activateCountdown,
     getTargetDuration,
     getMode,
     dispose,

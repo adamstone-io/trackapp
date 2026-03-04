@@ -327,7 +327,8 @@ export const WorkspaceView = {
             .map((task) => {
                 const timeSpent = taskTimeMap.get(task.id) || 0;
                 const timeFormatted = this.formatDuration(timeSpent);
-                const plannedDuration = task.plannedDuration ? `${Math.round(task.plannedDuration / 60)}m planned` : "";
+                const rawPlannedDuration = task.planned_duration ?? task.plannedDuration;
+                const plannedDuration = rawPlannedDuration ? `${Math.round(rawPlannedDuration / 60)}m planned` : "";
                 const plannedStart = task.plannedStart ? this.formatDateTime(task.plannedStart) : "";
 
                 return `
@@ -425,8 +426,10 @@ export const WorkspaceView = {
             projectSelect.value = task.projectId ?? task.project ?? "";
             categoryInput.value = task.category || "";
             notesInput.value = task.notes || "";
-            plannedStartInput.value = task.plannedStart ? task.plannedStart.slice(0, 16) : "";
-            plannedDurationInput.value = task.plannedDuration ? Math.round(task.plannedDuration / 60) : "";
+            const taskPlannedStart = task.planned_start ?? task.plannedStart;
+            const taskPlannedDuration = task.planned_duration ?? task.plannedDuration;
+            plannedStartInput.value = taskPlannedStart ? taskPlannedStart.slice(0, 16) : "";
+            plannedDurationInput.value = taskPlannedDuration ? Math.round(taskPlannedDuration / 60) : "";
         } else {
             title.textContent = "New Task";
             titleInput.value = "";

@@ -179,12 +179,15 @@ export function createWorkspaceController() {
     if (!task) return;
 
     // Navigate to timer page with task info
+    const plannedDuration = task.planned_duration ?? task.plannedDuration ?? null;
     const params = new URLSearchParams({
       taskId: task.id,
       taskTitle: task.title,
       taskCategory: task.category ?? "",
       taskProjectId: String(task.projectId ?? task.project ?? ""),
       autoStart: "1",
+      autoCountdown: "1",
+      ...(plannedDuration ? { countdownDuration: String(plannedDuration) } : {}),
     });
     window.location.href = `timer.html?${params.toString()}`;
   }
@@ -199,9 +202,13 @@ export function createWorkspaceController() {
 
     const payload = {
       ...data,
-      project: data.projectId ?? null, // FK field expected by DRF
+      project: data.projectId ?? null,       // FK field expected by DRF
+      planned_duration: data.plannedDuration ?? null,
+      planned_start: data.plannedStart ?? null,
     };
     delete payload.projectId;
+    delete payload.plannedDuration;
+    delete payload.plannedStart;
 
     if (editingTaskId) {
       await updateTask(editingTaskId, payload);

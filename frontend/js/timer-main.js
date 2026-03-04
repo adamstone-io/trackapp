@@ -23,12 +23,41 @@ document.addEventListener("DOMContentLoaded", async () => {
   let momentController = null;
 
   const entriesController = createEntriesController();
-  const countdownDispose = createCountdownController();
+  const countdownController = createCountdownController();
   const timerDispose = createTimerController({
     onEntryAdded: async () => {
       await entriesController.refresh();
     },
   });
+
+  // If launched from the workspace "Start" button, activate countdown mode automatically
+  const launchSearch = new URLSearchParams(window.location.search);
+  if (launchSearch.get("autoCountdown") === "1") {
+    const durationParam = parseInt(launchSearch.get("countdownDuration") || "0", 10);
+    countdownController.activateCountdown(durationParam || undefined);
+  }
+
+  // Strip workspace launch params from the URL so a page refresh doesn't
+  // re-trigger auto-start or auto-countdown.
+  if (
+    launchSearch.has("autoStart") ||
+    launchSearch.has("autoCountdown") ||
+    launchSearch.has("countdownDuration") ||
+    launchSearch.has("taskId")
+  ) {
+    const cleanParams = new URLSearchParams(launchSearch);
+    cleanParams.delete("autoStart");
+    cleanParams.delete("autoCountdown");
+    cleanParams.delete("countdownDuration");
+    cleanParams.delete("taskId");
+    cleanParams.delete("taskTitle");
+    cleanParams.delete("taskCategory");
+    cleanParams.delete("taskProjectId");
+    const newUrl = cleanParams.toString()
+      ? `${window.location.pathname}?${cleanParams}`
+      : window.location.pathname;
+    history.replaceState(null, "", newUrl);
+  }
 
   momentController = createMomentController({
     onMomentsChanged: async () => {
@@ -216,7 +245,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   if (window.location.hostname === "localhost") {
     window.debug = {
       timerDispose,
-      countdownDispose,
+      countdownController,
       momentController,
       entriesController,
       manualEntryController,
