@@ -46,8 +46,21 @@ export function createCountdownController() {
   /**
    * Bind all event listeners
    */
+  let locked = false;
+
+  function setLocked(isLocked) {
+    locked = isLocked;
+    if (elements.modeCountdown) {
+      elements.modeCountdown.disabled = isLocked;
+      elements.modeCountdown.title = isLocked
+        ? "Cannot change mode while timer is running"
+        : "";
+    }
+  }
+
   function bindEvents() {
     addListener(elements.modeCountdown, "click", () => {
+      if (locked) return;
       setMode(state.mode === "countdown" ? "stopwatch" : "countdown");
     });
 
@@ -439,6 +452,7 @@ export function createCountdownController() {
   return {
     activateCountdown,
     activateStopwatch,
+    setLocked,
     getTargetDuration,
     getMode,
     dispose,

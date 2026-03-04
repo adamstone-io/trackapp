@@ -30,6 +30,10 @@ document.addEventListener("DOMContentLoaded", async () => {
     },
   });
 
+  document.addEventListener("timer:runningChange", (e) => {
+    countdownController.setLocked(e.detail.running);
+  });
+
   // If launched from the workspace "Start" button, activate countdown mode automatically.
   // Otherwise, apply the user's saved default mode preference.
   const launchSearch = new URLSearchParams(window.location.search);

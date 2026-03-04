@@ -223,6 +223,8 @@ export function createTimerController({ onEntryAdded }) {
       running: false,
     });
 
+    document.dispatchEvent(new CustomEvent("timer:runningChange", { detail: { running: false } }));
+
     // Show countdown favorites when timer is cancelled
     if (isCountdownUiActive()) {
       showCountdownFavorites();
@@ -278,6 +280,8 @@ export function createTimerController({ onEntryAdded }) {
         taskTitle: task.title,
         running: true,
       });
+
+      document.dispatchEvent(new CustomEvent("timer:runningChange", { detail: { running: true } }));
 
       const startedAt = new Date().toISOString();
       activeTask = task;
@@ -394,6 +398,8 @@ export function createTimerController({ onEntryAdded }) {
       taskTitle: record.task_title,
       running: true,
     });
+
+    document.dispatchEvent(new CustomEvent("timer:runningChange", { detail: { running: true } }));
   }
 
   async function ensureTaskExists(task) {
@@ -449,6 +455,7 @@ export function createTimerController({ onEntryAdded }) {
       activeEntry = null;
       activeTask = null;
       CurrentTaskView.render({ taskTitle: "", running: false });
+      document.dispatchEvent(new CustomEvent("timer:runningChange", { detail: { running: false } }));
       if (isCountdownUiActive()) showCountdownFavorites();
       return;
     }
@@ -498,6 +505,8 @@ export function createTimerController({ onEntryAdded }) {
       taskTitle: "",
       running: false,
     });
+
+    document.dispatchEvent(new CustomEvent("timer:runningChange", { detail: { running: false } }));
 
     if (isCountdownUiActive()) {
       showCountdownFavorites();
