@@ -3,6 +3,7 @@ import { ReviewView } from "../views/review-view.js";
 import { byId } from "../ui/ui-core.js";
 import { reviewIds } from "../ui/review-ids.js";
 import { createDropdownMenu } from "../views/components/dropdown-menu.js";
+import { createCategoryFilterModal } from "../views/components/category-filter-modal.js";
 import { CategoryManager } from "../utils/category-manager.js";
 import { SoundManager } from "../utils/sound-manager.js";
 import {
@@ -19,9 +20,12 @@ import {
 let reviewItems = [];
 
 export function createReviewController() {
+  const CATEGORY_FILTER_KEY = "reviewCategoryFilter";
+
   reviewItems = [];
   let editingItemId = null;
   let showArchived = false;
+  let currentCategoryFilter = localStorage.getItem(CATEGORY_FILTER_KEY) || "";
 
   const modalCategoryInput = byId(reviewIds.reviewCategory);
   const modalCategoryDropdown = byId(reviewIds.modalCategoryDropdown);
@@ -46,7 +50,10 @@ export function createReviewController() {
     refreshCategories: shouldRefresh = true,
   } = {}) {
     try {
-      const data = await loadStudyItems({ mode: "reviewing" });
+      const data = await loadStudyItems({
+        mode: "reviewing",
+        category: currentCategoryFilter || undefined,
+      });
       reviewItems = data.map((item) => StudyItem.fromJSON(item));
     } catch (error) {
       console.error("Failed to load review items:", error);
@@ -60,6 +67,11 @@ export function createReviewController() {
     renderList();
   }
 
+  function resetAndLoad() {
+    reviewItems = [];
+    void refreshReviewItems({ refreshCategories: false });
+  }
+
   // Initial load
   void refreshReviewItems();
 
@@ -69,13 +81,47 @@ export function createReviewController() {
     updateHeaderMenu();
   };
 
+  const categoryFilterModal = createCategoryFilterModal({
+    title: "Filter by Category",
+    onFilter: (category) => {
+      currentCategoryFilter = category;
+      if (category) {
+        localStorage.setItem(CATEGORY_FILTER_KEY, category);
+      } else {
+        localStorage.removeItem(CATEGORY_FILTER_KEY);
+      }
+      updateHeaderMenu();
+      resetAndLoad();
+    },
+  });
+
   const updateHeaderMenu = () => {
-    if (headerMenu) {
-      headerMenu.dispose();
-    }
+    if (headerMenu) headerMenu.dispose();
+
+    const filterLabel = currentCategoryFilter
+      ? `Category: ${currentCategoryFilter}`
+      : "Filter by Category";
 
     headerMenu = createDropdownMenu({
       items: [
+        {
+          label: filterLabel,
+          onSelect: async () => {
+            const categories = await loadCategories({ mode: "reviewing" }).catch(() => []);
+            categoryFilterModal.open(categories, currentCategoryFilter);
+          },
+        },
+        ...(currentCategoryFilter
+          ? [{
+              label: "Clear Filter",
+              onSelect: () => {
+                currentCategoryFilter = "";
+                localStorage.removeItem(CATEGORY_FILTER_KEY);
+                updateHeaderMenu();
+                resetAndLoad();
+              },
+            }]
+          : []),
         {
           label: showArchived ? "Hide Archived" : "Show Archived",
           onSelect: handleToggleArchived,
@@ -249,6 +295,7 @@ export function createReviewController() {
       unbindModal();
       headerMenu?.dispose();
       modalCategoryManager?.dispose();
+      categoryFilterModal.dispose();
     },
   };
 }
