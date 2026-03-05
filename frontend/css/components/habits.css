@@ -97,6 +97,14 @@
   margin-top: var(--spacing-sm);
 }
 
+.habit-card__meta {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-sm);
+  font-size: var(--font-size-sm);
+  color: var(--color-text);
+}
+
 /* =====================================================
    Empty State
 ===================================================== */

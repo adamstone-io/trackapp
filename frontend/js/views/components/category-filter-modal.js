@@ -12,7 +12,9 @@ export function createCategoryFilterModal({
   let backdrop = null;
   let headingEl = null;
   let categoryListEl = null;
+  let searchInputEl = null;
   let currentFilter = "";
+  let allCategories = [];
 
   function ensureCreated() {
     if (root) return;
@@ -29,6 +31,14 @@ export function createCategoryFilterModal({
     root.innerHTML = `
         <div class="modal-content">
           <h2 id="category-filter-modal-title">${escapeHtml(title)}</h2>
+
+          <input
+            type="text"
+            class="category-filter-search"
+            data-search
+            placeholder="Search categories..."
+            autocomplete="off"
+          />
           
           <div class="category-filter-list" data-category-list>
             <!-- Categories will be populated here -->
@@ -47,11 +57,20 @@ export function createCategoryFilterModal({
 
     headingEl = root.querySelector("#category-filter-modal-title");
     categoryListEl = root.querySelector("[data-category-list]");
+    searchInputEl = root.querySelector("[data-search]");
     const cancelBtn = root.querySelector("[data-cancel]");
 
     if (!headingEl || !categoryListEl || !cancelBtn) {
       throw new Error("CategoryFilterModal: expected elements not found.");
     }
+
+    searchInputEl.addEventListener("input", () => {
+      const q = searchInputEl.value.trim().toLowerCase();
+      const filtered = q
+        ? allCategories.filter((c) => c.category.toLowerCase().includes(q))
+        : allCategories;
+      renderCategoryButtons(filtered, currentFilter);
+    });
 
     cancelBtn.addEventListener("click", close);
     backdrop.addEventListener("click", close);
@@ -64,7 +83,7 @@ export function createCategoryFilterModal({
     return div.innerHTML;
   }
 
-  function populateCategories(categories, activeFilter = "") {
+  function renderCategoryButtons(categories, activeFilter = "") {
     if (!categoryListEl) return;
 
     const allButton = `
@@ -90,15 +109,19 @@ export function createCategoryFilterModal({
 
     categoryListEl.innerHTML = allButton + categoryButtons;
 
-    // Add click handlers
     categoryListEl
       .querySelectorAll(".category-filter-option")
       .forEach((btn) => {
         btn.addEventListener("click", () => {
-          const category = btn.dataset.category;
-          handleFilterSelect(category);
+          handleFilterSelect(btn.dataset.category);
         });
       });
+  }
+
+  function populateCategories(categories, activeFilter = "") {
+    allCategories = categories;
+    if (searchInputEl) searchInputEl.value = "";
+    renderCategoryButtons(categories, activeFilter);
   }
 
   function handleFilterSelect(category) {
@@ -116,6 +139,7 @@ export function createCategoryFilterModal({
     currentFilter = activeFilter;
     populateCategories(categories, activeFilter);
     openBase();
+    setTimeout(() => searchInputEl?.focus(), 50);
   }
 
   function openBase() {
@@ -148,6 +172,8 @@ export function createCategoryFilterModal({
     root = null;
     headingEl = null;
     categoryListEl = null;
+    searchInputEl = null;
+    allCategories = [];
     currentFilter = "";
   }
 

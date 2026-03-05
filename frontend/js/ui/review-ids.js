@@ -1,16 +1,10 @@
 export const reviewIds = {
-  // Quick add
-  quickAddReviewInput: "quick-add-review-input",
-  quickAddCategoryInput: "quick-add-category-input",
-  categoryDropdown: "category-dropdown",
-  addReviewBtn: "add-review-btn",
-  
   // Form
   reviewForm: "review-form",
   reviewTitle: "review-title",
   reviewCategory: "review-category",
   modalCategoryDropdown: "modal-category-dropdown",
-  reviewDescription: "review-description",
+  reviewNotes: "review-notes",
   reviewCancelBtn: "review-cancel-btn",
   reviewSaveBtn: "review-save-btn",
   

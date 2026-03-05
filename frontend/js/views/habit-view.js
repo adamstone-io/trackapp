@@ -8,14 +8,14 @@ export class HabitView {
     this.addForm = document.getElementById("add-habit-form");
     this.addBtn = document.getElementById("add-habit-btn");
     this.cancelBtn = document.getElementById("add-habit-cancel-btn");
-    
+
     // Edit modal
     this.editModal = document.getElementById("edit-habit-modal");
     this.editForm = document.getElementById("edit-habit-form");
     this.editCancelBtn = document.getElementById("edit-habit-cancel-btn");
-    
+
     this.dropdownMenus = [];
-    
+
     this.bindModalEvents();
   }
 
@@ -24,18 +24,18 @@ export class HabitView {
     if (this.addBtn) {
       this.addBtn.addEventListener("click", () => this.openAddModal());
     }
-    
+
     if (this.cancelBtn) {
       this.cancelBtn.addEventListener("click", () => this.closeAddModal());
     }
-    
+
     // Edit modal
     if (this.editCancelBtn) {
       this.editCancelBtn.addEventListener("click", () => this.closeEditModal());
     }
-    
+
     // Close modals on backdrop click
-    [this.addModal, this.editModal].forEach(modal => {
+    [this.addModal, this.editModal].forEach((modal) => {
       if (modal) {
         modal.addEventListener("click", (e) => {
           if (e.target === modal) {
@@ -48,11 +48,11 @@ export class HabitView {
 
   renderHabits(habits, callbacks) {
     // Dispose existing dropdowns
-    this.dropdownMenus.forEach(menu => menu.dispose());
+    this.dropdownMenus.forEach((menu) => menu.dispose());
     this.dropdownMenus = [];
-    
+
     if (!this.container) return;
-    
+
     if (habits.length === 0) {
       this.container.innerHTML = `
         <div class="habits-empty">
@@ -63,10 +63,10 @@ export class HabitView {
       `;
       return;
     }
-    
+
     this.container.innerHTML = "";
-    
-    habits.forEach(habit => {
+
+    habits.forEach((habit) => {
       const card = this.createHabitCard(habit, callbacks);
       this.container.appendChild(card);
     });
@@ -76,11 +76,13 @@ export class HabitView {
     const card = document.createElement("div");
     card.className = "habit-card";
     card.dataset.habitId = habit.id;
-    
-    // Check if targets are complete
+
     const isDailyComplete = habit.isDailyComplete();
     const isWeeklyComplete = habit.isWeeklyComplete();
-    
+
+    const createdLabel = this.formatDate(habit.createdAt);
+    const streakLabel = this.formatStreak(habit.streakCount);
+
     card.innerHTML = `
       <div class="habit-card__header">
         <h3 class="habit-card__title">${this.escapeHtml(habit.name)}</h3>
@@ -92,62 +94,67 @@ export class HabitView {
           </svg>
         </button>
       </div>
-      
+  
+      <div class="habit-card__meta">
+        <span>${streakLabel}</span>
+        <span>Started: ${createdLabel}</span>
+      </div>
+  
       <div class="habit-card__stats">
-        <div class="habit-stat ${isDailyComplete ? 'habit-stat--complete' : ''}">
+        <div class="habit-stat ${isDailyComplete ? "habit-stat--complete" : ""}">
           <span class="habit-stat__label">Daily</span>
           <span class="habit-stat__value">${habit.counts.daily} / ${habit.targets.daily}</span>
         </div>
-        <div class="habit-stat ${isWeeklyComplete ? 'habit-stat--complete' : ''}">
+        <div class="habit-stat ${isWeeklyComplete ? "habit-stat--complete" : ""}">
           <span class="habit-stat__label">Weekly</span>
           <span class="habit-stat__value">${habit.counts.weekly} / ${habit.targets.weekly}</span>
         </div>
       </div>
-      
+  
       <button class="btn btn--primary habit-card__log-btn" data-log-btn>
         Log +1
       </button>
     `;
-    
+
     // Attach log button handler
     const logBtn = card.querySelector("[data-log-btn]");
     logBtn.addEventListener("click", () => onLog(habit.id));
-    
+
     // Attach dropdown menu
     const menuTrigger = card.querySelector("[data-menu-trigger]");
     const dropdown = createDropdownMenu({
       items: [
         {
           label: "Edit",
-          onSelect: () => onEdit(habit.id)
+          onSelect: () => onEdit(habit.id),
         },
         {
           label: habit.isActive ? "Archive" : "Unarchive",
-          onSelect: () => onArchive(habit.id)
+          onSelect: () => onArchive(habit.id),
         },
         {
           label: "Delete",
-          onSelect: () => onDelete(habit.id)
-        }
-      ]
+          onSelect: () => onDelete(habit.id),
+        },
+      ],
     });
     dropdown.attachTo(menuTrigger);
     this.dropdownMenus.push(dropdown);
-    
+
     return card;
   }
 
   openAddModal(onSubmit) {
     if (!this.addModal || !this.addForm) return;
-    
+
     this.addModal.classList.remove("hidden");
     this.addForm.reset();
-    
+
     // Remove old event listener and add new one
     const newForm = this.addForm.cloneNode(true);
     this.addForm.parentNode.replaceChild(newForm, this.addForm);
     this.addForm = newForm;
-    
+
     this.addForm.addEventListener("submit", (e) => {
       e.preventDefault();
       const formData = this.readAddForm();
@@ -156,13 +163,13 @@ export class HabitView {
       }
       this.closeAddModal();
     });
-    
+
     // Re-bind cancel button
     this.cancelBtn = document.getElementById("add-habit-cancel-btn");
     if (this.cancelBtn) {
       this.cancelBtn.addEventListener("click", () => this.closeAddModal());
     }
-    
+
     // Focus first input
     const firstInput = this.addForm.querySelector("input");
     if (firstInput) {
@@ -178,19 +185,19 @@ export class HabitView {
 
   openEditModal(habit, onSubmit) {
     if (!this.editModal || !this.editForm) return;
-    
+
     this.editModal.classList.remove("hidden");
-    
+
     // Populate form
     document.getElementById("edit-habit-name").value = habit.name;
     document.getElementById("edit-daily-target").value = habit.targets.daily;
     document.getElementById("edit-weekly-target").value = habit.targets.weekly;
-    
+
     // Remove old event listener and add new one
     const newForm = this.editForm.cloneNode(true);
     this.editForm.parentNode.replaceChild(newForm, this.editForm);
     this.editForm = newForm;
-    
+
     this.editForm.addEventListener("submit", (e) => {
       e.preventDefault();
       const formData = this.readEditForm();
@@ -199,13 +206,13 @@ export class HabitView {
       }
       this.closeEditModal();
     });
-    
+
     // Re-bind cancel button
     this.editCancelBtn = document.getElementById("edit-habit-cancel-btn");
     if (this.editCancelBtn) {
       this.editCancelBtn.addEventListener("click", () => this.closeEditModal());
     }
-    
+
     // Focus first input
     const firstInput = this.editForm.querySelector("input");
     if (firstInput) {
@@ -223,15 +230,18 @@ export class HabitView {
     return {
       name: document.getElementById("habit-name").value.trim(),
       dailyTarget: parseInt(document.getElementById("daily-target").value) || 0,
-      weeklyTarget: parseInt(document.getElementById("weekly-target").value) || 0
+      weeklyTarget:
+        parseInt(document.getElementById("weekly-target").value) || 0,
     };
   }
 
   readEditForm() {
     return {
       name: document.getElementById("edit-habit-name").value.trim(),
-      dailyTarget: parseInt(document.getElementById("edit-daily-target").value) || 0,
-      weeklyTarget: parseInt(document.getElementById("edit-weekly-target").value) || 0
+      dailyTarget:
+        parseInt(document.getElementById("edit-daily-target").value) || 0,
+      weeklyTarget:
+        parseInt(document.getElementById("edit-weekly-target").value) || 0,
     };
   }
 
@@ -242,7 +252,20 @@ export class HabitView {
   }
 
   dispose() {
-    this.dropdownMenus.forEach(menu => menu.dispose());
+    this.dropdownMenus.forEach((menu) => menu.dispose());
     this.dropdownMenus = [];
+  }
+
+  formatDate(value) {
+    if (!value) return "—";
+    const date = value instanceof Date ? value : new Date(value);
+    if (Number.isNaN(date.getTime())) return "—";
+    return date.toLocaleDateString();
+  }
+
+  formatStreak(count = 0) {
+    if (!count) return "No streak yet";
+    const label = count === 1 ? "day" : "days";
+    return `Streak: ${count} ${label}`;
   }
 }

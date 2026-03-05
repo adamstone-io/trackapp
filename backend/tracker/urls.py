@@ -4,13 +4,13 @@ from rest_framework_simplejwt.views import TokenRefreshView
 
 from .token_views import CustomTokenObtainPairView
 from .views import (
+    ActiveTimerView,
     CurrentUserView,
     HabitViewSet,
     MomentViewSet,
-    PrimeItemViewSet,
     ProjectViewSet,
-    ReviewItemViewSet,
     RegisterView,
+    StatsView,
     StudyItemViewSet,
     TaskViewSet,
     TimeEntryViewSet,
@@ -23,9 +23,7 @@ router.register(r"tasks", TaskViewSet)
 router.register(r"time-entries", TimeEntryViewSet)
 router.register(r"moments", MomentViewSet)
 router.register(r"habits", HabitViewSet)
-router.register(r"prime-items", PrimeItemViewSet)
 router.register(r"study-items", StudyItemViewSet)
-router.register(r"review-items", ReviewItemViewSet)
 
 urlpatterns = [
     path("api/", include(router.urls)),
@@ -34,4 +32,6 @@ urlpatterns = [
     path("api/auth/token/", CustomTokenObtainPairView.as_view(), name="token-obtain"),
     path("api/auth/token/refresh/", TokenRefreshView.as_view(), name="token-refresh"),
     path("api/today-entries/", TodayEntriesView.as_view(), name="today-entries"),
+    path("api/stats/", StatsView.as_view(), name="stats"),
+    path("api/active-timer/", ActiveTimerView.as_view(), name="active-timer"),
 ]

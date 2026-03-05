@@ -4,7 +4,8 @@ import { MomentView } from "../views/moment-view.js";
 import * as currentTask from "../state/current-task.js";
 import { byId } from "../ui/ui-core.js";
 import { momentIds } from "../ui/moment-ids.js";
-import { createMoment, loadMoments, updateMoment } from "../data/storage.js";
+import { createMoment, loadMoments, loadTasks, updateMoment } from "../data/storage.js";
+import { TaskNameManager } from "../utils/task-name-manager.js";
 
 let moments = [];
 
@@ -18,13 +19,67 @@ export function createMomentController({
 
   const logMomentBtn = byId(momentIds.logMomentBtn);
 
-  const handleOpen = () => {
+  // Quick-log: save immediately using the task-name input value as description
+  const handleQuickLog = async () => {
+    const taskNameInput = document.getElementById("task-name");
+    const description = (taskNameInput?.value ?? "").trim() || "Untitled";
+    const taskSnapshot = currentTask.getSnapshot();
+    const moment = new Moment({
+      description,
+      category: "general",
+      taskId: taskSnapshot.task?.id || null,
+      taskTitle: taskSnapshot.task?.title || null,
+    });
+    try {
+      const savedMoment = await createMoment(moment.toJSON());
+      moments = await loadMoments();
+      if (taskNameInput) taskNameInput.value = "";
+      if (typeof onMomentsChanged === "function") {
+        onMomentsChanged(savedMoment);
+      } else if (typeof onMomentAdded === "function") {
+        onMomentAdded(savedMoment);
+      }
+    } catch (error) {
+      console.error("Failed to log moment:", error);
+      alert("Failed to log moment. Please try again.");
+    }
+  };
+
+  // Autocomplete manager for the modal description field
+  let descriptionManager = null;
+
+  function initDescriptionAutosuggest() {
+    const input = document.getElementById("moment-description");
+    const dropdown = document.getElementById("moment-description-dropdown");
+    if (!input || !dropdown) return;
+
+    descriptionManager?.dispose();
+    descriptionManager = new TaskNameManager(input, dropdown);
+
+    Promise.all([loadTasks().catch(() => []), loadMoments().catch(() => [])])
+      .then(([tasks, moments]) => {
+        descriptionManager?.setTasks(tasks);
+        descriptionManager?.setMoments(moments);
+      });
+  }
+
+  function disposeDescriptionAutosuggest() {
+    descriptionManager?.dispose();
+    descriptionManager = null;
+  }
+
+  // Manual: open modal for full moment details
+  function openManual(prefillDescription = "") {
     editingMomentId = null;
     editingMomentBase = null;
     MomentView.openForCreate();
-  };
+    if (prefillDescription) {
+      MomentView.setForm({ description: prefillDescription });
+    }
+    initDescriptionAutosuggest();
+  }
 
-  logMomentBtn.addEventListener("click", handleOpen);
+  logMomentBtn.addEventListener("click", handleQuickLog);
 
   const unbindModal = MomentView.bind({
     onSave: handleSave,
@@ -63,6 +118,7 @@ export function createMomentController({
         }
         editingMomentId = null;
         editingMomentBase = null;
+        disposeDescriptionAutosuggest();
         MomentView.close();
       } catch (error) {
         console.error("Failed to update moment:", error);
@@ -94,6 +150,7 @@ export function createMomentController({
       } else if (typeof onMomentAdded === "function") {
         onMomentAdded(savedMoment);
       }
+      disposeDescriptionAutosuggest();
       MomentView.close();
     } catch (error) {
       console.error("Failed to save moment:", error);
@@ -104,6 +161,7 @@ export function createMomentController({
   function handleCancel() {
     editingMomentId = null;
     editingMomentBase = null;
+    disposeDescriptionAutosuggest();
     MomentView.close();
   }
 
@@ -114,14 +172,16 @@ export function createMomentController({
       editingMomentId = moment.id;
       editingMomentBase = moment;
       MomentView.openForEdit(moment);
+      initDescriptionAutosuggest();
     },
+    openManual,
     refresh: async () => {
       moments = await loadMoments();
       return moments;
     },
     dispose: () => {
       unbindModal();
-      logMomentBtn.removeEventListener("click", handleOpen);
+      logMomentBtn.removeEventListener("click", handleQuickLog);
     },
   };
 }

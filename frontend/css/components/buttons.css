@@ -72,7 +72,6 @@
   background: transparent;
   border: none;
   cursor: pointer;
-  padding: var(--spacing-sm);
   border-radius: var(--radius-sm);
   display: inline-flex;
   align-items: center;

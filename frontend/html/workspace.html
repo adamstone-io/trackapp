@@ -94,10 +94,13 @@
         <section class="workspace-section">
           <div class="workspace-header">
             <div class="workspace-header__top">
-              <h2 class="workspace-header__title">Scheduled Tasks</h2>
-              <button id="add-task-btn" class="btn btn--primary" type="button">
-                New Task
-              </button>
+              <h2 class="workspace-header__title" id="tasks-date-label">Scheduled Tasks</h2>
+              <div class="workspace-header__actions">
+                <input type="date" id="tasks-date-picker" class="workspace-date-picker" />
+                <button id="add-task-btn" class="btn btn--primary" type="button">
+                  New Task
+                </button>
+              </div>
             </div>
           </div>
 

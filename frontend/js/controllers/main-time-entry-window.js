@@ -2,37 +2,71 @@ import { createDropdownMenu } from "../views/components/dropdown-menu.js";
 import { createTimeEntryModal } from "../views/components/time-entry-modal.js";
 import { createDataManagementMenu } from "./data-management-controller.js";
 
+const TIMER_DEFAULT_MODE_KEY = "timerDefaultMode";
+
+export function getTimerDefaultMode() {
+  return localStorage.getItem(TIMER_DEFAULT_MODE_KEY) || "stopwatch";
+}
+
+function setTimerDefaultMode(mode) {
+  localStorage.setItem(TIMER_DEFAULT_MODE_KEY, mode);
+}
+
 export function createMainTimeEntryWindowController(options = {}) {
-  const { onManualEntrySaved } = options;
+  const { onManualEntrySaved, onAddMoment, onDefaultModeChanged } = options;
 
   const menuButton = document.getElementById("timer-menu-btn");
   let menu = null;
   let manualEntryModal = null;
   let dataMenu = null;
 
-  init();
+  buildMenu();
 
-  function init() {
+  function buildMenu() {
     if (!menuButton) return;
 
-    manualEntryModal = createTimeEntryModal({
-      onSave: onManualEntrySaved,
+    if (!manualEntryModal) {
+      manualEntryModal = createTimeEntryModal({ onSave: onManualEntrySaved });
+    }
+    if (!dataMenu) {
+      dataMenu = createDataManagementMenu();
+    }
+
+    menu?.dispose();
+
+    const isCountdownDefault = getTimerDefaultMode() === "countdown";
+
+    const items = [
+      {
+        label: "Add manual time entry",
+        onSelect: () => manualEntryModal.open(),
+      },
+    ];
+
+    if (typeof onAddMoment === "function") {
+      items.push({
+        label: "Add manual moment",
+        onSelect: () => onAddMoment(""),
+      });
+    }
+
+    items.push({
+      label: isCountdownDefault
+        ? "Default: Stopwatch"
+        : "Default: Countdown",
+      onSelect: () => {
+        const nextMode = isCountdownDefault ? "stopwatch" : "countdown";
+        setTimerDefaultMode(nextMode);
+        if (typeof onDefaultModeChanged === "function") {
+          onDefaultModeChanged(nextMode);
+        }
+        setTimeout(() => buildMenu(), 0);
+      },
     });
 
-    dataMenu = createDataManagementMenu();
+    items.push(...dataMenu.items);
 
-    menu = createDropdownMenu({
-      items: [
-        {
-          label: "Add manual time entry",
-          onSelect: () => {
-            manualEntryModal.open();
-          },
-        },
-        ...dataMenu.items,
-      ],
-    });
-
+    menu = createDropdownMenu({ items });
     menu.attachTo(menuButton);
   }
 

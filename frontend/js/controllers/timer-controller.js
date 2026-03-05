@@ -10,21 +10,27 @@ import { formatTime } from "../utils/time.js";
 import {
   loadTasks,
   loadTimeEntries,
+  loadMoments,
   createTask,
   createTimeEntry,
+  getActiveTimer,
+  createActiveTimer,
+  updateActiveTimer,
+  deleteActiveTimer,
 } from "../data/storage.js";
 import { createBreakModal } from "../views/components/break-modal.js";
 import { SoundManager } from "../utils/sound-manager.js";
+import { TaskNameManager } from "../utils/task-name-manager.js";
 
 let activeEntry = null;
 let activeTask = null;
 let timeEntries = [];
 let pauseStartMs = null;
 let pauseTickerId = null;
-let isStarting = false; // Guard against double-clicks
+let isStarting = false;
 
-export function createTimerController({ onEntryAdded }) {
-  const timer = new Timer(); // ✅ create instance
+export function createTimerController({ onEntryAdded, countdownController = null }) {
+  const timer = new Timer();
   const breakModal = createBreakModal({
     onSave: async ({ label }) => {
       if (!timer.getSnapshot().isPaused) return;
@@ -116,6 +122,52 @@ export function createTimerController({ onEntryAdded }) {
   document.addEventListener("timer:modeChange", handleModeChange);
   document.addEventListener("countdown:durationChange", handleDurationChange);
 
+  // Task name autocomplete
+  const taskNameInput = document.getElementById("task-name");
+  const taskNameDropdown = document.getElementById("task-name-dropdown");
+  const taskNameManager =
+    taskNameInput && taskNameDropdown
+      ? new TaskNameManager(taskNameInput, taskNameDropdown)
+      : null;
+
+  loadTasks()
+    .then((tasks) => taskNameManager?.setTasks(tasks))
+    .catch(() => {});
+  loadMoments()
+    .then((moments) => taskNameManager?.setMoments(moments))
+    .catch(() => {});
+
+  const launchParams = new URLSearchParams(window.location.search);
+  let seededWorkspaceTask = null;
+  {
+    const seededId = launchParams.get("taskId");
+    const seededTitle = (launchParams.get("taskTitle") || "").trim();
+    const seededCategory = (launchParams.get("taskCategory") || "").trim();
+    const seededProjectId =
+      (launchParams.get("taskProjectId") || "").trim() || null;
+
+    if (seededId && seededTitle) {
+      const nameInput = CurrentTaskView.nameInput();
+      const categorySelect = CurrentTaskView.categorySelect();
+      nameInput.value = seededTitle;
+
+      if (seededCategory) {
+        const normalizedCategory = seededCategory.toLowerCase();
+        const match = Array.from(categorySelect.options).find(
+          (opt) => (opt.value || "").toLowerCase() === normalizedCategory,
+        );
+        categorySelect.value = match ? match.value : seededCategory;
+      }
+
+      seededWorkspaceTask = {
+        id: seededId,
+        title: seededTitle,
+        category: seededCategory,
+        projectId: seededProjectId,
+      };
+    }
+  }
+
   // Bind timer controls
   const unbind = TimerView.bind({
     onStart: handleStart,
@@ -131,6 +183,11 @@ export function createTimerController({ onEntryAdded }) {
     timer.pause();
     pauseStartMs = timer.getSnapshot().pauseStartTimeMs ?? Date.now();
     startPauseTicker();
+    // Checkpoint elapsed seconds so a reload can resume from the right position
+    updateActiveTimer({
+      is_paused: true,
+      elapsed_seconds: timer.getSnapshot().elapsedSeconds,
+    }).catch(() => {});
   }
 
   async function handleResume() {
@@ -138,6 +195,11 @@ export function createTimerController({ onEntryAdded }) {
     await finalizePause({ label: "Pause", createEntry: false });
     clearPauseTracking();
     timer.resume();
+    updateActiveTimer({
+      is_paused: false,
+      started_at: new Date().toISOString(),
+      elapsed_seconds: timer.getSnapshot().elapsedSeconds,
+    }).catch(() => {});
   }
 
   function handleLogBreak() {
@@ -148,6 +210,7 @@ export function createTimerController({ onEntryAdded }) {
   function handleCancel() {
     clearPauseTracking();
     timer.stop();
+    deleteActiveTimer().catch(() => {});
 
     currentTask.clearCurrentTask();
     CurrentTaskView.clearInputs();
@@ -159,6 +222,8 @@ export function createTimerController({ onEntryAdded }) {
       taskTitle: "",
       running: false,
     });
+
+    document.dispatchEvent(new CustomEvent("timer:runningChange", { detail: { running: false } }));
 
     // Show countdown favorites when timer is cancelled
     if (isCountdownUiActive()) {
@@ -181,7 +246,22 @@ export function createTimerController({ onEntryAdded }) {
         taskData.title = "Untitled";
       }
 
-      const task = new Task(taskData);
+      const normalizedTitle = taskData.title.trim().toLowerCase();
+      const normalizedCategory = String(taskData.category || "Other")
+        .trim()
+        .toLowerCase();
+      const shouldUseSeededTask =
+        !!seededWorkspaceTask &&
+        normalizedTitle === seededWorkspaceTask.title.trim().toLowerCase() &&
+        (!seededWorkspaceTask.category ||
+          normalizedCategory ===
+            seededWorkspaceTask.category.trim().toLowerCase());
+
+      const task = new Task({
+        ...taskData,
+        id: shouldUseSeededTask ? seededWorkspaceTask.id : undefined,
+        projectId: shouldUseSeededTask ? seededWorkspaceTask.projectId : null,
+      });
 
       currentTask.setCurrentTask(task);
       clearPauseTracking();
@@ -201,12 +281,27 @@ export function createTimerController({ onEntryAdded }) {
         running: true,
       });
 
+      document.dispatchEvent(new CustomEvent("timer:runningChange", { detail: { running: true } }));
+
+      const startedAt = new Date().toISOString();
       activeTask = task;
       activeEntry = new TimeEntry({
         taskId: task.id,
         taskTitle: task.title,
-        startedAt: new Date().toISOString(),
+        startedAt,
       });
+      seededWorkspaceTask = null;
+
+      // Persist active timer to server so it survives a page refresh
+      createActiveTimer({
+        task_title: task.title,
+        task: null,
+        started_at: startedAt,
+        elapsed_seconds: 0,
+        is_paused: false,
+        mode: isCountdownUiActive() ? "countdown" : "stopwatch",
+        target_duration: isCountdownUiActive() ? targetDuration || null : null,
+      }).catch(() => {});
     } catch (err) {
       console.error("Failed to start timer:", err);
 
@@ -224,6 +319,88 @@ export function createTimerController({ onEntryAdded }) {
     } finally {
       isStarting = false;
     }
+  }
+
+  if (launchParams.get("autoStart") === "1" && seededWorkspaceTask) {
+    queueMicrotask(() => {
+      void handleStart();
+    });
+  } else {
+    // Restore any timer session that was active before a page refresh
+    void restoreActiveTimer();
+  }
+
+  async function restoreActiveTimer() {
+    let record;
+    try {
+      record = await getActiveTimer();
+    } catch {
+      return; // network error — skip restore
+    }
+    if (!record) return; // no active timer
+
+    const now = Date.now();
+    const startedAtMs = new Date(record.started_at).getTime();
+    const elapsed = record.is_paused
+      ? record.elapsed_seconds
+      : record.elapsed_seconds + Math.floor((now - startedAtMs) / 1000);
+
+    // Restore task name into the input
+    const nameInput = CurrentTaskView.nameInput();
+    if (nameInput) nameInput.value = record.task_title;
+
+    const task = new Task({
+      id: record.task ?? undefined,
+      title: record.task_title,
+    });
+
+    currentTask.setCurrentTask(task);
+    activeTask = task;
+    activeEntry = new TimeEntry({
+      taskId: record.task ?? task.id,
+      taskTitle: record.task_title,
+      startedAt: record.started_at,
+    });
+
+    // Restore countdown mode if needed
+    if (record.mode === "countdown") {
+      // Hide favourites first so they don't flash when the countdown section is revealed
+      hideCountdownFavorites();
+      if (countdownController) {
+        countdownController.activateCountdown(record.target_duration || undefined);
+      } else {
+        document.dispatchEvent(
+          new CustomEvent("timer:modeChange", {
+            detail: { mode: "countdown", targetDuration: record.target_duration },
+          }),
+        );
+      }
+      targetDuration = record.target_duration || 0;
+      countdownMode = true;
+    }
+
+    // Reconstruct the Timer state
+    timer.isRunning = true;
+    timer.elapsedSeconds = elapsed;
+
+    if (record.is_paused) {
+      timer.isPaused = true;
+      timer.pauseStartTimeMs = now;
+      timer.startTimeMs = null;
+      pauseStartMs = now;
+      startPauseTicker();
+    } else {
+      timer.isPaused = false;
+      timer.startTimeMs = now;
+      timer._startTick();
+    }
+
+    CurrentTaskView.render({
+      taskTitle: record.task_title,
+      running: true,
+    });
+
+    document.dispatchEvent(new CustomEvent("timer:runningChange", { detail: { running: true } }));
   }
 
   async function ensureTaskExists(task) {
@@ -279,9 +456,13 @@ export function createTimerController({ onEntryAdded }) {
       activeEntry = null;
       activeTask = null;
       CurrentTaskView.render({ taskTitle: "", running: false });
+      document.dispatchEvent(new CustomEvent("timer:runningChange", { detail: { running: false } }));
       if (isCountdownUiActive()) showCountdownFavorites();
       return;
     }
+
+    // Clear server-side active timer record
+    deleteActiveTimer().catch(() => {});
 
     try {
       const ensuredTaskId = await ensureTaskExists(activeTask);
@@ -325,6 +506,8 @@ export function createTimerController({ onEntryAdded }) {
       taskTitle: "",
       running: false,
     });
+
+    document.dispatchEvent(new CustomEvent("timer:runningChange", { detail: { running: false } }));
 
     if (isCountdownUiActive()) {
       showCountdownFavorites();
@@ -464,6 +647,7 @@ export function createTimerController({ onEntryAdded }) {
     unbind();
     unsubTimer();
     unsubTask();
+    taskNameManager?.dispose();
     document.removeEventListener("timer:modeChange", handleModeChange);
     document.removeEventListener(
       "countdown:durationChange",

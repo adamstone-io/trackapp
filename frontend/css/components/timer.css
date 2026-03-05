@@ -191,6 +191,65 @@
   max-width: 300px;
 }
 
+.task-name-wrapper {
+  position: relative;
+  width: 100%;
+  max-width: 300px;
+}
+
+.task-name-wrapper #task-name {
+  max-width: 100%;
+  width: 100%;
+}
+
+.task-name-dropdown {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  right: 0;
+  background: var(--background, #fff);
+  border: 1px solid var(--border, #d1d5db);
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
+  z-index: 100;
+  max-height: 220px;
+  overflow-y: auto;
+}
+
+.task-name-dropdown.hidden {
+  display: none;
+}
+
+.task-suggestion-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.5rem 0.875rem;
+  cursor: pointer;
+  font-size: 0.9rem;
+  gap: 0.5rem;
+}
+
+.task-suggestion-item:hover,
+.task-suggestion-item--selected {
+  background: var(--color-bg-secondary, #f3f4f6);
+}
+
+.task-suggestion-item__title {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  text-align: left;
+}
+
+.task-suggestion-item__count {
+  font-size: 0.75rem;
+  color: var(--color-text-muted, #9ca3af);
+  flex-shrink: 0;
+}
+
 .timer__menu {
   display: flex;
   justify-content: flex-end;
@@ -252,4 +311,91 @@
 
 #current-task-title {
   text-align: center;
+}
+
+/* Quick-add entry */
+.quick-add-entry {
+}
+
+.quick-add-entry__row {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+  flex-wrap: wrap;
+  margin-top: 1.5rem;
+}
+
+.qae-task-wrap {
+  position: relative;
+  flex: 1 1 160px;
+  min-width: 0;
+}
+
+.quick-add-entry__task {
+  width: 100%;
+  padding: 0.45rem 0.75rem;
+  border: 1px solid var(--color-border, #a3a7ae);
+  border-radius: 6px;
+  font-size: 0.9rem;
+  background: var(--background);
+  color: var(--text-primary);
+}
+
+.qae-time-wrap {
+  position: relative;
+  flex: 0 0 auto;
+}
+
+.quick-add-entry__time {
+  width: 5.2rem;
+  padding: 0.45rem 1.4rem 0.45rem 0.5rem;
+  border: 1px solid var(--color-border, #a3a7ae);
+  border-radius: 6px;
+  font-size: 0.9rem;
+  background: var(--background);
+  color: var(--text-primary);
+}
+
+#qae-start-time::-webkit-calendar-picker-indicator,
+#qae-end-time::-webkit-calendar-picker-indicator {
+  display: none;
+}
+
+#qae-start-time::-webkit-datetime-edit,
+#qae-end-time::-webkit-datetime-edit {
+  padding: 0;
+}
+
+.qae-clock-btn {
+  position: absolute;
+  right: 0.35rem;
+  top: 50%;
+  transform: translateY(-50%);
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 0.15rem;
+  color: var(--color-text-muted, #9ca3af);
+  display: flex;
+  align-items: center;
+  border-radius: 4px;
+  transition: color 0.15s ease;
+}
+
+.qae-clock-btn:hover {
+  color: var(--text-primary);
+}
+
+.quick-add-entry__btn {
+  flex-shrink: 0;
+}
+
+.quick-add-entry__error {
+  margin-top: 0.375rem;
+  font-size: 0.8rem;
+  color: var(--color-error, #ef4444);
+}
+
+.quick-add-entry__error.hidden {
+  display: none;
 }

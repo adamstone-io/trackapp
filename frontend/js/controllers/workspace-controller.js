@@ -21,6 +21,58 @@ export function createWorkspaceController() {
   let editingProjectId = null;
   let editingTaskId = null;
 
+  // Date picker for filtering scheduled tasks
+  const datePicker = document.getElementById("tasks-date-picker");
+  const dateLabel = document.getElementById("tasks-date-label");
+
+  const todayStr = (() => {
+    const d = new Date();
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+  })();
+
+  if (datePicker) {
+    datePicker.value = todayStr;
+    datePicker.addEventListener("change", () => {
+      updateDateLabel();
+      renderScheduledTasks();
+    });
+  }
+
+  function getSelectedDateStr() {
+    return datePicker?.value || todayStr;
+  }
+
+  function updateDateLabel() {
+    if (!dateLabel) return;
+    const val = getSelectedDateStr();
+    if (val === todayStr) {
+      dateLabel.textContent = "Scheduled Tasks — Today";
+    } else {
+      const d = new Date(`${val}T00:00:00`);
+      const label = new Intl.DateTimeFormat(undefined, {
+        weekday: "long", month: "long", day: "numeric",
+      }).format(d);
+      dateLabel.textContent = `Scheduled Tasks — ${label}`;
+    }
+  }
+
+  function taskMatchesDate(task, dateStr) {
+    const rawStart = task.planned_start ?? task.plannedStart ?? null;
+    if (!rawStart) return false;
+    const taskDate = new Date(rawStart);
+    const y = taskDate.getFullYear();
+    const m = String(taskDate.getMonth() + 1).padStart(2, "0");
+    const day = String(taskDate.getDate()).padStart(2, "0");
+    return `${y}-${m}-${day}` === dateStr;
+  }
+
+  function renderScheduledTasks() {
+    const taskTimeMap = calculateTaskTime();
+    const dateStr = getSelectedDateStr();
+    const scheduled = tasks.filter((t) => !t.archived && !taskTimeMap.has(t.id) && taskMatchesDate(t, dateStr));
+    WorkspaceView.renderTasks(scheduled, [], projects, taskTimeMap);
+  }
+
   const unbind = WorkspaceView.bind({
     onAddProject: handleAddProject,
     onEditProject: handleEditProject,
@@ -42,11 +94,19 @@ export function createWorkspaceController() {
     timeEntries = await loadTimeEntries();
 
     const projectStats = calculateProjectStats();
-    const taskTimeMap = calculateTaskTime();
-    const scheduledTasks = tasks.filter((t) => !taskTimeMap.has(t.id));
-
     WorkspaceView.renderProjects(projects, projectStats);
-    WorkspaceView.renderTasks(scheduledTasks, projects, taskTimeMap);
+    updateDateLabel();
+    renderScheduledTasks();
+  }
+
+  function entryTaskId(e) {
+    // API returns the task FK as `task` (UUID string), not `taskId`
+    return e.task ?? e.taskId ?? null;
+  }
+
+  function entryDuration(e) {
+    // API returns snake_case `duration_seconds`
+    return e.duration_seconds ?? e.durationSeconds ?? 0;
   }
 
   function calculateProjectStats() {
@@ -54,13 +114,15 @@ export function createWorkspaceController() {
 
     for (const project of projects) {
       const projectTasks = tasks.filter(
-        (t) => t.projectId === project.id && !t.archived,
+        (t) => (t.project ?? t.projectId) === project.id && !t.archived,
       );
       const taskIds = new Set(projectTasks.map((t) => t.id));
 
-      const projectEntries = timeEntries.filter((e) => taskIds.has(e.taskId));
+      const projectEntries = timeEntries.filter((e) =>
+        taskIds.has(entryTaskId(e)),
+      );
       const totalSeconds = projectEntries.reduce(
-        (sum, e) => sum + (e.durationSeconds || 0),
+        (sum, e) => sum + entryDuration(e),
         0,
       );
 
@@ -77,8 +139,9 @@ export function createWorkspaceController() {
     const taskTimeMap = new Map();
 
     for (const entry of timeEntries) {
-      const current = taskTimeMap.get(entry.taskId) || 0;
-      taskTimeMap.set(entry.taskId, current + (entry.durationSeconds || 0));
+      const id = entryTaskId(entry);
+      if (!id) continue;
+      taskTimeMap.set(id, (taskTimeMap.get(id) || 0) + entryDuration(entry));
     }
 
     return taskTimeMap;
@@ -156,8 +219,8 @@ export function createWorkspaceController() {
   }
 
   async function handleDeleteTask(id) {
-    if (!confirm("Delete this task? Time entries will be preserved.")) return;
-    await deleteTask(id);
+    if (!confirm("Remove this task from your schedule? Time entries will be preserved.")) return;
+    await updateTask(id, { archived: true });
     await refresh();
   }
 
@@ -166,9 +229,15 @@ export function createWorkspaceController() {
     if (!task) return;
 
     // Navigate to timer page with task info
+    const plannedDuration = task.planned_duration ?? task.plannedDuration ?? null;
     const params = new URLSearchParams({
       taskId: task.id,
       taskTitle: task.title,
+      taskCategory: task.category ?? "",
+      taskProjectId: String(task.projectId ?? task.project ?? ""),
+      autoStart: "1",
+      autoCountdown: "1",
+      ...(plannedDuration ? { countdownDuration: String(plannedDuration) } : {}),
     });
     window.location.href = `timer.html?${params.toString()}`;
   }
@@ -183,9 +252,13 @@ export function createWorkspaceController() {
 
     const payload = {
       ...data,
-      project: data.projectId ?? null, // FK field expected by DRF
+      project: data.projectId ?? null,       // FK field expected by DRF
+      planned_duration: data.plannedDuration ?? null,
+      planned_start: data.plannedStart ?? null,
     };
     delete payload.projectId;
+    delete payload.plannedDuration;
+    delete payload.plannedStart;
 
     if (editingTaskId) {
       await updateTask(editingTaskId, payload);

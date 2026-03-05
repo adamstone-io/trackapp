@@ -85,16 +85,22 @@ function renderEntry(entry) {
   const projectName = entry.projectName || null;
   const projectColor = entry.projectColor || "#6366f1";
 
+  const startedAt = entry.startedAt ?? entry.started_at ?? "";
+  const endedAt = entry.endedAt ?? entry.ended_at ?? "";
+
   return `
-        <div class="entry-card" data-entry-id="${escapeHtml(entry.id ?? "")}">
+        <div class="entry-card" data-entry-id="${escapeHtml(entry.id ?? "")}"
+             data-started-at="${escapeHtml(startedAt)}"
+             data-ended-at="${escapeHtml(endedAt)}"
+             data-task-title="${escapeHtml(title)}">
             <div class="entry-card__header">
                 <div class="entry-card__title-row">
-                    <span class="entry-card__title">${escapeHtml(title)}</span>
+                    <span class="entry-card__title entry-card__editable">${escapeHtml(title)}</span>
                     ${projectName ? `<span class="entry-card__project" style="--project-color: ${escapeHtml(projectColor)}">${escapeHtml(projectName)}</span>` : ""}
                     ${category ? `<span class="entry-card__category">${escapeHtml(category)}</span>` : ""}
                 </div>
             <div class="entry-card__meta">
-                ${timeRange ? `<span class="entry-card__time">${escapeHtml(timeRange)}</span>` : ""}
+                ${timeRange ? `<span class="entry-card__time entry-card__editable">${escapeHtml(timeRange)}</span>` : ""}
                 <span>
                 <button
                     class="icon-btn entry-card__menu-btn"
@@ -136,17 +142,21 @@ function renderMoment(moment) {
 
   const timeLabel = createdAt ? fmt.format(createdAt) : "";
 
+  const timestampMs = Number.isFinite(moment.timestampMs) ? moment.timestampMs : "";
+
   return `
-        <div class="entry-card" data-moment-id="${escapeHtml(moment.id ?? "")}">
+        <div class="entry-card" data-moment-id="${escapeHtml(moment.id ?? "")}"
+             data-moment-description="${escapeHtml(description)}"
+             data-moment-timestamp-ms="${escapeHtml(String(timestampMs))}">
             <div class="entry-card__header">
-            <div class="entry-card__title">${description}</div>
-           
+            <span class="entry-card__title entry-card__editable" data-moment-field="description">${escapeHtml(description)}</span>
+            <div class="entry-card__meta">
             ${
               timeLabel
-                ? `<span class="entry-card__time">${escapeHtml(timeLabel)}
-               </span>`
+                ? `<span class="entry-card__time entry-card__editable" data-moment-field="time">${escapeHtml(timeLabel)}</span>`
                 : ""
-            }          <span>
+            }
+                <span>
                 <button
                     class="icon-btn entry-card__menu-btn"
                     type="button"
@@ -159,8 +169,8 @@ function renderMoment(moment) {
                         <circle cx="8" cy="14" r="1.5" />
                     </svg>
                 </button>
-            </span>
-
+                </span>
+            </div>
             </div>
         </div>
     `;

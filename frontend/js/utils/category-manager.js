@@ -14,6 +14,23 @@ export class CategoryManager {
     this.init();
   }
 
+  setCategories(categories = []) {
+    this.categories.clear();
+
+    categories.forEach((cat) => {
+      if (!cat || typeof cat.category !== "string") return;
+      const normalized = cat.category.trim();
+      if (!normalized) return;
+      const count = Number(cat.count ?? 0);
+      this.categories.set(normalized, Number.isFinite(count) ? count : 0);
+    });
+
+    // Optional: refresh dropdown if input is focused
+    if (document.activeElement === this.input) {
+      this.renderDropdown(this.input.value);
+    }
+  }
+
   init() {
     // Input events
     this.input.addEventListener("input", () => this.handleInput());
@@ -62,13 +79,13 @@ export class CategoryManager {
 
     // Convert to array and sort by frequency
     let categories = Array.from(this.categories.entries()).sort(
-      (a, b) => b[1] - a[1]
+      (a, b) => b[1] - a[1],
     ); // Sort by count descending
 
     // Filter by search term if provided
     if (normalized) {
       categories = categories.filter(([category]) =>
-        category.toLowerCase().includes(normalized)
+        category.toLowerCase().includes(normalized),
       );
     }
 
@@ -139,12 +156,12 @@ export class CategoryManager {
       .map(
         ([category, count]) => `
       <div class="category-dropdown-item" data-category="${this.escapeHtml(
-        category
+        category,
       )}">
         <span>${this.escapeHtml(this.capitalize(category))}</span>
         <span class="category-count">${count}</span>
       </div>
-    `
+    `,
       )
       .join("");
 

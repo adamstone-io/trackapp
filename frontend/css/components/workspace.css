@@ -25,6 +25,28 @@
   margin: 0;
 }
 
+.workspace-header__actions {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.workspace-date-picker {
+  padding: 0.4rem 0.6rem;
+  border: 1px solid var(--color-border, #ddd);
+  border-radius: 6px;
+  font-size: 0.875rem;
+  font-family: inherit;
+  background: var(--color-bg, #fff);
+  color: var(--color-text, #333);
+  cursor: pointer;
+}
+
+.workspace-date-picker:focus {
+  outline: none;
+  border-color: var(--primary, #6366f1);
+}
+
 .workspace-list-empty {
   text-align: center;
   padding: 3rem 1rem;
@@ -203,9 +225,9 @@
 
 .task-item__meta {
   display: flex;
-  gap: 0.75rem;
   align-items: center;
   flex-wrap: wrap;
+  gap: 0.75rem;
 }
 
 .task-item__category {

@@ -1,95 +1,78 @@
 // js/views/stats-view.js
 export const StatsView = {
-    totalTodayEl: () => document.getElementById("stats-total-today"),
+    periodFilterEl: () => document.getElementById("stats-period-filter"),
+    totalTimeEl: () => document.getElementById("stats-total-time"),
     summaryEl: () => document.getElementById("stats-summary"),
-    primesTodayEl: () => document.getElementById("stats-primes-today"),
-    primesTodaySummaryEl: () => document.getElementById("stats-primes-today-summary"),
-    primesYesterdayEl: () => document.getElementById("stats-primes-yesterday"),
-    primesYesterdaySummaryEl: () => document.getElementById("stats-primes-yesterday-summary"),
-    primesWeekEl: () => document.getElementById("stats-primes-week"),
-    primesWeekSummaryEl: () => document.getElementById("stats-primes-week-summary"),
-    primesLastWeekEl: () => document.getElementById("stats-primes-last-week"),
-    primesLastWeekSummaryEl: () => document.getElementById("stats-primes-last-week-summary"),
-    reviewsTodayEl: () => document.getElementById("stats-reviews-today"),
-    reviewsTodaySummaryEl: () => document.getElementById("stats-reviews-today-summary"),
-    reviewsWeekEl: () => document.getElementById("stats-reviews-week"),
-    reviewsWeekSummaryEl: () => document.getElementById("stats-reviews-week-summary"),
-    reviewsMonthEl: () => document.getElementById("stats-reviews-month"),
-    reviewsMonthSummaryEl: () => document.getElementById("stats-reviews-month-summary"),
+    primeCountEl: () => document.getElementById("stats-prime-count"),
+    studyCountEl: () => document.getElementById("stats-study-count"),
+    reviewCountEl: () => document.getElementById("stats-review-count"),
     listEl: () => document.getElementById("stats-by-task-list"),
     emptyEl: () => document.getElementById("stats-empty"),
     refreshBtn: () => document.getElementById("stats-refresh-btn"),
 
-    bind({ onRefresh } = {}) {
-        const btn = this.refreshBtn();
+    bind({ onRefresh, onPeriodChange } = {}) {
+        const refreshBtn = this.refreshBtn();
+        const periodFilter = this.periodFilterEl();
 
         const handleRefresh = () => {
             if (typeof onRefresh === "function") onRefresh();
         };
 
-        if (btn) btn.addEventListener("click", handleRefresh);
+        const handlePeriodChange = (event) => {
+            const button = event.target.closest("[data-period]");
+            if (!button) return;
+
+            const period = button.dataset.period;
+            if (typeof onPeriodChange === "function") {
+                onPeriodChange(period);
+            }
+        };
+
+        if (refreshBtn) refreshBtn.addEventListener("click", handleRefresh);
+        if (periodFilter) periodFilter.addEventListener("click", handlePeriodChange);
 
         return () => {
-            if (btn) btn.removeEventListener("click", handleRefresh);
+            if (refreshBtn) refreshBtn.removeEventListener("click", handleRefresh);
+            if (periodFilter) periodFilter.removeEventListener("click", handlePeriodChange);
         };
     },
 
-    render({ totalSeconds, entryCount, byTask, todayPrimes, yesterdayPrimes, weekPrimes, lastWeekPrimes, totalPrimes, todayReviews, weekReviews, monthReviews, totalReviews }) {
-        const totalTodayEl = this.totalTodayEl();
+    render({ period, totalSeconds, entryCount, byTask, primeCount, studyCount, reviewCount }) {
+        const totalTimeEl = this.totalTimeEl();
         const summaryEl = this.summaryEl();
-        const primesTodayEl = this.primesTodayEl();
-        const primesTodaySummaryEl = this.primesTodaySummaryEl();
-        const primesYesterdayEl = this.primesYesterdayEl();
-        const primesYesterdaySummaryEl = this.primesYesterdaySummaryEl();
-        const primesWeekEl = this.primesWeekEl();
-        const primesWeekSummaryEl = this.primesWeekSummaryEl();
-        const primesLastWeekEl = this.primesLastWeekEl();
-        const primesLastWeekSummaryEl = this.primesLastWeekSummaryEl();
-        const reviewsTodayEl = this.reviewsTodayEl();
-        const reviewsTodaySummaryEl = this.reviewsTodaySummaryEl();
-        const reviewsWeekEl = this.reviewsWeekEl();
-        const reviewsWeekSummaryEl = this.reviewsWeekSummaryEl();
-        const reviewsMonthEl = this.reviewsMonthEl();
-        const reviewsMonthSummaryEl = this.reviewsMonthSummaryEl();
+        const primeCountEl = this.primeCountEl();
+        const studyCountEl = this.studyCountEl();
+        const reviewCountEl = this.reviewCountEl();
         const listEl = this.listEl();
         const emptyEl = this.emptyEl();
+        const periodFilter = this.periodFilterEl();
 
-        if (!totalTodayEl || !summaryEl || !primesTodayEl || !primesTodaySummaryEl || !primesYesterdayEl || !primesYesterdaySummaryEl || !primesWeekEl || !primesWeekSummaryEl || !primesLastWeekEl || !primesLastWeekSummaryEl || !listEl || !emptyEl) {
+        if (!totalTimeEl || !summaryEl || !listEl || !emptyEl) {
             throw new Error("StatsView: missing required DOM elements");
         }
 
+        // Update active period filter
+        if (periodFilter) {
+            const buttons = periodFilter.querySelectorAll("[data-period]");
+            buttons.forEach(btn => {
+                if (btn.dataset.period === period) {
+                    btn.classList.add("btn--primary");
+                    btn.classList.remove("btn--outline");
+                } else {
+                    btn.classList.remove("btn--primary");
+                    btn.classList.add("btn--outline");
+                }
+            });
+        }
+
         // Update time stats
-        totalTodayEl.textContent = this.formatDuration(totalSeconds);
+        totalTimeEl.textContent = this.formatDuration(totalSeconds);
         summaryEl.textContent = `${entryCount} entr${entryCount === 1 ? "y" : "ies"}`;
 
-        // Update primes stats
-        primesTodayEl.textContent = todayPrimes.toString();
-        primesTodaySummaryEl.textContent = '';
-        
-        primesYesterdayEl.textContent = yesterdayPrimes.toString();
-        primesYesterdaySummaryEl.textContent = '';
-        
-        primesWeekEl.textContent = weekPrimes.toString();
-        primesWeekSummaryEl.textContent = '';
-        
-        primesLastWeekEl.textContent = lastWeekPrimes.toString();
-        primesLastWeekSummaryEl.textContent = '';
-
-        // Update reviews stats
-        if (reviewsTodayEl) {
-            reviewsTodayEl.textContent = todayReviews?.toString() || '0';
-            if (reviewsTodaySummaryEl) reviewsTodaySummaryEl.textContent = '';
-        }
-        
-        if (reviewsWeekEl) {
-            reviewsWeekEl.textContent = weekReviews?.toString() || '0';
-            if (reviewsWeekSummaryEl) reviewsWeekSummaryEl.textContent = '';
-        }
-        
-        if (reviewsMonthEl) {
-            reviewsMonthEl.textContent = monthReviews?.toString() || '0';
-            if (reviewsMonthSummaryEl) reviewsMonthSummaryEl.textContent = '';
-        }
+        // Update study item stats
+        if (primeCountEl) primeCountEl.textContent = primeCount?.toString() || '0';
+        if (studyCountEl) studyCountEl.textContent = studyCount?.toString() || '0';
+        if (reviewCountEl) reviewCountEl.textContent = reviewCount?.toString() || '0';
 
         if (!byTask.length) {
             listEl.innerHTML = "";
@@ -103,8 +86,8 @@ export const StatsView = {
 
         listEl.innerHTML = byTask
             .map((row) => {
-                const duration = this.formatDuration(row.totalSeconds);
-                const count = row.entryCount;
+                const duration = this.formatDuration(row.total_seconds);
+                const count = row.entry_count;
 
                 return `
                     <div class="entry-card">

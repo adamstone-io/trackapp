@@ -1,5 +1,4 @@
-// controllers/prime-controller.js
-import { PrimeItem } from "../domain/prime-item.js";
+import { StudyItem } from "../domain/study-item.js";
 import { PrimeView } from "../views/prime-view.js";
 import { byId } from "../ui/ui-core.js";
 import { primeIds } from "../ui/prime-ids.js";
@@ -7,645 +6,540 @@ import { createDropdownMenu } from "../views/components/dropdown-menu.js";
 import { createCategoryFilterModal } from "../views/components/category-filter-modal.js";
 import { CategoryManager } from "../utils/category-manager.js";
 import { SoundManager } from "../utils/sound-manager.js";
+import { isMobile } from "../utils/viewport.js";
+import { bindAutoGrow } from "../utils/textarea.js";
+
 import {
-  createPrimeItem,
-  loadPrimeItemsPage,
-  logPrimeItem,
-  updatePrimeItem,
-  deletePrimeItem,
-  convertPrimeToReview,
-  convertPrimeToStudy,
-  API_BASE,
-  AUTH_KEYS,
-} from "../data/storage.js";
+  loadStudyItems,
+  loadStudyItemsPage,
+  createStudyItem,
+  updateStudyItem,
+  deleteStudyItem,
+  logInteraction,
+  transitionToStudying,
+  transitionToReviewing,
+  loadCategories,
+  uploadPromptImage,
+  removePromptImage,
+  uploadNoteImage,
+  removeNoteImage,
+} from "../api/studyItemApi.js";
 
-let primeItems = [];
+let studyItems = [];
 
-export function createPrimeController({ initialPagePromise = null } = {}) {
-  primeItems = [];
+export function createPrimeController() {
+  studyItems = [];
+
+  const CATEGORY_FILTER_KEY = "primeCategoryFilter";
+
   let editingItemId = null;
   let showArchived = false;
-  let renderCount = 6;
-  let nextPrimeUrl = null;
-  let isLoadingMore = false;
-  let scrollObserver = null;
-  let initialPageConsumed = false;
-  let currentCategoryFilter = "";
+  let currentCategoryFilter = localStorage.getItem(CATEGORY_FILTER_KEY) || "";
   let currentSearchQuery = "";
-  let searchDebounceTimer = null;
+  let currentPage = 1;
+  let hasNextPage = true;
+  let isLoadingPage = false;
+  let observer = null;
+  let observedSentinel = null;
 
-  const addPrimeBtn = byId(primeIds.addPrimeBtn);
+  function getActiveQuery() {
+    return {
+      mode: "priming",
+      category: currentCategoryFilter || undefined,
+      search: currentSearchQuery || undefined,
+    };
+  }
+
+  function resetAndLoad() {
+    currentPage = 1;
+    hasNextPage = true;
+    studyItems = [];
+    PrimeView.resetRenderState();
+    observer?.disconnect();
+    observedSentinel = null;
+    void loadPrimePage(1);
+  }
+  const QUICK_ADD_NOTES_DEFAULT_KEY = "primeQuickAddNotesDefault";
+
+  const addBtn = byId(primeIds.addPrimeBtn);
   const quickAddInput = byId(primeIds.quickAddPrimeInput);
   const quickAddCategoryInput = byId(primeIds.quickAddCategoryInput);
-  const categoryDropdown = byId(primeIds.categoryDropdown);
+  const headerMenuBtn = byId(primeIds.headerMenuBtn);
+  const quickAddImageBtn = byId(primeIds.quickAddImageBtn);
+  const quickAddImageInput = byId(primeIds.quickAddImageInput);
+  const quickAddImagePreview = byId(primeIds.quickAddImagePreview);
+  const quickAddImagePreviewImg = byId(primeIds.quickAddImagePreviewImg);
+  const quickAddNoteImageBtn = byId(primeIds.quickAddNoteImageBtn);
+  const quickAddNoteImageInput = byId(primeIds.quickAddNoteImageInput);
+  const quickAddNoteImagePreview = byId(primeIds.quickAddNoteImagePreview);
+  const quickAddNoteImagePreviewImg = byId(primeIds.quickAddNoteImagePreviewImg);
+  const quickAddCategoryDropdown = byId(primeIds.categoryDropdown);
   const modalCategoryInput = byId(primeIds.primeCategory);
   const modalCategoryDropdown = byId(primeIds.modalCategoryDropdown);
-  const headerMenuBtn = byId(primeIds.headerMenuBtn);
-  const importPrimeFile = byId(primeIds.importPrimeFile);
-  const searchBar = byId(primeIds.searchBar);
-  const searchInput = byId(primeIds.searchInput);
-  const clearSearchBtn = byId(primeIds.clearSearch);
+  const quickAddNotesToggleBtn = byId(primeIds.quickAddNotesToggleBtn);
+  const quickAddNotesWrap = byId(primeIds.quickAddNotesWrap);
+  const quickAddNotesInput = byId(primeIds.quickAddNotesInput);
 
-  async function fetchCategories() {
-    try {
-      const response = await fetch(`${API_BASE}/prime-items/categories/`, {
-        headers: {
-          Authorization: `Bearer ${localStorage.getItem(AUTH_KEYS.access)}`,
-          "Content-Type": "application/json",
-        },
-      });
+  let quickAddNotesVisible = false;
 
-      if (!response.ok) throw new Error("Failed to fetch categories");
-      return await response.json();
-    } catch (error) {
-      console.error("Error fetching categories:", error);
-      return [];
+  function getQuickAddNotesDefault() {
+    return localStorage.getItem(QUICK_ADD_NOTES_DEFAULT_KEY) === "on";
+  }
+
+  function setQuickAddNotesDefault(value) {
+    localStorage.setItem(QUICK_ADD_NOTES_DEFAULT_KEY, value ? "on" : "off");
+  }
+
+  function applyQuickAddNotesVisibility(isVisible) {
+    quickAddNotesVisible = isVisible;
+    if (quickAddNotesWrap) {
+      quickAddNotesWrap.classList.toggle("hidden", !isVisible);
+    }
+    if (quickAddNotesToggleBtn) {
+      quickAddNotesToggleBtn.textContent = isVisible
+        ? "Hide Notes"
+        : "Add Notes";
+    }
+    if (!isVisible && quickAddNotesInput) {
+      quickAddNotesInput.value = "";
     }
   }
 
-  // Initialize category managers
   const quickAddCategoryManager = new CategoryManager(
     quickAddCategoryInput,
-    categoryDropdown,
-    null // No special action on select for quick add
+    quickAddCategoryDropdown,
+    null,
   );
-  quickAddCategoryManager.loadCategories();
 
   const modalCategoryManager = new CategoryManager(
     modalCategoryInput,
     modalCategoryDropdown,
-    null // No special action on select for modal
+    null,
   );
-  modalCategoryManager.loadCategories();
 
-  const RENDER_BATCH_SIZE = 6;
+  let quickAddImageFile = null;
+  let quickAddNoteImageFile = null;
 
-  const updateCategories = () => {
-    quickAddCategoryManager.loadCategories();
-    modalCategoryManager.loadCategories();
-  };
+  bindAutoGrow(quickAddInput);
+  bindAutoGrow(quickAddNotesInput);
+  applyQuickAddNotesVisibility(getQuickAddNotesDefault());
+  updateButtonText();
 
-  const getVisiblePrimeItems = () =>
-    showArchived
-      ? primeItems.filter((item) => item.archived)
-      : primeItems.filter((item) => !item.archived);
+  quickAddNotesToggleBtn?.addEventListener("click", () => {
+    applyQuickAddNotesVisibility(!quickAddNotesVisible);
+  });
 
-  async function loadNextPage() {
-    if (isLoadingMore || !nextPrimeUrl) return false;
-    isLoadingMore = true;
+  quickAddImageBtn.addEventListener("click", () => {
+    quickAddImageInput.click();
+  });
+
+  quickAddImageInput.addEventListener("change", () => {
+    quickAddImageFile = quickAddImageInput.files?.[0] ?? null;
+
+    if (quickAddImageFile) {
+      quickAddImagePreviewImg.src = URL.createObjectURL(quickAddImageFile);
+      quickAddImagePreview.classList.remove("hidden");
+    } else {
+      quickAddImagePreviewImg.src = "";
+      quickAddImagePreview.classList.add("hidden");
+    }
+
+    updateButtonText();
+    syncInputVisibility();
+  });
+
+  quickAddNoteImageBtn.addEventListener("click", () => {
+    quickAddNoteImageInput.click();
+  });
+
+  quickAddNoteImageInput.addEventListener("change", () => {
+    quickAddNoteImageFile = quickAddNoteImageInput.files?.[0] ?? null;
+
+    if (quickAddNoteImageFile) {
+      quickAddNoteImagePreviewImg.src = URL.createObjectURL(quickAddNoteImageFile);
+      quickAddNoteImagePreview.classList.remove("hidden");
+    } else {
+      quickAddNoteImagePreviewImg.src = "";
+      quickAddNoteImagePreview.classList.add("hidden");
+    }
+
+    updateButtonText();
+    syncInputVisibility();
+  });
+
+  addBtn.addEventListener("click", async () => {
+    const prompt = quickAddInput.value.trim();
+
+    if (!prompt && !quickAddImageFile) {
+      return;
+    }
+
+    await handleCreateNew({
+      prompt: prompt || "",
+      category: quickAddCategoryInput.value.trim(),
+      notes: quickAddNotesInput?.value.trim() || "",
+      imageFile: quickAddImageFile,
+      noteImageFile: quickAddNoteImageFile,
+    });
+
+    quickAddInput.value = "";
+    quickAddCategoryInput.value = "";
+    quickAddImageInput.value = "";
+    quickAddImageFile = null;
+    quickAddImagePreviewImg.src = "";
+    quickAddImagePreview.classList.add("hidden");
+    quickAddNoteImageInput.value = "";
+    quickAddNoteImageFile = null;
+    quickAddNoteImagePreviewImg.src = "";
+    quickAddNoteImagePreview.classList.add("hidden");
+    quickAddNotesInput.value = "";
+    applyQuickAddNotesVisibility(getQuickAddNotesDefault());
+    updateButtonText();
+    syncInputVisibility();
+  });
+
+  function syncInputVisibility() {
+    quickAddInput.classList.toggle("hidden", !!quickAddImageFile);
+    quickAddNotesWrap.classList.toggle("hidden", !!quickAddNoteImageFile);
+    if (quickAddNoteImageFile) {
+      quickAddNotesToggleBtn.textContent = "Hide Notes";
+    }
+  }
+
+  function updateButtonText() {
+    if (quickAddImageFile) {
+      quickAddImageBtn.textContent = isMobile(480) ? "📷 ✓" : "Change Prompt Image";
+    } else {
+      quickAddImageBtn.textContent = isMobile(480) ? "📷" : "Prompt Image";
+    }
+    if (quickAddNoteImageFile) {
+      quickAddNoteImageBtn.textContent = isMobile(480) ? "🗒️ ✓" : "Change Note Image";
+    } else {
+      quickAddNoteImageBtn.textContent = isMobile(480) ? "🗒️" : "Note Image";
+    }
+  }
+
+  window.addEventListener("resize", updateButtonText);
+
+  // ---------- LOAD ----------
+
+  async function loadPrimePage(
+    page,
+    { refreshCategories: shouldRefresh = true } = {},
+  ) {
+    if (isLoadingPage) return;
+    isLoadingPage = true;
+
     try {
-      const { items, next } = await loadPrimeItemsPage({ url: nextPrimeUrl });
-      primeItems = primeItems.concat(items);
-      nextPrimeUrl = next;
-      return items.length > 0;
-    } catch (error) {
-      console.error("Failed to load more prime items:", error);
-      return false;
+      const { items, next } = await loadStudyItemsPage({
+        ...getActiveQuery(),
+        page,
+      });
+
+      const mapped = items.map((item) => StudyItem.fromJSON(item));
+
+      if (page === 1) {
+        studyItems = mapped;
+        PrimeView.resetRenderState();
+      } else {
+        studyItems = [...studyItems, ...mapped];
+      }
+
+      hasNextPage = Boolean(next);
+      currentPage = page;
+
+      if (shouldRefresh && page === 1) {
+        await refreshCategories();
+      }
+
+      renderList({ showSentinel: hasNextPage });
+      attachSentinelObserver();
     } finally {
-      isLoadingMore = false;
+      isLoadingPage = false;
     }
   }
 
-  async function ensureVisibleItems(targetCount) {
-    while (getVisiblePrimeItems().length < targetCount && nextPrimeUrl) {
-      const loaded = await loadNextPage();
-      if (!loaded) break;
-    }
-  }
+  function attachSentinelObserver() {
+    const sentinel = document.getElementById(primeIds.primeListSentinel);
+    if (!sentinel || observedSentinel === sentinel) return;
 
-  function setupInfiniteScroll() {
-    if (scrollObserver) {
-      scrollObserver.disconnect();
-    }
-
-    const sentinel = byId(primeIds.primeListSentinel);
-    if (!sentinel) return;
-
-    scrollObserver = new IntersectionObserver(
-      async (entries) => {
-        if (!entries.some((entry) => entry.isIntersecting)) return;
-        if (isLoadingMore) return;
-        renderCount += RENDER_BATCH_SIZE;
-        await ensureVisibleItems(renderCount);
-        updateCategories();
-        renderList();
+    observer?.disconnect();
+    observer = new IntersectionObserver(
+      (entries) => {
+        if (entries.some((e) => e.isIntersecting) && hasNextPage) {
+          loadPrimePage(currentPage + 1, { refreshCategories: false });
+        }
       },
-      { root: null, rootMargin: "100% 0px", threshold: 0 }
+      { rootMargin: "200px 0px" },
     );
 
-    scrollObserver.observe(sentinel);
+    observer.observe(sentinel);
+    observedSentinel = sentinel;
   }
 
-  async function refreshPrimeItems({ refreshCategories = true } = {}) {
-    primeItems = [];
-    renderCount = RENDER_BATCH_SIZE;
-    nextPrimeUrl = null;
-    PrimeView.resetRenderState();
-    renderList({ forceFullRender: true, isLoading: true });
+  async function refreshPrimeItems({
+    refreshCategories: shouldRefresh = true,
+  } = {}) {
+    await loadPrimePage(1, { refreshCategories: shouldRefresh });
+  }
 
+  async function refreshCategories() {
     try {
-      const initialPage =
-        initialPagePromise && !initialPageConsumed
-          ? await initialPagePromise
-          : null;
-      initialPageConsumed = true;
-
-      // Pass category/search filters to loadPrimeItemsPage
-      const { items, next } =
-        initialPage ||
-        (await loadPrimeItemsPage({
-          category: currentCategoryFilter || undefined,
-          search: currentSearchQuery || undefined,
-        }));
-      primeItems = items;
-      nextPrimeUrl = next;
-      await ensureVisibleItems(renderCount);
+      const categories = await loadCategories({ mode: "priming" });
+      quickAddCategoryManager.setCategories(categories);
+      modalCategoryManager.setCategories(categories);
     } catch (error) {
-      console.error("Failed to load prime items:", error);
-      primeItems = [];
-      nextPrimeUrl = null;
+      console.error("Failed to load categories:", error);
     }
-
-    if (refreshCategories) {
-      updateCategories();
-    }
-
-    renderList({ forceFullRender: true, isLoading: false });
-
-    return primeItems.length;
-  }
-
-  const clearFilterBtn = byId("clear-filter");
-  if (clearFilterBtn) {
-    clearFilterBtn.addEventListener("click", () => {
-      currentCategoryFilter = "";
-      updateActiveFilterDisplay("");
-      refreshPrimeItems({ refreshCategories: false });
-    });
   }
 
   // Initial load
-  void refreshPrimeItems();
+  void loadPrimePage(1);
 
-  // Handler functions (defined before being used in menu)
-  // Toggle archived items visibility
-  const handleToggleArchived = async () => {
-    showArchived = !showArchived;
-    renderCount = RENDER_BATCH_SIZE;
-    PrimeView.resetRenderState();
-    await ensureVisibleItems(renderCount);
-    renderList({ forceFullRender: true });
-    updateHeaderMenu();
-  };
+  // ---------- CREATE ----------
 
-  // Trigger file input when import clicked
-  const handleImportClick = () => {
-    importPrimeFile.click();
-  };
-
-  // Create header dropdown menu
-  const getHeaderMenuLabel = () =>
-    showArchived ? "Hide Archived" : "Show Archived";
-
-  const updateHeaderMenu = () => {
-    if (headerMenu) {
-      headerMenu.dispose();
-    }
-
-    const menuItems = [
-      { label: "Search", onSelect: handleSearchClick },
-      { label: "Filter by Category", onSelect: handleFilterClick },
-      { label: getHeaderMenuLabel(), onSelect: handleToggleArchived },
-      { label: "Import from File", onSelect: handleImportClick },
-    ];
-
-    headerMenu = createDropdownMenu({ items: menuItems });
-    headerMenu.attachTo(headerMenuBtn);
-  };
-
-  let headerMenu = null;
-
-  let categoryFilterModal = null;
-
-  categoryFilterModal = createCategoryFilterModal({
-    title: "Filter Prime Items",
-    onFilter: handleCategoryFilter,
-  });
-
-  function handleCategoryFilter(category) {
-    currentCategoryFilter = category;
-    updateActiveFilterDisplay(category);
-    refreshPrimeItems({ refreshCategories: false });
-  }
-
-  function updateActiveFilterDisplay(category) {
-    const filterDisplay = byId("active-filter");
-    const filterName = byId("filter-name");
-
-    if (filterDisplay && filterName) {
-      if (category) {
-        filterDisplay.style.display = "flex";
-        filterName.textContent = category;
-      } else {
-        filterDisplay.style.display = "none";
-      }
-    }
-  }
-
-  async function handleFilterClick() {
-    const categories = await fetchCategories();
-    categoryFilterModal.open(categories, currentCategoryFilter);
-  }
-
-  // Search
-  function handleSearchClick() {
-    if (searchBar) {
-      searchBar.classList.remove("hidden");
-      searchInput.value = currentSearchQuery;
-      searchInput.focus();
-    }
-  }
-
-  function clearSearch() {
-    if (searchDebounceTimer) clearTimeout(searchDebounceTimer);
-    const hadQuery = Boolean(currentSearchQuery);
-    currentSearchQuery = "";
-    if (searchInput) searchInput.value = "";
-    if (searchBar) searchBar.classList.add("hidden");
-    if (hadQuery) refreshPrimeItems({ refreshCategories: false });
-  }
-
-  function handleSearchInput() {
-    if (searchDebounceTimer) clearTimeout(searchDebounceTimer);
-    searchDebounceTimer = setTimeout(() => {
-      const query = searchInput.value.trim();
-      if (query === currentSearchQuery) return;
-      currentSearchQuery = query;
-      refreshPrimeItems({ refreshCategories: false });
-    }, 250);
-  }
-
-  if (searchInput) {
-    searchInput.addEventListener("input", handleSearchInput);
-    searchInput.addEventListener("keydown", (e) => {
-      if (e.key === "Escape") {
-        clearSearch();
-      }
-    });
-  }
-
-  if (clearSearchBtn) {
-    clearSearchBtn.addEventListener("click", clearSearch);
-  }
-
-  updateHeaderMenu();
-
-  // Quick-add from input field
-  const handleQuickAdd = async () => {
-    const title = quickAddInput.value.trim();
-    const category = quickAddCategoryInput.value.trim();
-
-    if (!title) {
-      alert("Please enter a title for this prime item");
-      quickAddInput.focus();
-      return;
-    }
-
-    const item = new PrimeItem({ title, category });
-
+  async function handleCreateNew(data) {
     try {
-      await createPrimeItem(item.toJSON());
-      quickAddInput.classList.add("submitted");
-      setTimeout(() => quickAddInput.classList.remove("submitted"), 1000);
-
-      if (primeItems.length <= 6) {
-        await refreshPrimeItems({ refreshCategories: true });
-      }
-    } catch (error) {
-      quickAddInput.classList.add("failed");
-      setTimeout(() => quickAddInput.classList.remove("failed"), 1000);
-      return;
-    }
-
-    // Clear inputs and render
-    quickAddInput.value = "";
-    quickAddCategoryInput.value = "";
-    quickAddInput.style.height = "auto";
-    quickAddInput.focus();
-  };
-
-  addPrimeBtn.addEventListener("click", handleQuickAdd);
-
-  // Auto-expand textarea as user types
-  const autoExpandTextarea = () => {
-    quickAddInput.style.height = "auto";
-    quickAddInput.style.height = quickAddInput.scrollHeight + "px";
-  };
-
-  quickAddInput.addEventListener("input", autoExpandTextarea);
-
-  // Allow Ctrl/Cmd+Enter to add prime item, Enter alone for new lines
-  quickAddInput.addEventListener("keydown", (e) => {
-    if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) {
-      e.preventDefault();
-      handleQuickAdd();
-    }
-  });
-
-  // Handle file selection and import
-  const handleFileImport = async (e) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    try {
-      const text = await file.text();
-      const { items: importedItems, category } = parseImportFile(text);
-
-      if (importedItems.length === 0) {
-        alert(
-          "No prime items found. Make sure lines start with #### for titles."
-        );
-        return;
-      }
-
-      const newItems = importedItems.map(
-        (title) => new PrimeItem({ title, category })
-      );
-      await Promise.all(newItems.map((item) => createPrimeItem(item.toJSON())));
-      await refreshPrimeItems({ refreshCategories: true });
-
-      const categoryMsg = category ? ` with category "${category}"` : "";
-      alert(
-        `Successfully imported ${importedItems.length} prime item(s)${categoryMsg}!`
+      await createStudyItem(
+        {
+          prompt: data.prompt,
+          notes: data.notes || "",
+          category: data.category || "",
+          is_priming: true,
+          is_studying: false,
+          is_reviewing: false,
+        },
+        data.imageFile ?? null,
+        data.noteImageFile ?? null,
       );
 
-      // Reset file input
-      importPrimeFile.value = "";
+      await refreshPrimeItems();
     } catch (error) {
-      console.error("Import failed:", error);
-      alert("Failed to import file. Please try again.");
+      console.error("Failed to create prime item:", error);
+      alert("Failed to create prime item.");
     }
-  };
-
-  importPrimeFile.addEventListener("change", handleFileImport);
-
-  // Bind modal form
-  const unbindModal = PrimeView.bind({
-    onSave: handleSave,
-    onCancel: handleCancel,
-  });
-
-  async function handleSave() {
-    const data = PrimeView.readFormData();
-
-    if (!data.title) {
-      alert("Please enter a title for this prime item");
-      return;
-    }
-
-    if (editingItemId) {
-      try {
-        await updatePrimeItem(editingItemId, {
-          title: data.title,
-          category: data.category,
-          description: data.description,
-        });
-        editingItemId = null;
-        await refreshPrimeItems({ refreshCategories: true });
-      } catch (error) {
-        console.error("Failed to update prime item:", error);
-        alert("Failed to update prime item. Please try again.");
-        return;
-      }
-    } else {
-      const item = new PrimeItem({
-        title: data.title,
-        category: data.category,
-        description: data.description,
-      });
-
-      try {
-        await createPrimeItem(item.toJSON());
-        await refreshPrimeItems({ refreshCategories: true });
-      } catch (error) {
-        console.error("Failed to create prime item:", error);
-        alert("Failed to create prime item. Please try again.");
-        return;
-      }
-    }
-
-    PrimeView.close();
   }
 
-  function handleCancel() {
-    editingItemId = null;
-    PrimeView.close();
-  }
+  // ---------- LOG ----------
 
-  async function handleLogPrime(item) {
-    const itemIndex = primeItems.findIndex((p) => p.id === item.id);
-    if (itemIndex === -1) return;
-
+  async function handleLog(item) {
     try {
-      const updatedItem = await logPrimeItem(item.id);
+      await logInteraction(item.id);
       SoundManager.play("primeLogged");
-      primeItems[itemIndex] = updatedItem;
+
+      // remove it locally so it disappears immediately
+      studyItems = studyItems.filter((i) => i.id !== item.id);
+      renderList();
     } catch (error) {
       console.error("Failed to log prime:", error);
-      alert("Failed to log prime. Please try again.");
-      return;
+      alert("Failed to log prime.");
     }
-
-    // Add green border to the prime item container immediately
-    const primeItemContainer = document.querySelector(
-      `.prime-item[data-id="${item.id}"]`
-    );
-    if (primeItemContainer) {
-      primeItemContainer.classList.add("prime-item--logged");
-    }
-
-    // Show brief confirmation on button
-    const btn = byId(`log-prime-${item.id}`);
-    if (btn) {
-      const originalText = btn.textContent;
-      btn.textContent = "Logged! ✓";
-      btn.disabled = true;
-
-      setTimeout(() => {
-        btn.textContent = originalText;
-        btn.disabled = false;
-      }, 1000);
-    }
-
-    // Wait 1 second before re-rendering to move item and update stats
-    setTimeout(() => {
-      renderList({ forceFullRender: true });
-
-      // Re-apply green border after render (item may have moved)
-      const newPrimeItemContainer = document.querySelector(
-        `.prime-item[data-id="${item.id}"]`
-      );
-      if (newPrimeItemContainer) {
-        newPrimeItemContainer.classList.add("prime-item--logged");
-
-        setTimeout(() => {
-          newPrimeItemContainer.classList.remove("prime-item--logged");
-        }, 1000);
-      }
-    }, 1000);
   }
 
-  function handleEdit(item) {
-    editingItemId = item.id;
-    PrimeView.openForEdit(item);
-  }
+  // ---------- TRANSITIONS ----------
 
-  async function handleDelete(item) {
-    if (!confirm(`Delete "${item.title}"?`)) return;
+  async function handleConvertToStudy(item) {
     try {
-      await deletePrimeItem(item.id);
-      await refreshPrimeItems({ refreshCategories: true });
+      await transitionToStudying(item.id);
+
+      studyItems = studyItems.filter((i) => i.id !== item.id);
+      renderList({ showSentinel: hasNextPage });
     } catch (error) {
-      console.error("Failed to delete prime item:", error);
-      alert("Failed to delete prime item. Please try again.");
+      console.error("Failed to transition to study:", error);
+      alert("Failed to convert to study.");
     }
   }
+
+  async function handleConvertToReview(item) {
+    try {
+      await transitionToReviewing(item.id);
+      await refreshPrimeItems();
+    } catch (error) {
+      console.error("Failed to transition to review:", error);
+      alert("Failed to convert to review.");
+    }
+  }
+
+  // ---------- ARCHIVE ----------
 
   async function handleArchive(item) {
-    if (
-      !confirm(
-        `Archive "${item.title}"? You can restore it later from archived items.`
-      )
-    )
-      return;
     try {
-      await updatePrimeItem(item.id, { archived: true });
-      await refreshPrimeItems({ refreshCategories: true });
+      await updateStudyItem(item.id, { is_archived: true });
+      await refreshPrimeItems();
     } catch (error) {
-      console.error("Failed to archive prime item:", error);
-      alert("Failed to archive prime item. Please try again.");
+      console.error("Failed to archive item:", error);
     }
   }
 
   async function handleRestore(item) {
     try {
-      await updatePrimeItem(item.id, { archived: false });
-      await refreshPrimeItems({ refreshCategories: true });
+      await updateStudyItem(item.id, { is_archived: false });
+      await refreshPrimeItems();
     } catch (error) {
-      console.error("Failed to restore prime item:", error);
-      alert("Failed to restore prime item. Please try again.");
+      console.error("Failed to restore item:", error);
     }
   }
 
-  async function handleConvertToReview(item) {
-    if (
-      !confirm(
-        `Convert "${item.title}" to a review item? The original prime item will be archived.`
-      )
-    )
-      return;
-    const reviewItem = await convertPrimeToReview(item.id);
-    if (reviewItem) {
-      await refreshPrimeItems({ refreshCategories: true });
-    } else {
-      alert("Failed to convert prime item. Please try again.");
+  // ---------- DELETE ----------
+
+  async function handleDelete(item) {
+    try {
+      await deleteStudyItem(item.id);
+      await refreshPrimeItems();
+    } catch (error) {
+      console.error("Failed to delete item:", error);
     }
   }
 
-  async function handleConvertToStudy(item) {
-    if (
-      !confirm(
-        `Convert "${item.title}" to a study item? The original prime item will be archived.`
-      )
-    )
-      return;
-    const studyItem = await convertPrimeToStudy(item.id);
-    if (studyItem) {
-      await refreshPrimeItems({ refreshCategories: true });
-    } else {
-      alert("Failed to convert prime item. Please try again.");
-    }
-  }
+  // ---------- RENDER ----------
 
-  function renderList({ forceFullRender = false, isLoading = false } = {}) {
-    // Filter items based on showArchived toggle
-    const itemsToShow = getVisiblePrimeItems();
-    const hasMore = itemsToShow.length > renderCount || Boolean(nextPrimeUrl);
+  function renderList({ showSentinel = false } = {}) {
+    const visibleItems = showArchived
+      ? studyItems.filter((i) => i.isArchived)
+      : studyItems.filter((i) => !i.isArchived);
 
     PrimeView.renderList(
-      itemsToShow,
+      visibleItems,
       {
-        onLogPrime: handleLogPrime,
-        onEdit: handleEdit,
+        onLogPrime: handleLog,
+        onEdit: (item) => {
+          editingItemId = item.id;
+          PrimeView.openForEdit(item);
+        },
         onDelete: handleDelete,
         onArchive: showArchived ? handleRestore : handleArchive,
-        onConvertToReview: handleConvertToReview,
         onConvertToStudy: handleConvertToStudy,
+        onConvertToReview: handleConvertToReview,
       },
       showArchived,
-      { limit: renderCount, showSentinel: hasMore, forceFullRender, isLoading }
+      { showSentinel },
     );
-
-    if (hasMore && !isLoading) {
-      setupInfiniteScroll();
-    } else if (scrollObserver) {
-      scrollObserver.disconnect();
-    }
   }
 
-  /**
-   * Parse import file and extract titles from lines starting with ####
-   * Optionally extract category from first line if it matches "Category: value" or "category: value"
-   * @param {string} text - File contents
-   * @returns {{ items: string[], category: string }} - Object with array of prime item titles and optional category
-   */
-  function parseImportFile(text) {
-    const lines = text.split("\n");
-    const titles = [];
-    let category = "";
-    let startIndex = 0;
+  // ---------- HEADER MENU ----------
 
-    // Check if first line declares a category (case-insensitive)
-    if (lines.length > 0) {
-      const firstLine = lines[0].trim();
-      const categoryMatch = firstLine.match(/^category:\s*(.+)$/i);
-      if (categoryMatch) {
-        category = categoryMatch[1].trim();
-        startIndex = 1; // Skip first line when processing items
+  const categoryFilterModal = createCategoryFilterModal({
+    title: "Filter by Category",
+    onFilter: (category) => {
+      currentCategoryFilter = category;
+      if (category) {
+        localStorage.setItem(CATEGORY_FILTER_KEY, category);
+      } else {
+        localStorage.removeItem(CATEGORY_FILTER_KEY);
       }
-    }
+      updateHeaderMenu();
+      resetAndLoad();
+    },
+  });
 
-    // Process lines starting from the appropriate index
-    for (let i = startIndex; i < lines.length; i++) {
-      const trimmed = lines[i].trim();
-      if (trimmed.startsWith("####")) {
-        // Remove the #### prefix and any extra whitespace
-        const title = trimmed.substring(4).trim();
-        if (title) {
-          titles.push(title);
+  let headerMenu = null;
+
+  function updateHeaderMenu() {
+    if (headerMenu) headerMenu.dispose();
+
+    const filterLabel = currentCategoryFilter
+      ? `Category: ${currentCategoryFilter}`
+      : "Filter by Category";
+
+    headerMenu = createDropdownMenu({
+      items: [
+        {
+          label: filterLabel,
+          onSelect: async () => {
+            const categories = await loadCategories({ mode: "priming" }).catch(() => []);
+            categoryFilterModal.open(categories, currentCategoryFilter);
+          },
+        },
+        ...(currentCategoryFilter
+          ? [{ label: "Clear Filter", onSelect: () => { currentCategoryFilter = ""; localStorage.removeItem(CATEGORY_FILTER_KEY); updateHeaderMenu(); resetAndLoad(); } }]
+          : []),
+        {
+          label: getQuickAddNotesDefault()
+            ? "Disable Notes by Default"
+            : "Enable Notes by Default",
+          onSelect: () => {
+            const next = !getQuickAddNotesDefault();
+            setQuickAddNotesDefault(next);
+            applyQuickAddNotesVisibility(next);
+            updateHeaderMenu();
+          },
+        },
+        {
+          label: showArchived ? "Hide Archived" : "Show Archived",
+          onSelect: () => {
+            showArchived = !showArchived;
+            renderList();
+            updateHeaderMenu();
+          },
+        },
+      ],
+    });
+
+    headerMenu.attachTo(headerMenuBtn);
+  }
+
+  updateHeaderMenu();
+
+  // ---------- MODAL FORM (create / edit) ----------
+
+  const primeForm = byId(primeIds.primeForm);
+  const primeCancelBtn = byId(primeIds.primeCancelBtn);
+
+  primeForm?.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const data = PrimeView.readFormData();
+    const imageState = PrimeView.readModalImageState();
+
+    const hasPromptImage = imageState.newPromptFile ||
+      (!imageState.removePromptImage && studyItems.find(i => i.id === editingItemId)?.imageUrl);
+
+    if (!data.prompt && !hasPromptImage) return;
+
+    try {
+      if (editingItemId) {
+        await updateStudyItem(editingItemId, {
+          prompt: data.prompt,
+          category: data.category,
+          notes: data.notes,
+        });
+
+        if (imageState.removePromptImage) {
+          await removePromptImage(editingItemId).catch(() => {});
+        } else if (imageState.newPromptFile) {
+          await uploadPromptImage(editingItemId, imageState.newPromptFile);
         }
+
+        if (imageState.removeNoteImage) {
+          await removeNoteImage(editingItemId).catch(() => {});
+        } else if (imageState.newNoteFile) {
+          await uploadNoteImage(editingItemId, imageState.newNoteFile);
+        }
+      } else {
+        await handleCreateNew(data);
       }
+    } catch (err) {
+      console.error("Failed to save prime item:", err);
+      alert("Failed to save prime item.");
+    } finally {
+      editingItemId = null;
+      PrimeView.close();
+      await refreshPrimeItems();
     }
+  });
 
-    return { items: titles, category };
-  }
+  primeCancelBtn?.addEventListener("click", () => {
+    editingItemId = null;
+    PrimeView.close();
+  });
 
-  // Return API for external use
+  // ---------- PUBLIC API ----------
+
   return {
-    getPrimeItems: () => [...primeItems],
-    refresh: renderList,
-    dispose: () => {
-      unbindModal();
-      addPrimeBtn.removeEventListener("click", handleQuickAdd);
-      importPrimeFile.removeEventListener("change", handleFileImport);
-      searchInput?.removeEventListener("input", handleSearchInput);
-      clearSearchBtn?.removeEventListener("click", clearSearch);
-      if (searchDebounceTimer) clearTimeout(searchDebounceTimer);
+    refresh: refreshPrimeItems,
+    dispose() {
       headerMenu?.dispose();
-      scrollObserver?.disconnect();
-      quickAddCategoryManager?.dispose();
-      modalCategoryManager?.dispose();
-      categoryFilterModal?.dispose();
+      categoryFilterModal.dispose();
+      observer?.disconnect();
     },
   };
 }

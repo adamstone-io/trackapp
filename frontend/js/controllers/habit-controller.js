@@ -1,4 +1,3 @@
-// controllers/habit-controller.js
 import { Habit } from "../domain/habit.js";
 import { HabitView } from "../views/habit-view.js";
 import { SoundManager } from "../utils/sound-manager.js";
@@ -7,7 +6,8 @@ import {
   createHabit,
   updateHabit,
   deleteHabit,
-} from "../data/storage.js";
+  logHabit,
+} from "../api/habitsApi.js";
 
 const RESET_TIMESTAMPS_KEY = "habit-reset-timestamps";
 
@@ -33,8 +33,10 @@ export class HabitController {
 
   async refreshHabits() {
     try {
-      const habits = await loadHabits();
-      this.habits = habits.filter((habit) => habit.isActive);
+      const items = await loadHabits();
+      this.habits = items
+        .map((item) => Habit.fromJSON(item))
+        .filter((habit) => habit.isActive);
     } catch (error) {
       console.error("Failed to load habits:", error);
       this.habits = [];
@@ -60,22 +62,19 @@ export class HabitController {
     }
   }
 
-  async logHabit(habitId) {
+  async handleLogHabit(habitId) {
     const habit = this.habits.find((h) => h.id === habitId);
     if (!habit) return;
 
-    habit.increment(1);
-
     try {
-      await updateHabit(habit.id, {
-        dailyCount: habit.counts.daily,
-        weeklyCount: habit.counts.weekly,
-        monthlyCount: habit.counts.monthly,
-      });
+      const updated = await logHabit(habit.id);
+      const updatedHabit = Habit.fromJSON(updated);
 
-      // Play success sound
+      this.habits = this.habits.map((h) =>
+        h.id === habit.id ? updatedHabit : h,
+      );
+
       SoundManager.play("habitLogged");
-
       this.render();
     } catch (error) {
       console.error("Failed to log habit:", error);
@@ -241,7 +240,7 @@ export class HabitController {
 
   render() {
     this.view.renderHabits(this.habits, {
-      onLog: (id) => this.logHabit(id),
+      onLog: (id) => this.handleLogHabit(id),
       onEdit: (id) => {
         const habit = this.habits.find((h) => h.id === id);
         if (habit) {

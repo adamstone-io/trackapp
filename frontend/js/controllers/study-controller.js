@@ -4,55 +4,236 @@ import { StudyView } from "../views/study-view.js";
 import { byId } from "../ui/ui-core.js";
 import { studyIds } from "../ui/study-ids.js";
 import { createDropdownMenu } from "../views/components/dropdown-menu.js";
+import { createCategoryFilterModal } from "../views/components/category-filter-modal.js";
 import { CategoryManager } from "../utils/category-manager.js";
 import { SoundManager } from "../utils/sound-manager.js";
+import { bindAutoGrow } from "../utils/textarea.js";
 import {
   createStudyItem,
   loadStudyItems,
   updateStudyItem,
   deleteStudyItem,
-  logStudyItem,
-  convertStudyToReview,
-} from "../data/storage.js";
+  logInteraction,
+  transitionToPriming,
+  transitionToReviewing,
+  loadCategories,
+  uploadPromptImage,
+  removePromptImage,
+  uploadNoteImage,
+  removeNoteImage,
+} from "../api/studyItemApi.js";
 
 let studyItems = [];
 
 export function createStudyController() {
   studyItems = [];
+  const CATEGORY_FILTER_KEY = "studyCategoryFilter";
+
   let editingItemId = null;
   let showArchived = false;
+  let currentCategoryFilter = localStorage.getItem(CATEGORY_FILTER_KEY) || "";
+
+  const quickAddInput = byId(studyIds.quickAddStudyInput);
+  const quickAddNotesWrap = byId(studyIds.quickAddNotesWrap);
+  const quickAddNotesInput = byId(studyIds.quickAddNotesInput);
+  const quickAddNotesToggleBtn = byId(studyIds.quickAddNotesToggleBtn);
+  const quickAddCategoryInput = byId(studyIds.quickAddCategoryInput);
+  const quickAddCategoryDropdown = byId(studyIds.quickAddCategoryDropdown);
+  const addStudyBtn = byId(studyIds.addStudyBtn);
 
   const modalCategoryInput = byId(studyIds.studyCategory);
   const modalCategoryDropdown = byId(studyIds.modalCategoryDropdown);
   const headerMenuBtn = byId(studyIds.headerMenuBtn);
 
-  // Initialize category manager for modal
+  let quickAddNotesVisible = true;
+
+  function applyQuickAddNotesVisibility(isVisible) {
+    quickAddNotesVisible = isVisible;
+    if (quickAddNotesWrap) {
+      quickAddNotesWrap.classList.toggle("hidden", !isVisible);
+    }
+    if (quickAddNotesToggleBtn) {
+      quickAddNotesToggleBtn.textContent = isVisible
+        ? "Hide Notes"
+        : "Add Notes";
+    }
+    if (!isVisible && quickAddNotesInput) {
+      quickAddNotesInput.value = "";
+    }
+  }
+
+  bindAutoGrow(quickAddInput);
+  bindAutoGrow(quickAddNotesInput);
+  applyQuickAddNotesVisibility(true);
+
+  quickAddNotesToggleBtn?.addEventListener("click", () => {
+    applyQuickAddNotesVisibility(!quickAddNotesVisible);
+  });
+
+  const quickAddImageBtn = byId(studyIds.quickAddImageBtn);
+  const quickAddImageInput = byId(studyIds.quickAddImageInput);
+  const quickAddImagePreview = byId(studyIds.quickAddImagePreview);
+  const quickAddImagePreviewImg = byId(studyIds.quickAddImagePreviewImg);
+  const quickAddNoteImageBtn = byId(studyIds.quickAddNoteImageBtn);
+  const quickAddNoteImageInput = byId(studyIds.quickAddNoteImageInput);
+  const quickAddNoteImagePreview = byId(studyIds.quickAddNoteImagePreview);
+  const quickAddNoteImagePreviewImg = byId(studyIds.quickAddNoteImagePreviewImg);
+
+  let quickAddImageFile = null;
+  let quickAddNoteImageFile = null;
+
+  function updateImageButtonText() {
+    if (quickAddImageBtn) {
+      quickAddImageBtn.textContent = quickAddImageFile
+        ? "Change Prompt Image"
+        : "Prompt Image";
+    }
+    if (quickAddNoteImageBtn) {
+      quickAddNoteImageBtn.textContent = quickAddNoteImageFile
+        ? "Change Note Image"
+        : "Note Image";
+    }
+  }
+
+  quickAddImageBtn?.addEventListener("click", () => quickAddImageInput?.click());
+  quickAddImageInput?.addEventListener("change", () => {
+    quickAddImageFile = quickAddImageInput.files?.[0] ?? null;
+    if (quickAddImageFile) {
+      quickAddImagePreviewImg.src = URL.createObjectURL(quickAddImageFile);
+      quickAddImagePreview.classList.remove("hidden");
+    } else {
+      quickAddImagePreviewImg.src = "";
+      quickAddImagePreview.classList.add("hidden");
+    }
+    updateImageButtonText();
+    syncInputVisibility();
+  });
+
+  quickAddNoteImageBtn?.addEventListener("click", () => quickAddNoteImageInput?.click());
+  quickAddNoteImageInput?.addEventListener("change", () => {
+    quickAddNoteImageFile = quickAddNoteImageInput.files?.[0] ?? null;
+    if (quickAddNoteImageFile) {
+      quickAddNoteImagePreviewImg.src = URL.createObjectURL(quickAddNoteImageFile);
+      quickAddNoteImagePreview.classList.remove("hidden");
+    } else {
+      quickAddNoteImagePreviewImg.src = "";
+      quickAddNoteImagePreview.classList.add("hidden");
+    }
+    updateImageButtonText();
+    syncInputVisibility();
+  });
+
+  function syncInputVisibility() {
+    if (quickAddInput) quickAddInput.classList.toggle("hidden", !!quickAddImageFile);
+    if (quickAddNotesWrap) quickAddNotesWrap.classList.toggle("hidden", !!quickAddNoteImageFile);
+  }
+
+  const quickAddCategoryManager = new CategoryManager(
+    quickAddCategoryInput,
+    quickAddCategoryDropdown,
+    null,
+  );
+
   const modalCategoryManager = new CategoryManager(
     modalCategoryInput,
     modalCategoryDropdown,
     null,
   );
-  modalCategoryManager.loadCategories(studyItems);
 
-  async function refreshStudyItems({ refreshCategories = true } = {}) {
+  async function refreshCategories() {
     try {
-      studyItems = await loadStudyItems();
+      const categories = await loadCategories({ mode: "studying" });
+      quickAddCategoryManager.setCategories(categories);
+      modalCategoryManager.setCategories(categories);
+    } catch (error) {
+      console.error("Failed to load categories:", error);
+    }
+  }
+
+  async function refreshStudyItems({
+    refreshCategories: shouldRefresh = true,
+  } = {}) {
+    try {
+      const data = await loadStudyItems({
+        mode: "studying",
+        category: currentCategoryFilter || undefined,
+      });
+      studyItems = data.map((item) => StudyItem.fromJSON(item));
     } catch (error) {
       console.error("Failed to load study items:", error);
       studyItems = [];
     }
 
-    if (refreshCategories) {
-      modalCategoryManager.loadCategories(studyItems);
+    if (shouldRefresh) {
+      await refreshCategories();
     }
 
     renderList();
   }
 
+  function resetAndLoad() {
+    studyItems = [];
+    void refreshStudyItems({ refreshCategories: false });
+  }
+
   // Initial load
   void refreshStudyItems();
 
-  // Handler functions
+  addStudyBtn?.addEventListener("click", async () => {
+    const prompt = quickAddInput.value.trim();
+    const notes = quickAddNotesInput.value.trim();
+    const category = quickAddCategoryInput.value.trim();
+
+    if (!prompt && !quickAddImageFile) {
+      quickAddInput?.focus();
+      return;
+    }
+
+    await handleCreateQuickAdd({
+      prompt,
+      notes,
+      category,
+      imageFile: quickAddImageFile,
+      noteImageFile: quickAddNoteImageFile,
+    });
+
+    if (quickAddInput) quickAddInput.value = "";
+    if (quickAddNotesInput) quickAddNotesInput.value = "";
+    if (quickAddCategoryInput) quickAddCategoryInput.value = "";
+    if (quickAddImageInput) quickAddImageInput.value = "";
+    quickAddImageFile = null;
+    quickAddImagePreviewImg.src = "";
+    quickAddImagePreview.classList.add("hidden");
+    if (quickAddNoteImageInput) quickAddNoteImageInput.value = "";
+    quickAddNoteImageFile = null;
+    quickAddNoteImagePreviewImg.src = "";
+    quickAddNoteImagePreview.classList.add("hidden");
+    updateImageButtonText();
+    syncInputVisibility();
+    applyQuickAddNotesVisibility(true);
+  });
+
+  async function handleCreateQuickAdd({ prompt, notes, category, imageFile = null, noteImageFile = null }) {
+    try {
+      await createStudyItem(
+        {
+          prompt: prompt || "",
+          notes: notes || "",
+          category: category || "",
+          is_priming: false,
+          is_studying: true,
+          is_reviewing: false,
+        },
+        imageFile,
+        noteImageFile,
+      );
+      await refreshStudyItems({ refreshCategories: true });
+    } catch (error) {
+      console.error("Failed to create study item:", error);
+      alert("Failed to create study item.");
+    }
+  }
+
   const handleToggleArchived = () => {
     showArchived = !showArchived;
     renderList();
@@ -64,16 +245,49 @@ export function createStudyController() {
     StudyView.openForCreate();
   };
 
-  // Create header dropdown menu
   const getArchivedLabel = () =>
     showArchived ? "Hide Archived" : "Show Archived";
 
+  const categoryFilterModal = createCategoryFilterModal({
+    title: "Filter by Category",
+    onFilter: (category) => {
+      currentCategoryFilter = category;
+      if (category) {
+        localStorage.setItem(CATEGORY_FILTER_KEY, category);
+      } else {
+        localStorage.removeItem(CATEGORY_FILTER_KEY);
+      }
+      updateHeaderMenu();
+      resetAndLoad();
+    },
+  });
+
   const updateHeaderMenu = () => {
-    if (headerMenu) {
-      headerMenu.dispose();
-    }
+    if (headerMenu) headerMenu.dispose();
+
+    const filterLabel = currentCategoryFilter
+      ? `Category: ${currentCategoryFilter}`
+      : "Filter by Category";
 
     const menuItems = [
+      {
+        label: filterLabel,
+        onSelect: async () => {
+          const categories = await loadCategories({ mode: "studying" }).catch(() => []);
+          categoryFilterModal.open(categories, currentCategoryFilter);
+        },
+      },
+      ...(currentCategoryFilter
+        ? [{
+            label: "Clear Filter",
+            onSelect: () => {
+              currentCategoryFilter = "";
+              localStorage.removeItem(CATEGORY_FILTER_KEY);
+              updateHeaderMenu();
+              resetAndLoad();
+            },
+          }]
+        : []),
       { label: "New Study Item", onSelect: handleCreateNew },
       { label: getArchivedLabel(), onSelect: handleToggleArchived },
     ];
@@ -94,19 +308,43 @@ export function createStudyController() {
   async function handleSave() {
     const data = StudyView.readFormData();
 
-    if (!data.title) {
+    if (editingItemId) {
+      const imageState = StudyView.readModalImageState();
+      const hasPromptImage = imageState.newPromptFile ||
+        (!imageState.removePromptImage && studyItems.find(i => i.id === editingItemId)?.imageUrl);
+
+      if (!data.prompt && !hasPromptImage) {
+        alert("Please enter a prompt or upload a prompt image.");
+        return;
+      }
+    } else if (!data.prompt) {
       alert("Please enter a title for this study item");
       return;
     }
 
+    const combinedNotes = data.notes || "";
+
     if (editingItemId) {
+      const imageState = StudyView.readModalImageState();
       try {
         await updateStudyItem(editingItemId, {
-          title: data.title,
+          prompt: data.prompt,
           category: data.category,
-          description: data.description,
-          notes: data.notes,
+          notes: combinedNotes,
         });
+
+        if (imageState.removePromptImage) {
+          await removePromptImage(editingItemId).catch(() => {});
+        } else if (imageState.newPromptFile) {
+          await uploadPromptImage(editingItemId, imageState.newPromptFile);
+        }
+
+        if (imageState.removeNoteImage) {
+          await removeNoteImage(editingItemId).catch(() => {});
+        } else if (imageState.newNoteFile) {
+          await uploadNoteImage(editingItemId, imageState.newNoteFile);
+        }
+
         editingItemId = null;
         await refreshStudyItems({ refreshCategories: true });
       } catch (error) {
@@ -115,15 +353,15 @@ export function createStudyController() {
         return;
       }
     } else {
-      const item = new StudyItem({
-        title: data.title,
-        category: data.category,
-        description: data.description,
-        notes: data.notes,
-      });
-
       try {
-        await createStudyItem(item.toJSON());
+        await createStudyItem({
+          prompt: data.prompt,
+          category: data.category,
+          notes: combinedNotes,
+          is_priming: false,
+          is_studying: true,
+          is_reviewing: false,
+        });
         await refreshStudyItems({ refreshCategories: true });
       } catch (error) {
         console.error("Failed to create study item:", error);
@@ -141,60 +379,20 @@ export function createStudyController() {
   }
 
   async function handleLogStudy(item) {
-    const itemIndex = studyItems.findIndex((s) => s.id === item.id);
-    if (itemIndex === -1) return;
-
     try {
-      await logStudyItem(item.id);
+      const updated = await logInteraction(item.id);
+      SoundManager.play("studyLogged");
+
+      const index = studyItems.findIndex((i) => i.id === item.id);
+      if (index !== -1) {
+        studyItems[index] = StudyItem.fromJSON(updated);
+      }
+
+      queueMicrotask(() => renderList());
     } catch (error) {
       console.error("Failed to log study:", error);
       alert("Failed to log study. Please try again.");
-      return;
     }
-
-    // Update local state
-    studyItems[itemIndex].logStudy();
-
-    // Play the sound
-    SoundManager.play("studyLogged");
-
-    // Add green border to the study item container immediately
-    const studyItemContainer = document.querySelector(
-      `.study-item[data-id="${item.id}"]`,
-    );
-    if (studyItemContainer) {
-      studyItemContainer.classList.add("study-item--logged");
-    }
-
-    // Show brief confirmation on button
-    const btn = byId(`log-study-${item.id}`);
-    if (btn) {
-      const originalText = btn.textContent;
-      btn.textContent = "Logged! ✓";
-      btn.disabled = true;
-
-      setTimeout(() => {
-        btn.textContent = originalText;
-        btn.disabled = false;
-      }, 1000);
-    }
-
-    // Wait 1 second before re-rendering to move item and update stats
-    setTimeout(() => {
-      renderList();
-
-      // Re-apply green border after render (item may have moved)
-      const newStudyItemContainer = document.querySelector(
-        `.study-item[data-id="${item.id}"]`,
-      );
-      if (newStudyItemContainer) {
-        newStudyItemContainer.classList.add("study-item--logged");
-
-        setTimeout(() => {
-          newStudyItemContainer.classList.remove("study-item--logged");
-        }, 1000);
-      }
-    }, 1000);
   }
 
   function handleEdit(item) {
@@ -203,7 +401,6 @@ export function createStudyController() {
   }
 
   async function handleDelete(item) {
-    if (!confirm(`Delete "${item.title}"?`)) return;
     try {
       await deleteStudyItem(item.id);
       await refreshStudyItems({ refreshCategories: true });
@@ -216,13 +413,13 @@ export function createStudyController() {
   async function handleArchive(item) {
     if (
       !confirm(
-        `Archive "${item.title}"? You can restore it later from archived items.`,
+        `Archive "${item.prompt}"? You can restore it later from archived items.`,
       )
     )
       return;
 
     try {
-      await updateStudyItem(item.id, { archived: true });
+      await updateStudyItem(item.id, { is_archived: true });
       await refreshStudyItems({ refreshCategories: true });
     } catch (error) {
       console.error("Failed to archive study item:", error);
@@ -232,7 +429,7 @@ export function createStudyController() {
 
   async function handleRestore(item) {
     try {
-      await updateStudyItem(item.id, { archived: false });
+      await updateStudyItem(item.id, { is_archived: false });
       await refreshStudyItems({ refreshCategories: true });
     } catch (error) {
       console.error("Failed to restore study item:", error);
@@ -241,28 +438,30 @@ export function createStudyController() {
   }
 
   async function handleConvertToReview(item) {
-    if (
-      !confirm(
-        `Convert "${item.title}" to a review item? The study item will be archived.`,
-      )
-    )
-      return;
-
-    const reviewItem = await convertStudyToReview(item.id);
-    if (reviewItem) {
+    try {
+      await transitionToReviewing(item.id);
       await refreshStudyItems({ refreshCategories: true });
-    } else {
+    } catch (error) {
+      console.error("Failed to convert study item:", error);
+      alert("Failed to convert study item. Please try again.");
+    }
+  }
+
+  async function handleConvertToPriming(item) {
+    try {
+      await transitionToPriming(item.id);
+      await refreshStudyItems({ refreshCategories: true });
+    } catch (error) {
+      console.error("Failed to convert study item:", error);
       alert("Failed to convert study item. Please try again.");
     }
   }
 
   async function handleNotesUpdate(item, newNotes) {
-    // Only update if notes actually changed
     if (item.notes === newNotes) return;
 
     try {
       await updateStudyItem(item.id, { notes: newNotes });
-      // Update local state without re-rendering
       const itemIndex = studyItems.findIndex((s) => s.id === item.id);
       if (itemIndex !== -1) {
         studyItems[itemIndex].notes = newNotes;
@@ -273,10 +472,9 @@ export function createStudyController() {
   }
 
   function renderList() {
-    // Filter items based on showArchived toggle
     const itemsToShow = showArchived
-      ? studyItems.filter((item) => item.archived)
-      : studyItems.filter((item) => !item.archived);
+      ? studyItems.filter((item) => item.isArchived)
+      : studyItems.filter((item) => !item.isArchived);
 
     StudyView.renderList(
       itemsToShow,
@@ -286,13 +484,13 @@ export function createStudyController() {
         onDelete: handleDelete,
         onArchive: showArchived ? handleRestore : handleArchive,
         onConvertToReview: handleConvertToReview,
+        onConvertToPriming: handleConvertToPriming,
         onNotesUpdate: handleNotesUpdate,
       },
       showArchived,
     );
   }
 
-  // Return API for external use
   return {
     getStudyItems: () => [...studyItems],
     refresh: renderList,
@@ -300,6 +498,7 @@ export function createStudyController() {
       unbindModal();
       headerMenu?.dispose();
       modalCategoryManager?.dispose();
+      categoryFilterModal.dispose();
     },
   };
 }

@@ -46,8 +46,21 @@ export function createCountdownController() {
   /**
    * Bind all event listeners
    */
+  let locked = false;
+
+  function setLocked(isLocked) {
+    locked = isLocked;
+    if (elements.modeCountdown) {
+      elements.modeCountdown.disabled = isLocked;
+      elements.modeCountdown.title = isLocked
+        ? "Cannot change mode while timer is running"
+        : "";
+    }
+  }
+
   function bindEvents() {
     addListener(elements.modeCountdown, "click", () => {
+      if (locked) return;
       setMode(state.mode === "countdown" ? "stopwatch" : "countdown");
     });
 
@@ -152,9 +165,7 @@ export function createCountdownController() {
       }
     });
 
-    if (state.targetDuration === 0 && favorites.length > 0) {
-      selectFavorite(favorites[0]);
-    }
+    // No favourite auto-selected on load — clock starts at 00:00:00
   }
 
   function handleClockClick(event) {
@@ -390,6 +401,26 @@ export function createCountdownController() {
   }
 
   /**
+   * Programmatically activate countdown mode (e.g. when launched from workspace).
+   * @param {number} [durationSeconds] - Explicit duration; falls back to first
+   *   saved favorite, then a 25-minute default.
+   */
+  function activateCountdown(durationSeconds) {
+    if (durationSeconds > 0) {
+      state.targetDuration = durationSeconds;
+      state.selectedFavoriteId = null;
+      updateClockInputs(state.targetDuration);
+      updateFavoritesSelection();
+    }
+    // If no duration given and nothing set, clock stays at 00:00:00
+    setMode("countdown");
+  }
+
+  function activateStopwatch() {
+    setMode("stopwatch");
+  }
+
+  /**
    * Get current target duration
    */
   function getTargetDuration() {
@@ -415,6 +446,9 @@ export function createCountdownController() {
 
   // Public API
   return {
+    activateCountdown,
+    activateStopwatch,
+    setLocked,
     getTargetDuration,
     getMode,
     dispose,

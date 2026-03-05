@@ -5,6 +5,7 @@ import {
   loadTasks,
   loadProjects,
   updateTimeEntry,
+  updateMoment,
   deleteTimeEntry,
   deleteMoment,
   updateTask,
@@ -13,13 +14,22 @@ import {
 import { createDropdownMenu } from "../views/components/dropdown-menu.js";
 import { createTimeEntryModal } from "../views/components/time-entry-modal.js";
 import { Task } from "../domain/task.js";
+import { TaskNameManager } from "../utils/task-name-manager.js";
 
 export function createEntriesController() {
+  let cachedTasks = [];
+  let cachedMoments = [];
+  loadTasks()
+    .then((t) => {
+      cachedTasks = t;
+    })
+    .catch(() => {});
+
   const modal = createTimeEntryModal({
     onSave: async (payload) => {
       if (payload.id) {
         const durationSeconds = Math.round(
-          (new Date(payload.endedAt) - new Date(payload.startedAt)) / 1000
+          (new Date(payload.endedAt) - new Date(payload.startedAt)) / 1000,
         );
 
         await updateTimeEntry(payload.id, {
@@ -116,21 +126,21 @@ export function createEntriesController() {
       const entry = entries.find((e) => e.id === entryId);
       if (!entry) return;
 
-      const menu = createDropdownMenu({
-        items: [
-          {
-            label: "Edit",
-            onSelect: () => modal.openEdit(entry),
+      const menuItems = [
+        {
+          label: "Edit",
+          onSelect: () => modal.openEdit(entry),
+        },
+        {
+          label: "Delete",
+          onSelect: async () => {
+            await deleteTimeEntry(entry.id);
+            await refresh();
           },
-          {
-            label: "Delete",
-            onSelect: async () => {
-              await deleteTimeEntry(entry.id);
-              await refresh();
-            },
-          },
-        ],
-      });
+        },
+      ];
+
+      const menu = createDropdownMenu({ items: menuItems });
 
       menu.attachTo(btn);
       menuDisposers.push(() => menu.dispose());
@@ -219,6 +229,9 @@ export function createEntriesController() {
     return null;
   }
 
+  // null = today; a YYYY-MM-DD string = a specific past date
+  let selectedDate = null;
+
   /**
    * Refresh the entries list
    * Uses optimized single API call that includes enriched data (project info).
@@ -226,8 +239,7 @@ export function createEntriesController() {
    */
   async function refresh() {
     try {
-      // Single optimized API call - backend returns enriched data
-      const todayData = await loadTodayEntries();
+      const todayData = await loadTodayEntries(selectedDate);
 
       // Separate entries and moments with enriched data from backend
       const entriesWithProject = [];
@@ -278,20 +290,414 @@ export function createEntriesController() {
       // Attach menus
       attachEntryMenus(entriesWithProject);
       attachMomentMenus(moments);
+
+      cachedMoments = moments;
+      loadTasks()
+        .then((t) => {
+          cachedTasks = t;
+        })
+        .catch(() => {});
     } catch (error) {
       console.error("Failed to refresh entries:", error);
       // Optionally show error in UI
       EntriesView.renderError(
-        "Failed to load entries. Please refresh the page."
+        "Failed to load entries. Please refresh the page.",
       );
     }
   }
+
+  // ---------- INLINE EDITING ----------
+
+  function toTimeInput(isoString) {
+    if (!isoString) return "";
+    const d = new Date(isoString);
+    return `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
+  }
+
+  function buildIso(isoString, timeValue) {
+    const d = new Date(isoString);
+    const [hh, mm] = timeValue.split(":").map(Number);
+    d.setHours(hh, mm, 0, 0);
+    return d.toISOString();
+  }
+
+  function setupInlineEditing() {
+    const list = EntriesView.list();
+
+    list.addEventListener("click", (e) => {
+      const editable = e.target.closest(".entry-card__editable");
+      if (!editable) return;
+
+      // Moment card inline edit
+      const momentCard = editable.closest("[data-moment-id]");
+      if (momentCard) {
+        const momentId = momentCard.dataset.momentId;
+        const field = editable.dataset.momentField;
+        if (field === "description") {
+          e.stopPropagation();
+          startMomentDescriptionEdit(
+            editable,
+            momentId,
+            momentCard.dataset.momentDescription,
+          );
+        } else if (field === "time") {
+          startMomentTimeEdit(
+            editable,
+            momentId,
+            momentCard.dataset.momentTimestampMs,
+          );
+        }
+        return;
+      }
+
+      // Time entry card inline edit
+      const card = editable.closest("[data-entry-id]");
+      if (!card) return;
+
+      const entryId = card.dataset.entryId;
+      const currentTitle = card.dataset.taskTitle;
+      const startedAt = card.dataset.startedAt;
+      const endedAt = card.dataset.endedAt;
+
+      if (editable.classList.contains("entry-card__title")) {
+        e.stopPropagation();
+        startTitleEdit(editable, entryId, currentTitle);
+      } else if (editable.classList.contains("entry-card__time")) {
+        startTimeEdit(editable, entryId, startedAt, endedAt);
+      }
+    });
+  }
+
+  function startMomentDescriptionEdit(span, momentId, currentDescription) {
+    if (span.querySelector("input")) return;
+
+    const wrap = document.createElement("span");
+    wrap.className = "entry-inline-title-wrap";
+
+    const input = document.createElement("input");
+    input.type = "text";
+    input.value = currentDescription;
+    input.className = "entry-inline-input entry-inline-input--title";
+    input.setAttribute("autocomplete", "off");
+    sizeInputToContent(input);
+    input.addEventListener("input", () => sizeInputToContent(input));
+
+    const dropdown = document.createElement("div");
+    dropdown.className = "entry-title-dropdown hidden";
+
+    wrap.appendChild(input);
+    wrap.appendChild(dropdown);
+
+    const taskManager = new TaskNameManager(input, dropdown, {
+      onSelect: () => input.blur(),
+    });
+    taskManager.setTasks(cachedTasks);
+    taskManager.setMoments(cachedMoments);
+
+    let saved = false;
+    const cleanup = () => taskManager.dispose();
+
+    async function save() {
+      if (saved) return;
+      saved = true;
+      cleanup();
+      const newDescription = input.value.trim();
+      if (newDescription && newDescription !== currentDescription) {
+        try {
+          await updateMoment(momentId, { description: newDescription });
+          await refresh();
+        } catch {
+          await refresh();
+        }
+      } else {
+        span.textContent = currentDescription;
+        span.classList.remove("entry-card__editing");
+      }
+    }
+
+    input.addEventListener("keydown", (e) => {
+      if (e.key === "Enter") input.blur();
+      if (e.key === "Escape") {
+        saved = true;
+        cleanup();
+        span.textContent = currentDescription;
+        span.classList.remove("entry-card__editing");
+      }
+    });
+    input.addEventListener("blur", save);
+
+    span.textContent = "";
+    span.classList.add("entry-card__editing");
+    span.appendChild(wrap);
+    input.focus();
+    input.select();
+  }
+
+  function startMomentTimeEdit(span, momentId, timestampMsStr) {
+    if (span.querySelector("input")) return;
+
+    const timestampMs = Number(timestampMsStr);
+    const date = Number.isFinite(timestampMs)
+      ? new Date(timestampMs)
+      : new Date();
+    const currentTimeValue = `${String(date.getHours()).padStart(2, "0")}:${String(date.getMinutes()).padStart(2, "0")}`;
+
+    const input = document.createElement("input");
+    input.type = "time";
+    input.value = currentTimeValue;
+    input.className = "entry-inline-input entry-inline-input--time";
+
+    const wrap = makeTimeInputWrap(input);
+
+    let saved = false;
+
+    async function save() {
+      if (saved) return;
+      saved = true;
+      const newTimeValue = input.value;
+      if (newTimeValue && newTimeValue !== currentTimeValue) {
+        try {
+          const [hh, mm] = newTimeValue.split(":").map(Number);
+          const updated = new Date(date);
+          updated.setHours(hh, mm, 0, 0);
+          await updateMoment(momentId, { timestampMs: updated.getTime() });
+          await refresh();
+        } catch {
+          await refresh();
+        }
+      } else {
+        const fmt = new Intl.DateTimeFormat(undefined, {
+          hour: "2-digit",
+          minute: "2-digit",
+        });
+        span.textContent = fmt.format(date);
+        span.classList.remove("entry-card__editing");
+      }
+    }
+
+    input.addEventListener("blur", save);
+    input.addEventListener("keydown", (e) => {
+      if (e.key === "Enter") input.blur();
+      if (e.key === "Escape") {
+        saved = true;
+        refresh();
+      }
+    });
+
+    span.textContent = "";
+    span.classList.add("entry-card__editing");
+    span.appendChild(wrap);
+    input.focus();
+  }
+
+  function sizeInputToContent(input) {
+    input.size = Math.max(4, input.value.length + 1);
+  }
+
+  function startTitleEdit(span, entryId, currentTitle) {
+    if (span.querySelector("input")) return;
+
+    const wrap = document.createElement("span");
+    wrap.className = "entry-inline-title-wrap";
+
+    const input = document.createElement("input");
+    input.type = "text";
+    input.value = currentTitle;
+    input.className = "entry-inline-input entry-inline-input--title";
+    input.setAttribute("autocomplete", "off");
+    sizeInputToContent(input);
+    input.addEventListener("input", () => sizeInputToContent(input));
+
+    const dropdown = document.createElement("div");
+    dropdown.className = "entry-title-dropdown hidden";
+
+    wrap.appendChild(input);
+    wrap.appendChild(dropdown);
+
+    const taskManager = new TaskNameManager(input, dropdown, {
+      onSelect: () => input.blur(),
+    });
+    taskManager.setTasks(cachedTasks);
+    taskManager.setMoments(cachedMoments);
+    if (!cachedTasks.length) {
+      loadTasks()
+        .then((tasks) => {
+          cachedTasks = tasks;
+          taskManager.setTasks(tasks);
+        })
+        .catch(() => {});
+    }
+
+    let saved = false;
+    function cleanup() {
+      taskManager.dispose();
+    }
+
+    async function save() {
+      if (saved) return;
+      saved = true;
+      cleanup();
+      const newTitle = input.value.trim();
+      if (newTitle && newTitle !== currentTitle) {
+        try {
+          const tasks = cachedTasks.length ? cachedTasks : await loadTasks();
+          const normalized = newTitle.toLowerCase();
+          let task = tasks.find(
+            (t) => (t.title ?? "").trim().toLowerCase() === normalized,
+          );
+          if (!task) {
+            const newTask = new Task({ title: newTitle });
+            const payload = { ...newTask.toJSON(), project: null };
+            delete payload.projectId;
+            task = await createTask(payload);
+          }
+          await updateTimeEntry(entryId, {
+            taskTitle: newTitle,
+            task: task.id,
+          });
+          await refresh();
+        } catch {
+          await refresh();
+        }
+      } else {
+        span.textContent = currentTitle;
+        span.classList.remove("entry-card__editing");
+      }
+    }
+
+    input.addEventListener("keydown", (e) => {
+      if (e.key === "Enter") input.blur();
+      if (e.key === "Escape") {
+        saved = true;
+        cleanup();
+        span.textContent = currentTitle;
+        span.classList.remove("entry-card__editing");
+      }
+    });
+    input.addEventListener("blur", save);
+
+    span.textContent = "";
+    span.classList.add("entry-card__editing");
+    span.appendChild(wrap);
+    input.focus();
+    input.select();
+  }
+
+  function makeClockIcon() {
+    return `<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>`;
+  }
+
+  function makeTimeInputWrap(input) {
+    const wrap = document.createElement("span");
+    wrap.className = "entry-time-input-wrap";
+
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.className = "entry-clock-btn";
+    btn.innerHTML = makeClockIcon();
+    btn.setAttribute("aria-label", "Pick time");
+
+    btn.addEventListener("mousedown", (e) => {
+      // Keep the click as an explicit picker-open action.
+      e.preventDefault();
+    });
+    btn.addEventListener("click", () => {
+      input.focus();
+      try {
+        input.showPicker();
+      } catch {}
+    });
+
+    wrap.appendChild(input);
+    wrap.appendChild(btn);
+    return wrap;
+  }
+
+  function startTimeEdit(span, entryId, startedAt, endedAt) {
+    if (span.querySelector("input")) return;
+
+    const startVal = toTimeInput(startedAt);
+    const endVal = toTimeInput(endedAt);
+
+    const wrap = document.createElement("span");
+    wrap.className = "entry-inline-time-wrap";
+
+    const startInput = document.createElement("input");
+    startInput.type = "time";
+    startInput.value = startVal;
+    startInput.className = "entry-inline-input entry-inline-input--time";
+
+    const sep = document.createElement("span");
+    sep.textContent = "–";
+    sep.className = "entry-inline-sep";
+
+    const endInput = document.createElement("input");
+    endInput.type = "time";
+    endInput.value = endVal;
+    endInput.className = "entry-inline-input entry-inline-input--time";
+
+    wrap.appendChild(makeTimeInputWrap(startInput));
+    wrap.appendChild(sep);
+    wrap.appendChild(makeTimeInputWrap(endInput));
+
+    let saveTimer = null;
+    function scheduleSave() {
+      clearTimeout(saveTimer);
+      saveTimer = setTimeout(async () => {
+        if (
+          document.activeElement === startInput ||
+          document.activeElement === endInput
+        )
+          return;
+        const newStart = buildIso(startedAt, startInput.value);
+        const newEnd = buildIso(endedAt, endInput.value);
+        const duration = Math.round(
+          (new Date(newEnd) - new Date(newStart)) / 1000,
+        );
+        if (duration <= 0) {
+          await refresh();
+          return;
+        }
+        try {
+          await updateTimeEntry(entryId, {
+            startedAt: newStart,
+            endedAt: newEnd,
+            durationSeconds: duration,
+          });
+          await refresh();
+        } catch {
+          await refresh();
+        }
+      }, 100);
+    }
+
+    startInput.addEventListener("blur", scheduleSave);
+    endInput.addEventListener("blur", scheduleSave);
+
+    [startInput, endInput].forEach((inp) => {
+      inp.addEventListener("keydown", (e) => {
+        if (e.key === "Enter") inp.blur();
+        if (e.key === "Escape") refresh();
+      });
+    });
+
+    span.textContent = "";
+    span.classList.add("entry-card__editing");
+    span.appendChild(wrap);
+    startInput.focus();
+  }
+
+  setupInlineEditing();
 
   // Initial load
   refresh();
 
   return {
     refresh,
+    setDate: (dateStr) => {
+      selectedDate = dateStr || null;
+      refresh();
+    },
     setMomentEditor: (handler) => {
       onEditMoment = typeof handler === "function" ? handler : null;
     },

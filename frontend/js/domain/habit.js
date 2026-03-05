@@ -8,119 +8,144 @@
  * to preserve invariants.
  */
 export class Habit {
-    constructor({
-        id,
-        name,
-        dailyTarget = 0,
-        weeklyTarget = 0,
-        monthlyTarget = 0,
-        isActive = true,
-        counts = {},
-        createdAt = new Date(),
-    }) {
-        this.id = id ?? crypto.randomUUID();
-        this.name = name;
+  constructor({
+    id,
+    name,
+    dailyTarget = 0,
+    weeklyTarget = 0,
+    monthlyTarget = 0,
+    isActive = true,
+    counts = {},
+    createdAt = new Date(),
+    streakCount = 0,
+    lastCompletedDate = null,
+  }) {
+    this.id = id ?? crypto.randomUUID();
+    this.name = name;
 
-        // Targets
-        this.targets = {
-            daily: dailyTarget,
-            weekly: weeklyTarget,
-            monthly: monthlyTarget,
-        };
+    this.targets = {
+      daily: dailyTarget,
+      weekly: weeklyTarget,
+      monthly: monthlyTarget,
+    };
 
-        // Progress counters
-        this.counts = {
-            daily: counts.daily ?? 0,
-            weekly: counts.weekly ?? 0,
-            monthly: counts.monthly ?? 0,
-        };
+    this.counts = {
+      daily: counts.daily ?? 0,
+      weekly: counts.weekly ?? 0,
+      monthly: counts.monthly ?? 0,
+    };
 
-        this.isActive = isActive;
-        this.createdAt = new Date(createdAt);
-    }
+    this.isActive = isActive;
+    this.createdAt = new Date(createdAt);
+    this.streakCount = streakCount;
+    this.lastCompletedDate = lastCompletedDate;
+  }
 
-    /* ----------------------------
+  /* ----------------------------
        Status
     ----------------------------- */
 
-    activate() {
-        this.isActive = true;
-    }
+  activate() {
+    this.isActive = true;
+  }
 
-    deactivate() {
-        this.isActive = false;
-    }
+  deactivate() {
+    this.isActive = false;
+  }
 
-    /* ----------------------------
+  /* ----------------------------
        Progress updates
     ----------------------------- */
 
-    increment(amount = 1) {
-        if (!this.isActive) {
-            return;
-        }
-
-        this.counts.daily += amount;
-        this.counts.weekly += amount;
-        this.counts.monthly += amount;
+  increment(amount = 1) {
+    if (!this.isActive) {
+      return;
     }
 
-    resetDaily() {
-        this.counts.daily = 0;
-    }
+    this.counts.daily += amount;
+    this.counts.weekly += amount;
+    this.counts.monthly += amount;
+  }
 
-    resetWeekly() {
-        this.counts.weekly = 0;
-    }
+  resetDaily() {
+    this.counts.daily = 0;
+  }
 
-    resetMonthly() {
-        this.counts.monthly = 0;
-    }
+  resetWeekly() {
+    this.counts.weekly = 0;
+  }
 
-    /* ----------------------------
+  resetMonthly() {
+    this.counts.monthly = 0;
+  }
+
+  /* ----------------------------
        Completion checks
     ----------------------------- */
 
-    isDailyComplete() {
-        return this.targets.daily > 0 &&
-               this.counts.daily >= this.targets.daily;
-    }
+  isDailyComplete() {
+    return this.targets.daily > 0 && this.counts.daily >= this.targets.daily;
+  }
 
-    isWeeklyComplete() {
-        return this.targets.weekly > 0 &&
-               this.counts.weekly >= this.targets.weekly;
-    }
+  isWeeklyComplete() {
+    return this.targets.weekly > 0 && this.counts.weekly >= this.targets.weekly;
+  }
 
-    isMonthlyComplete() {
-        return this.targets.monthly > 0 &&
-               this.counts.monthly >= this.targets.monthly;
-    }
+  isMonthlyComplete() {
+    return (
+      this.targets.monthly > 0 && this.counts.monthly >= this.targets.monthly
+    );
+  }
 
-    /* ----------------------------
+  /* ----------------------------
        Serialization
     ----------------------------- */
 
-    toJSON() {
-        return {
-            id: this.id,
-            name: this.name,
-            targets: { ...this.targets },
-            counts: { ...this.counts },
-            isActive: this.isActive,
-            createdAt: this.createdAt.toISOString(),
-        };
-    }
+  toJSON() {
+    return {
+      id: this.id,
+      name: this.name,
+      targets: { ...this.targets },
+      counts: { ...this.counts },
+      isActive: this.isActive,
+      createdAt: this.createdAt.toISOString(),
+      streakCount: this.streakCount,
+      lastCompletedDate: this.lastCompletedDate,
+    };
+  }
 
-    static fromJSON(data) {
-        return new Habit({
-            id: data.id,
-            name: data.name,
-            dailyTarget: data.targets?.daily,
-            weeklyTarget: data.targets?.weekly,
-            monthlyTarget: data.targets?.monthly,
-            counts: data.counts,
-            isActive: data.isActive,
-            createdAt: data.createdAt,
-        });
-    }
+  static fromJSON(data = {}) {
+    const dailyTarget =
+      data.dailyTarget ?? data.daily_target ?? data.targets?.daily ?? 0;
+    const weeklyTarget =
+      data.weeklyTarget ?? data.weekly_target ?? data.targets?.weekly ?? 0;
+    const monthlyTarget =
+      data.monthlyTarget ?? data.monthly_target ?? data.targets?.monthly ?? 0;
+
+    const counts = data.counts ?? {
+      daily: data.dailyCount ?? data.daily_count ?? 0,
+      weekly: data.weeklyCount ?? data.weekly_count ?? 0,
+      monthly: data.monthlyCount ?? data.monthly_count ?? 0,
+    };
+
+    const isActive = data.isActive ?? data.is_active ?? true;
+    const createdAt = data.createdAt ?? data.created_at ?? null;
+
+    const streakCount = data.streakCount ?? data.streak_count ?? 0;
+    const lastCompletedDate =
+      data.lastCompletedDate ?? data.last_completed_date ?? null;
+
+    return new Habit({
+      id: data.id,
+      name: data.name,
+      dailyTarget,
+      weeklyTarget,
+      monthlyTarget,
+      counts,
+      isActive,
+      createdAt,
+      streakCount,
+      lastCompletedDate,
+    });
+  }
 }
