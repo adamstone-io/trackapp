@@ -3,8 +3,6 @@ import { Habit } from "../domain/habit.js";
 import { TimeEntry } from "../domain/time-entry.js";
 import { Task } from "../domain/task.js";
 import { Project } from "../domain/project.js";
-import { PrimeItem } from "../domain/prime-item.js";
-import { ReviewItem } from "../domain/review-item.js";
 import { StudyItem } from "../domain/study-item.js";
 
 const STORAGE_KEYS = {
@@ -451,190 +449,6 @@ export function clearActiveTimer() {
   localStorage.removeItem(STORAGE_KEYS.activeTimer);
 }
 
-// ========== PRIME ITEMS ==========
-
-function normalizePrimeItemPayload(payload) {
-  if (!payload || typeof payload !== "object") return payload;
-
-  const prime_timestamps = payload.prime_timestamps ?? payload.primeTimestamps;
-  const created_at = payload.created_at ?? payload.createdAt;
-
-  const normalized = { ...payload };
-  delete normalized.primeTimestamps;
-  delete normalized.createdAt;
-
-  if (prime_timestamps !== undefined)
-    normalized.prime_timestamps = prime_timestamps;
-  if (created_at !== undefined) normalized.created_at = created_at;
-
-  return normalized;
-}
-
-function normalizePrimeItemFromApi(item) {
-  if (!item || typeof item !== "object") return item;
-
-  return {
-    ...item,
-    primeTimestamps: item.primeTimestamps ?? item.prime_timestamps ?? [],
-    createdAt: item.createdAt ?? item.created_at ?? null,
-    totalCount: item.totalCount ?? item.total_count ?? null,
-    todayCount: item.todayCount ?? item.today_count ?? null,
-    thisWeekCount: item.thisWeekCount ?? item.week_count ?? null,
-    thisMonthCount: item.thisMonthCount ?? item.month_count ?? null,
-    firstPrimedAt: item.firstPrimedAt ?? item.first_primed_at ?? null,
-    lastPrimedAt: item.lastPrimedAt ?? item.last_primed_at ?? null,
-  };
-}
-
-export async function createPrimeItem(payload) {
-  return apiRequest("/prime-items/", {
-    method: "POST",
-    body: JSON.stringify(normalizePrimeItemPayload(payload)),
-  });
-}
-
-export async function loadPrimeItem(id) {
-  const item = await apiRequest(`/prime-items/${id}/`);
-  return PrimeItem.fromJSON(normalizePrimeItemFromApi(item));
-}
-
-export async function logPrimeItem(id) {
-  const item = await apiRequest(`/prime-items/${id}/log_prime/`, {
-    method: "POST",
-  });
-  return PrimeItem.fromJSON(normalizePrimeItemFromApi(item));
-}
-
-export async function loadPrimeItemsPage({
-  url = null,
-  category = null,
-  search = null,
-} = {}) {
-  try {
-    let endpoint;
-
-    if (url) {
-      // Use the provided URL (for pagination)
-      endpoint = url;
-    } else {
-      // Build initial URL with optional filters
-      endpoint = `${API_BASE}/prime-items/`;
-      const params = new URLSearchParams();
-      if (category) params.set("category", category);
-      if (search) params.set("search", search);
-      const qs = params.toString();
-      if (qs) endpoint += `?${qs}`;
-    }
-
-    const data = await apiRequestUrl(endpoint);
-
-    // Map results to PrimeItem objects
-    const items = Array.isArray(data.results)
-      ? data.results
-      : Array.isArray(data)
-        ? data
-        : [];
-
-    return {
-      items: items.map((item) =>
-        PrimeItem.fromJSON(normalizePrimeItemFromApi(item)),
-      ),
-      next: data.next || null,
-    };
-  } catch (error) {
-    console.error("Error loading prime items:", error);
-    return { items: [], next: null };
-  }
-}
-
-export async function updatePrimeItem(id, patch) {
-  return apiRequest(`/prime-items/${id}/`, {
-    method: "PATCH",
-    body: JSON.stringify(normalizePrimeItemPayload(patch)),
-  });
-}
-
-export async function deletePrimeItem(id) {
-  return apiRequest(`/prime-items/${id}/`, { method: "DELETE" });
-}
-
-// ========== REVIEW ITEMS ==========
-function normalizeReviewItemPayload(payload) {
-  if (!payload || typeof payload !== "object") return payload;
-
-  const review_timestamps =
-    payload.review_timestamps ?? payload.reviewTimestamps;
-  const first_studied_at = payload.first_studied_at ?? payload.firstStudiedAt;
-  const created_at = payload.created_at ?? payload.createdAt;
-  const source_study_item_id =
-    payload.source_study_item_id ?? payload.sourceStudyItemId;
-
-  const normalized = { ...payload };
-  delete normalized.reviewTimestamps;
-  delete normalized.firstStudiedAt;
-  delete normalized.createdAt;
-  delete normalized.sourceStudyItemId;
-
-  if (review_timestamps !== undefined)
-    normalized.review_timestamps = review_timestamps;
-  if (first_studied_at !== undefined) {
-    let normalizedFirstStudiedAt = first_studied_at;
-    if (
-      typeof normalizedFirstStudiedAt === "number" &&
-      Number.isFinite(normalizedFirstStudiedAt)
-    ) {
-      normalizedFirstStudiedAt = new Date(
-        normalizedFirstStudiedAt,
-      ).toISOString();
-    } else if (normalizedFirstStudiedAt instanceof Date) {
-      normalizedFirstStudiedAt = normalizedFirstStudiedAt.toISOString();
-    }
-    normalized.first_studied_at = normalizedFirstStudiedAt;
-  }
-  if (created_at !== undefined) normalized.created_at = created_at;
-  if (source_study_item_id !== undefined)
-    normalized.source_study_item_id = source_study_item_id;
-
-  return normalized;
-}
-
-function normalizeReviewItemFromApi(item) {
-  if (!item || typeof item !== "object") return item;
-
-  return {
-    ...item,
-    reviewTimestamps: item.reviewTimestamps ?? item.review_timestamps ?? [],
-    firstStudiedAt: item.firstStudiedAt ?? item.first_studied_at ?? null,
-    sourceStudyItemId:
-      item.sourceStudyItemId ?? item.source_study_item_id ?? null,
-    createdAt: item.createdAt ?? item.created_at ?? null,
-  };
-}
-
-export async function createReviewItem(payload) {
-  return apiRequest("/review-items/", {
-    method: "POST",
-    body: JSON.stringify(normalizeReviewItemPayload(payload)),
-  });
-}
-
-export async function loadReviewItems() {
-  const items = await fetchAllPages("/review-items/");
-  return items.map((item) =>
-    ReviewItem.fromJSON(normalizeReviewItemFromApi(item)),
-  );
-}
-
-export async function updateReviewItem(id, patch) {
-  return apiRequest(`/review-items/${id}/`, {
-    method: "PATCH",
-    body: JSON.stringify(normalizeReviewItemPayload(patch)),
-  });
-}
-
-export async function deleteReviewItem(id) {
-  return apiRequest(`/review-items/${id}/`, { method: "DELETE" });
-}
 
 // ========== STUDY ITEMS ==========
 
@@ -734,109 +548,6 @@ export async function logStudyItem(id) {
   return apiRequest(`/study-items/${id}/log_study/`, { method: "POST" });
 }
 
-// ========== CONVERSION UTILITIES ==========
-
-/**
- * Convert a prime item to a review item.
- * Creates a new review item and archives the original prime item.
- * @param {string} primeItemId - ID of the prime item to convert
- * @returns {Object|null} - The created review item or null if failed
- */
-export async function convertPrimeToReview(primeItemId) {
-  try {
-    const primeItem = await loadPrimeItem(primeItemId);
-    if (!primeItem) return null;
-
-    const reviewItemPayload = {
-      id: crypto.randomUUID(),
-      title: primeItem.title,
-      description: primeItem.description || "",
-      category: primeItem.category || "",
-      reviewTimestamps: [...(primeItem.primeTimestamps || [])],
-      firstStudiedAt:
-        primeItem.primeTimestamps && primeItem.primeTimestamps.length > 0
-          ? Math.min(...primeItem.primeTimestamps)
-          : null,
-      archived: false,
-      createdAt: new Date().toISOString(),
-    };
-
-    const createdReview = await createReviewItem(reviewItemPayload);
-    await updatePrimeItem(primeItemId, { archived: true });
-    return createdReview;
-  } catch (error) {
-    console.error("Failed to convert prime item to review:", error);
-    return null;
-  }
-}
-
-/**
- * Convert a prime item to a study item.
- * Creates a new study item and archives the original prime item.
- * @param {string} primeItemId - ID of the prime item to convert
- * @returns {Object|null} - The created study item or null if failed
- */
-export async function convertPrimeToStudy(primeItemId) {
-  try {
-    const primeItem = await loadPrimeItem(primeItemId);
-    if (!primeItem) return null;
-
-    const studyItemPayload = {
-      id: crypto.randomUUID(),
-      title: primeItem.title,
-      description: primeItem.description || "",
-      category: primeItem.category || "",
-      notes: "",
-      studyTimestamps: [],
-      firstStudiedAt: null,
-      archived: false,
-      createdAt: new Date().toISOString(),
-      sourcePrimeItemId: primeItemId,
-    };
-
-    const createdStudy = await createStudyItem(studyItemPayload);
-    await updatePrimeItem(primeItemId, { archived: true });
-    return createdStudy;
-  } catch (error) {
-    console.error("Failed to convert prime item to study:", error);
-    return null;
-  }
-}
-
-/**
- * Convert a study item to a review item.
- * Creates a new review item and archives the study item.
- * The review item stores the source study item ID for potential reactivation.
- * @param {string} studyItemId - ID of the study item to convert
- * @returns {Object|null} - The created review item or null if failed
- */
-export async function convertStudyToReview(studyItemId) {
-  try {
-    const studyItem = await loadStudyItem(studyItemId);
-    if (!studyItem) return null;
-
-    const reviewItemPayload = {
-      id: crypto.randomUUID(),
-      title: studyItem.title,
-      description: studyItem.description || "",
-      category: studyItem.category || "",
-      reviewTimestamps: [],
-      firstStudiedAt: studyItem.firstStudiedAt,
-      sourceStudyItemId: studyItemId,
-      archived: false,
-      createdAt: new Date().toISOString(),
-    };
-
-    const createdReview = await createReviewItem(
-      normalizeReviewItemPayload(reviewItemPayload),
-    );
-    await updateStudyItem(studyItemId, { archived: true });
-    return createdReview;
-  } catch (error) {
-    console.error("Failed to convert study item to review:", error);
-    return null;
-  }
-}
 
 /**
  * Reactivate a study item from a review item.
@@ -863,16 +574,12 @@ export async function exportAllData() {
       tasks,
       projects,
       timeEntries,
-      primeItems,
-      reviewItems,
       habits,
     ] = await Promise.all([
       loadMoments(),
       loadTasks(),
       loadProjects(),
       loadTimeEntries(),
-      loadPrimeItems({ includeTimestamps: true }),
-      loadReviewItems(),
       loadHabits(),
     ]);
 
@@ -881,8 +588,6 @@ export async function exportAllData() {
       tasks: tasks.map((t) => (t.toJSON ? t.toJSON() : t)),
       projects: projects.map((p) => (p.toJSON ? p.toJSON() : p)),
       timeEntries: timeEntries.map((e) => (e.toJSON ? e.toJSON() : e)),
-      primeItems: primeItems.map((p) => (p.toJSON ? p.toJSON() : p)),
-      reviewItems: reviewItems.map((r) => (r.toJSON ? r.toJSON() : r)),
       habits: habits.map((h) => (h.toJSON ? h.toJSON() : h)),
       exportedAt: new Date().toISOString(),
     };
@@ -1011,20 +716,6 @@ export async function importAllData(file) {
       loadFn: loadMoments,
       createFn: createMoment,
       updateFn: updateMoment,
-    });
-
-    await importCollection({
-      items: data.primeItems,
-      loadFn: loadPrimeItems,
-      createFn: createPrimeItem,
-      updateFn: updatePrimeItem,
-    });
-
-    await importCollection({
-      items: data.reviewItems,
-      loadFn: loadReviewItems,
-      createFn: createReviewItem,
-      updateFn: updateReviewItem,
     });
 
     await importCollection({
