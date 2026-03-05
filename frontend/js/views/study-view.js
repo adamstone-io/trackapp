@@ -234,7 +234,7 @@ export class StudyView {
                   </button>
                   <button
                     id="cipher-toggle-${item.id}"
-                    class="btn btn--outline study-item__cipher-btn"
+                    class="btn btn--outline study-item__cipher-btn${item.noteImageUrl ? " hidden" : ""}"
                     type="button"
                   >
                     Cipher
