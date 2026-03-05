@@ -309,98 +309,53 @@ export const WorkspaceView = {
     listEl.style.display = "flex";
 
     const projectMap = new Map(projects.map((p) => [p.id, p]));
-    let html = "";
 
-    // Render date-filtered tasks grouped by project
-    if (tasks.length > 0) {
-      const groups = new Map();
-      const noProjectTasks = [];
+    // Sort tasks by planned start time
+    const sorted = [...tasks].sort((a, b) => {
+      const aTime = new Date(a.planned_start ?? a.plannedStart ?? 0).getTime();
+      const bTime = new Date(b.planned_start ?? b.plannedStart ?? 0).getTime();
+      return aTime - bTime;
+    });
 
-      for (const task of tasks) {
-        const pid = task.projectId ?? task.project ?? null;
-        if (pid && projectMap.has(pid)) {
-          if (!groups.has(pid)) groups.set(pid, []);
-          groups.get(pid).push(task);
-        } else {
-          noProjectTasks.push(task);
-        }
-      }
-
-      for (const [projectId, projectTasks] of groups) {
-        const project = projectMap.get(projectId);
-        html += this.renderTaskGroup(
-          project.name,
-          project.color,
-          projectTasks,
-          taskTimeMap,
-        );
-      }
-
-      if (noProjectTasks.length > 0) {
-        html += this.renderTaskGroup(
-          "No Project",
-          "#888888",
-          noProjectTasks,
-          taskTimeMap,
-        );
-      }
-    }
-
-    // Render unscheduled tasks (no planned_start) in a separate group
-    if (unscheduledTasks.length > 0) {
-      html += this.renderTaskGroup(
-        "Unscheduled",
-        "#aaaaaa",
-        unscheduledTasks,
-        taskTimeMap,
-      );
-    }
-
-    listEl.innerHTML = html;
+    listEl.innerHTML = sorted
+      .map((task) => this.renderTaskItem(task, projectMap, taskTimeMap))
+      .join("");
   },
 
-  renderTaskGroup(groupName, color, tasks, taskTimeMap) {
-    const taskItems = tasks
-      .map((task) => {
-        const timeSpent = taskTimeMap.get(task.id) || 0;
-        const timeFormatted = this.formatDuration(timeSpent);
-        const rawPlannedDuration =
-          task.planned_duration ?? task.plannedDuration;
-        const plannedDuration = rawPlannedDuration
-          ? `${Math.round(rawPlannedDuration / 60)}m planned`
-          : "";
-        const plannedStart = task.plannedStart
-          ? this.formatDateTime(task.plannedStart)
-          : "";
-
-        return `
-                    <div class="task-item">
-                        <div class="task-item__content">
-                            <h4 class="task-item__title">${this.escapeHtml(task.title)}</h4>
-                            <div class="task-item__meta">
-                                ${task.category && task.category !== "other" ? `<span class="task-item__category">${this.escapeHtml(task.category)}</span>` : ""}
-                                ${plannedStart ? `<span class="task-item__scheduled">${plannedStart}</span>` : ""}
-                                ${plannedDuration ? `<span class="task-item__duration">${plannedDuration}</span>` : ""}
-                            </div>
-                        </div>
-                        <div class="task-item__actions">
-                            <button class="btn btn--primary" data-action="start-task" data-id="${task.id}">Start</button>
-                            <button class="btn btn--outline" data-action="edit-task" data-id="${task.id}">Edit</button>
-                            <button class="btn btn--outline" data-action="delete-task" data-id="${task.id}">Delete</button>
-                        </div>
-                    </div>
-                `;
-      })
-      .join("");
+  renderTaskItem(task, projectMap, taskTimeMap) {
+    const rawPlannedDuration = task.planned_duration ?? task.plannedDuration;
+    const plannedDuration = rawPlannedDuration
+      ? `${Math.round(rawPlannedDuration / 60)}m`
+      : "";
+    const rawPlannedStart = task.planned_start ?? task.plannedStart ?? null;
+    const plannedStart = rawPlannedStart ? this.formatStartTime(rawPlannedStart) : "";
+    const plannedEnd = rawPlannedStart && rawPlannedDuration
+      ? this.formatStartTime(new Date(new Date(rawPlannedStart).getTime() + rawPlannedDuration * 1000).toISOString())
+      : "";
+    const timeRange = plannedStart && plannedEnd
+      ? `${plannedStart} – ${plannedEnd}`
+      : plannedStart;
+    const pid = task.projectId ?? task.project ?? null;
+    const project = pid && projectMap ? projectMap.get(pid) : null;
 
     return `
-            <div class="task-group">
-                <div class="task-group__header">
-                    <span class="task-group__count">${tasks.length} task${tasks.length === 1 ? "" : "s"}</span>
-                </div>
-                ${taskItems}
-            </div>
-        `;
+      <div class="task-item">
+        <div class="task-item__content">
+          <h4 class="task-item__title">${this.escapeHtml(task.title)}</h4>
+          <div class="task-item__meta">
+            ${project ? `<span class="task-item__scheduled">Project: ${this.escapeHtml(project.name)}</span>` : ""}
+            <span class="task-item__scheduled">Category: ${task.category && task.category !== "other" ? this.escapeHtml(task.category) : "None"}</span>
+            ${timeRange ? `<span class="task-item__scheduled">${timeRange}</span>` : ""}
+            ${plannedDuration ? `<span class="task-item__duration" style="margin-left:auto">${plannedDuration}</span>` : ""}
+          </div>
+        </div>
+        <div class="task-item__actions">
+          <button class="btn btn--primary" data-action="start-task" data-id="${task.id}">Start</button>
+          <button class="btn btn--outline" data-action="edit-task" data-id="${task.id}">Edit</button>
+          <button class="btn btn--outline" data-action="delete-task" data-id="${task.id}">Delete</button>
+        </div>
+      </div>
+    `;
   },
 
   populateProjectSelect(projects) {
@@ -512,6 +467,15 @@ export const WorkspaceView = {
     return date.toLocaleString(undefined, {
       month: "short",
       day: "numeric",
+      hour: "numeric",
+      minute: "2-digit",
+    });
+  },
+
+  formatStartTime(isoString) {
+    if (!isoString) return "";
+    const date = new Date(isoString);
+    return date.toLocaleTimeString(undefined, {
       hour: "numeric",
       minute: "2-digit",
     });
