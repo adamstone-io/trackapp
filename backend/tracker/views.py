@@ -224,6 +224,8 @@ class StudyItemViewSet(UserOwnedViewSet):
     @action(detail=True, methods=['post'])
     def transition_to_studying(self, request, pk=None):
         item = self.get_object()
+        if item.is_priming:
+            item.log_interaction()
         item.transition_to_studying()
         item.save()
 
@@ -233,6 +235,8 @@ class StudyItemViewSet(UserOwnedViewSet):
     @action(detail=True, methods=['post'])
     def transition_to_reviewing(self, request, pk=None):
         item = self.get_object()
+        if item.is_studying:
+            item.log_interaction()
         item.transition_to_reviewing()
         item.save()
 
