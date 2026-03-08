@@ -211,13 +211,6 @@ export class StudyView {
                   )}</span>`
                 : ""
             }
-            ${
-              item.notes
-                ? `<p class="study-item__description">${this.escapeHtml(
-                    item.notes,
-                  )}</p>`
-                : ""
-            }
           </div>
           <button
             id="menu-study-${item.id}"
