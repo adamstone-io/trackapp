@@ -3,8 +3,17 @@ import { reviewIds } from "../ui/review-ids.js";
 import { createDropdownMenu } from "./components/dropdown-menu.js";
 
 const dropdownMenus = new Map();
+let renderedItemIds = new Set();
+let lastRenderCount = 0;
 
 export class ReviewView {
+  static resetRenderState() {
+    renderedItemIds.clear();
+    lastRenderCount = 0;
+    const listEl = byId(reviewIds.reviewList);
+    if (listEl) listEl.innerHTML = "";
+  }
+
   static renderList(
     reviewItems,
     {
@@ -16,14 +25,16 @@ export class ReviewView {
       onConvertToPriming,
     },
     showArchived = false,
+    { showSentinel = false } = {},
   ) {
     const listEl = byId(reviewIds.reviewList);
     const emptyEl = byId(reviewIds.reviewListEmpty);
 
-    dropdownMenus.forEach((menu) => menu.dispose());
-    dropdownMenus.clear();
-
     if (!reviewItems || reviewItems.length === 0) {
+      dropdownMenus.forEach((menu) => menu.dispose());
+      dropdownMenus.clear();
+      renderedItemIds.clear();
+      lastRenderCount = 0;
       listEl.innerHTML = "";
       emptyEl.style.display = "block";
       emptyEl.textContent = showArchived
@@ -48,55 +59,93 @@ export class ReviewView {
       return aCreated - bCreated;
     });
 
-    listEl.innerHTML = sorted
-      .map((item) => this.renderReviewItem(item, showArchived))
-      .join("");
+    const callbacks = { onLogReview, onEdit, onDelete, onArchive, onConvertToStudy, onConvertToPriming };
+    const currentRenderCount = sorted.length;
+    const canIncrement = currentRenderCount > lastRenderCount;
 
-    sorted.forEach((item) => {
-      const logBtn = byId(`log-review-${item.id}`);
-      const menuBtn = byId(`menu-review-${item.id}`);
-      const notesToggle = byId(`notes-toggle-${item.id}`);
-      const notesSection = byId(`notes-section-${item.id}`);
+    if (canIncrement) {
+      const newItems = sorted.slice(lastRenderCount);
+      const oldSentinel = document.getElementById(reviewIds.reviewListSentinel);
+      if (oldSentinel) oldSentinel.remove();
 
-      if (logBtn) logBtn.addEventListener("click", () => onLogReview(item));
+      newItems.forEach((item) => {
+        listEl.insertAdjacentHTML("beforeend", this.renderReviewItem(item, showArchived));
+        renderedItemIds.add(item.id);
+        this.attachItemListeners(item, callbacks, showArchived);
+      });
+    } else {
+      dropdownMenus.forEach((menu) => menu.dispose());
+      dropdownMenus.clear();
+      renderedItemIds.clear();
 
-      if (notesToggle && notesSection) {
-        notesToggle.addEventListener("click", () => {
-          const isHidden = notesSection.classList.contains("hidden");
-          notesSection.classList.toggle("hidden");
-          notesToggle.classList.toggle(
-            "review-item__notes-btn--active",
-            isHidden,
-          );
-        });
-      }
+      listEl.innerHTML = sorted
+        .map((item) => this.renderReviewItem(item, showArchived))
+        .join("");
 
-      if (menuBtn) {
-        const menuItems = showArchived
-          ? [
-              { label: "Restore", onSelect: () => onArchive(item) },
-              { label: "Edit", onSelect: () => onEdit(item) },
-              { label: "Delete", onSelect: () => onDelete(item) },
-            ]
-          : [
-              {
-                label: "Convert to Study",
-                onSelect: () => onConvertToStudy(item),
-              },
-              {
-                label: "Convert to Priming",
-                onSelect: () => onConvertToPriming(item),
-              },
-              { label: "Archive", onSelect: () => onArchive(item) },
-              { label: "Edit", onSelect: () => onEdit(item) },
-              { label: "Delete", onSelect: () => onDelete(item) },
-            ];
+      sorted.forEach((item) => {
+        renderedItemIds.add(item.id);
+        this.attachItemListeners(item, callbacks, showArchived);
+      });
+    }
 
-        const menu = createDropdownMenu({ items: menuItems });
-        menu.attachTo(menuBtn);
-        dropdownMenus.set(item.id, menu);
-      }
-    });
+    if (showSentinel) {
+      listEl.insertAdjacentHTML(
+        "beforeend",
+        `<div id="${reviewIds.reviewListSentinel}" class="review-list-sentinel"></div>`,
+      );
+    }
+
+    lastRenderCount = currentRenderCount;
+  }
+
+  static attachItemListeners(
+    item,
+    { onLogReview, onEdit, onDelete, onArchive, onConvertToStudy, onConvertToPriming },
+    showArchived,
+  ) {
+    const logBtn = byId(`log-review-${item.id}`);
+    const menuBtn = byId(`menu-review-${item.id}`);
+    const notesToggle = byId(`notes-toggle-${item.id}`);
+    const notesSection = byId(`notes-section-${item.id}`);
+
+    if (logBtn) logBtn.addEventListener("click", () => onLogReview(item));
+
+    if (notesToggle && notesSection) {
+      notesToggle.addEventListener("click", () => {
+        const isHidden = notesSection.classList.contains("hidden");
+        notesSection.classList.toggle("hidden");
+        notesToggle.classList.toggle(
+          "review-item__notes-btn--active",
+          isHidden,
+        );
+      });
+    }
+
+    if (menuBtn) {
+      const menuItems = showArchived
+        ? [
+            { label: "Restore", onSelect: () => onArchive(item) },
+            { label: "Edit", onSelect: () => onEdit(item) },
+            { label: "Delete", onSelect: () => onDelete(item) },
+          ]
+        : [
+            {
+              label: "Convert to Study",
+              onSelect: () => onConvertToStudy(item),
+            },
+            {
+              label: "Convert to Priming",
+              onSelect: () => onConvertToPriming(item),
+            },
+            { label: "Archive", onSelect: () => onArchive(item) },
+            { label: "Edit", onSelect: () => onEdit(item) },
+            { label: "Delete", onSelect: () => onDelete(item) },
+          ];
+
+      const menu = createDropdownMenu({ items: menuItems });
+      menu.attachTo(menuBtn);
+      dropdownMenus.set(item.id, menu);
+    }
   }
 
   static renderReviewItem(item, showArchived = false) {

@@ -10,7 +10,7 @@ import { SoundManager } from "../utils/sound-manager.js";
 import { bindAutoGrow } from "../utils/textarea.js";
 import {
   createStudyItem,
-  loadStudyItems,
+  loadStudyItemsPage,
   updateStudyItem,
   deleteStudyItem,
   logInteraction,
@@ -32,6 +32,11 @@ export function createStudyController() {
   let editingItemId = null;
   let showArchived = false;
   let currentCategoryFilter = localStorage.getItem(CATEGORY_FILTER_KEY) || "";
+  let currentPage = 1;
+  let hasNextPage = true;
+  let isLoadingPage = false;
+  let observer = null;
+  let observedSentinel = null;
 
   const quickAddInput = byId(studyIds.quickAddStudyInput);
   const quickAddNotesWrap = byId(studyIds.quickAddNotesWrap);
@@ -150,34 +155,81 @@ export function createStudyController() {
     }
   }
 
+  async function loadStudyPage(
+    page,
+    { refreshCategories: shouldRefresh = true } = {},
+  ) {
+    if (isLoadingPage) return;
+    isLoadingPage = true;
+
+    try {
+      const { items, next } = await loadStudyItemsPage({
+        mode: "studying",
+        category: currentCategoryFilter || undefined,
+        page,
+      });
+
+      const mapped = items.map((item) => StudyItem.fromJSON(item));
+
+      if (page === 1) {
+        studyItems = mapped;
+        StudyView.resetRenderState();
+      } else {
+        studyItems = [...studyItems, ...mapped];
+      }
+
+      hasNextPage = Boolean(next);
+      currentPage = page;
+
+      if (shouldRefresh && page === 1) {
+        await refreshCategories();
+      }
+
+      renderList({ showSentinel: hasNextPage });
+      attachSentinelObserver();
+    } catch (error) {
+      console.error("Failed to load study items:", error);
+    } finally {
+      isLoadingPage = false;
+    }
+  }
+
+  function attachSentinelObserver() {
+    const sentinel = document.getElementById(studyIds.studyListSentinel);
+    if (!sentinel || observedSentinel === sentinel) return;
+
+    observer?.disconnect();
+    observer = new IntersectionObserver(
+      (entries) => {
+        if (entries.some((e) => e.isIntersecting) && hasNextPage) {
+          loadStudyPage(currentPage + 1, { refreshCategories: false });
+        }
+      },
+      { rootMargin: "200px 0px" },
+    );
+
+    observer.observe(sentinel);
+    observedSentinel = sentinel;
+  }
+
   async function refreshStudyItems({
     refreshCategories: shouldRefresh = true,
   } = {}) {
-    try {
-      const data = await loadStudyItems({
-        mode: "studying",
-        category: currentCategoryFilter || undefined,
-      });
-      studyItems = data.map((item) => StudyItem.fromJSON(item));
-    } catch (error) {
-      console.error("Failed to load study items:", error);
-      studyItems = [];
-    }
-
-    if (shouldRefresh) {
-      await refreshCategories();
-    }
-
-    renderList();
+    await loadStudyPage(1, { refreshCategories: shouldRefresh });
   }
 
   function resetAndLoad() {
+    currentPage = 1;
+    hasNextPage = true;
     studyItems = [];
-    void refreshStudyItems({ refreshCategories: false });
+    StudyView.resetRenderState();
+    observer?.disconnect();
+    observedSentinel = null;
+    void loadStudyPage(1, { refreshCategories: false });
   }
 
   // Initial load
-  void refreshStudyItems();
+  void loadStudyPage(1);
 
   addStudyBtn?.addEventListener("click", async () => {
     const prompt = quickAddInput.value.trim();
@@ -236,7 +288,7 @@ export function createStudyController() {
 
   const handleToggleArchived = () => {
     showArchived = !showArchived;
-    renderList();
+    renderList({ showSentinel: hasNextPage });
     updateHeaderMenu();
   };
 
@@ -388,7 +440,7 @@ export function createStudyController() {
         studyItems[index] = StudyItem.fromJSON(updated);
       }
 
-      queueMicrotask(() => renderList());
+      queueMicrotask(() => renderList({ showSentinel: hasNextPage }));
     } catch (error) {
       console.error("Failed to log study:", error);
       alert("Failed to log study. Please try again.");
@@ -471,7 +523,7 @@ export function createStudyController() {
     }
   }
 
-  function renderList() {
+  function renderList({ showSentinel = false } = {}) {
     const itemsToShow = showArchived
       ? studyItems.filter((item) => item.isArchived)
       : studyItems.filter((item) => !item.isArchived);
@@ -488,7 +540,15 @@ export function createStudyController() {
         onNotesUpdate: handleNotesUpdate,
       },
       showArchived,
+      { showSentinel },
     );
+
+    if (showSentinel) {
+      attachSentinelObserver();
+    } else {
+      observer?.disconnect();
+      observedSentinel = null;
+    }
   }
 
   return {
@@ -499,6 +559,7 @@ export function createStudyController() {
       headerMenu?.dispose();
       modalCategoryManager?.dispose();
       categoryFilterModal.dispose();
+      observer?.disconnect();
     },
   };
 }

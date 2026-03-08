@@ -12,6 +12,7 @@ export const studyIds = {
   // List
   studyList: "study-list",
   studyListEmpty: "study-list-empty",
+  studyListSentinel: "study-list-sentinel",
 
   // Header menu
   headerMenuBtn: "header-menu-btn",

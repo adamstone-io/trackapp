@@ -8,7 +8,7 @@ import { CategoryManager } from "../utils/category-manager.js";
 import { SoundManager } from "../utils/sound-manager.js";
 import {
   createStudyItem,
-  loadStudyItems,
+  loadStudyItemsPage,
   updateStudyItem,
   deleteStudyItem,
   logInteraction,
@@ -26,6 +26,11 @@ export function createReviewController() {
   let editingItemId = null;
   let showArchived = false;
   let currentCategoryFilter = localStorage.getItem(CATEGORY_FILTER_KEY) || "";
+  let currentPage = 1;
+  let hasNextPage = true;
+  let isLoadingPage = false;
+  let observer = null;
+  let observedSentinel = null;
 
   const modalCategoryInput = byId(reviewIds.reviewCategory);
   const modalCategoryDropdown = byId(reviewIds.modalCategoryDropdown);
@@ -46,38 +51,85 @@ export function createReviewController() {
     }
   }
 
+  async function loadReviewPage(
+    page,
+    { refreshCategories: shouldRefresh = true } = {},
+  ) {
+    if (isLoadingPage) return;
+    isLoadingPage = true;
+
+    try {
+      const { items, next } = await loadStudyItemsPage({
+        mode: "reviewing",
+        category: currentCategoryFilter || undefined,
+        page,
+      });
+
+      const mapped = items.map((item) => StudyItem.fromJSON(item));
+
+      if (page === 1) {
+        reviewItems = mapped;
+        ReviewView.resetRenderState();
+      } else {
+        reviewItems = [...reviewItems, ...mapped];
+      }
+
+      hasNextPage = Boolean(next);
+      currentPage = page;
+
+      if (shouldRefresh && page === 1) {
+        await refreshCategories();
+      }
+
+      renderList({ showSentinel: hasNextPage });
+      attachSentinelObserver();
+    } catch (error) {
+      console.error("Failed to load review items:", error);
+    } finally {
+      isLoadingPage = false;
+    }
+  }
+
+  function attachSentinelObserver() {
+    const sentinel = document.getElementById(reviewIds.reviewListSentinel);
+    if (!sentinel || observedSentinel === sentinel) return;
+
+    observer?.disconnect();
+    observer = new IntersectionObserver(
+      (entries) => {
+        if (entries.some((e) => e.isIntersecting) && hasNextPage) {
+          loadReviewPage(currentPage + 1, { refreshCategories: false });
+        }
+      },
+      { rootMargin: "200px 0px" },
+    );
+
+    observer.observe(sentinel);
+    observedSentinel = sentinel;
+  }
+
   async function refreshReviewItems({
     refreshCategories: shouldRefresh = true,
   } = {}) {
-    try {
-      const data = await loadStudyItems({
-        mode: "reviewing",
-        category: currentCategoryFilter || undefined,
-      });
-      reviewItems = data.map((item) => StudyItem.fromJSON(item));
-    } catch (error) {
-      console.error("Failed to load review items:", error);
-      reviewItems = [];
-    }
-
-    if (shouldRefresh) {
-      await refreshCategories();
-    }
-
-    renderList();
+    await loadReviewPage(1, { refreshCategories: shouldRefresh });
   }
 
   function resetAndLoad() {
+    currentPage = 1;
+    hasNextPage = true;
     reviewItems = [];
-    void refreshReviewItems({ refreshCategories: false });
+    ReviewView.resetRenderState();
+    observer?.disconnect();
+    observedSentinel = null;
+    void loadReviewPage(1, { refreshCategories: false });
   }
 
   // Initial load
-  void refreshReviewItems();
+  void loadReviewPage(1);
 
   const handleToggleArchived = () => {
     showArchived = !showArchived;
-    renderList();
+    renderList({ showSentinel: hasNextPage });
     updateHeaderMenu();
   };
 
@@ -198,7 +250,7 @@ export function createReviewController() {
         reviewItems[index] = StudyItem.fromJSON(updated);
       }
 
-      queueMicrotask(() => renderList());
+      queueMicrotask(() => renderList({ showSentinel: hasNextPage }));
     } catch (error) {
       console.error("Failed to log review:", error);
       alert("Failed to log review. Please try again.");
@@ -251,7 +303,7 @@ export function createReviewController() {
     try {
       await transitionToStudying(item.id);
       reviewItems = reviewItems.filter((i) => i.id !== item.id);
-      renderList();
+      renderList({ showSentinel: hasNextPage });
     } catch (error) {
       console.error("Failed to convert review item:", error);
       alert("Failed to convert review item. Please try again.");
@@ -262,14 +314,14 @@ export function createReviewController() {
     try {
       await transitionToPriming(item.id);
       reviewItems = reviewItems.filter((i) => i.id !== item.id);
-      renderList();
+      renderList({ showSentinel: hasNextPage });
     } catch (error) {
       console.error("Failed to convert review item:", error);
       alert("Failed to convert review item. Please try again.");
     }
   }
 
-  function renderList() {
+  function renderList({ showSentinel = false } = {}) {
     const itemsToShow = showArchived
       ? reviewItems.filter((item) => item.isArchived)
       : reviewItems.filter((item) => !item.isArchived);
@@ -285,7 +337,15 @@ export function createReviewController() {
         onConvertToPriming: handleConvertToPriming,
       },
       showArchived,
+      { showSentinel },
     );
+
+    if (showSentinel) {
+      attachSentinelObserver();
+    } else {
+      observer?.disconnect();
+      observedSentinel = null;
+    }
   }
 
   return {
@@ -296,6 +356,7 @@ export function createReviewController() {
       headerMenu?.dispose();
       modalCategoryManager?.dispose();
       categoryFilterModal.dispose();
+      observer?.disconnect();
     },
   };
 }

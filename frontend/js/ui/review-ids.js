@@ -11,6 +11,7 @@ export const reviewIds = {
   // List
   reviewList: "review-list",
   reviewListEmpty: "review-list-empty",
+  reviewListSentinel: "review-list-sentinel",
   
   // Header menu
   headerMenuBtn: "header-menu-btn",

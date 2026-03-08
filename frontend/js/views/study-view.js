@@ -3,10 +3,18 @@ import { byId } from "../ui/ui-core.js";
 import { studyIds } from "../ui/study-ids.js";
 import { createDropdownMenu } from "./components/dropdown-menu.js";
 
-// Store dropdown menus for cleanup
 const dropdownMenus = new Map();
+let renderedItemIds = new Set();
+let lastRenderCount = 0;
 
 export class StudyView {
+  static resetRenderState() {
+    renderedItemIds.clear();
+    lastRenderCount = 0;
+    const listEl = byId(studyIds.studyList);
+    if (listEl) listEl.innerHTML = "";
+  }
+
   static renderList(
     studyItems,
     {
@@ -19,14 +27,16 @@ export class StudyView {
       onNotesUpdate,
     },
     showArchived = false,
+    { showSentinel = false } = {},
   ) {
     const listEl = byId(studyIds.studyList);
     const emptyEl = byId(studyIds.studyListEmpty);
 
-    dropdownMenus.forEach((menu) => menu.dispose());
-    dropdownMenus.clear();
-
     if (!studyItems || studyItems.length === 0) {
+      dropdownMenus.forEach((menu) => menu.dispose());
+      dropdownMenus.clear();
+      renderedItemIds.clear();
+      lastRenderCount = 0;
       listEl.innerHTML = "";
       emptyEl.style.display = "block";
       emptyEl.textContent = showArchived
@@ -51,96 +61,135 @@ export class StudyView {
       return aCreated - bCreated;
     });
 
-    listEl.innerHTML = sorted
-      .map((item) => this.renderStudyItem(item, showArchived))
-      .join("");
+    const callbacks = { onLogStudy, onEdit, onDelete, onArchive, onConvertToReview, onConvertToPriming, onNotesUpdate };
+    const currentRenderCount = sorted.length;
+    const canIncrement = currentRenderCount > lastRenderCount;
 
-    sorted.forEach((item) => {
-      const logBtn = byId(`log-study-${item.id}`);
-      const menuBtn = byId(`menu-study-${item.id}`);
-      const notesToggle = byId(`notes-toggle-${item.id}`);
-      const notesSection = byId(`notes-section-${item.id}`);
-      const notesTextarea = document.getElementById(`notes-textarea-${item.id}`);
-      const cipherToggle = byId(`cipher-toggle-${item.id}`);
-      const cipherSection = byId(`cipher-section-${item.id}`);
-      if (logBtn) logBtn.addEventListener("click", () => onLogStudy(item));
+    if (canIncrement) {
+      const newItems = sorted.slice(lastRenderCount);
+      const oldSentinel = document.getElementById(studyIds.studyListSentinel);
+      if (oldSentinel) oldSentinel.remove();
 
-      if (notesToggle && notesSection) {
-        notesToggle.addEventListener("click", () => {
-          const isHidden = notesSection.classList.contains("hidden");
-          notesSection.classList.toggle("hidden");
-          notesToggle.classList.toggle(
-            "study-item__notes-btn--active",
-            isHidden,
-          );
-          if (isHidden && notesTextarea) notesTextarea.focus();
-        });
+      newItems.forEach((item) => {
+        listEl.insertAdjacentHTML("beforeend", this.renderStudyItem(item, showArchived));
+        renderedItemIds.add(item.id);
+        this.attachItemListeners(item, callbacks, showArchived);
+      });
+    } else {
+      dropdownMenus.forEach((menu) => menu.dispose());
+      dropdownMenus.clear();
+      renderedItemIds.clear();
 
-        if (notesTextarea) {
-          let notesTimer = null;
-          notesTextarea.addEventListener("input", () => {
-            clearTimeout(notesTimer);
-            notesTimer = setTimeout(() => {
-              onNotesUpdate(item, notesTextarea.value);
-            }, 800);
-          });
+      listEl.innerHTML = sorted
+        .map((item) => this.renderStudyItem(item, showArchived))
+        .join("");
 
-          notesTextarea.addEventListener("blur", () => {
-            clearTimeout(notesTimer);
+      sorted.forEach((item) => {
+        renderedItemIds.add(item.id);
+        this.attachItemListeners(item, callbacks, showArchived);
+      });
+    }
+
+    if (showSentinel) {
+      listEl.insertAdjacentHTML(
+        "beforeend",
+        `<div id="${studyIds.studyListSentinel}" class="study-list-sentinel"></div>`,
+      );
+    }
+
+    lastRenderCount = currentRenderCount;
+  }
+
+  static attachItemListeners(
+    item,
+    { onLogStudy, onEdit, onDelete, onArchive, onConvertToReview, onConvertToPriming, onNotesUpdate },
+    showArchived,
+  ) {
+    const logBtn = byId(`log-study-${item.id}`);
+    const menuBtn = byId(`menu-study-${item.id}`);
+    const notesToggle = byId(`notes-toggle-${item.id}`);
+    const notesSection = byId(`notes-section-${item.id}`);
+    const notesTextarea = document.getElementById(`notes-textarea-${item.id}`);
+    const cipherToggle = byId(`cipher-toggle-${item.id}`);
+    const cipherSection = byId(`cipher-section-${item.id}`);
+
+    if (logBtn) logBtn.addEventListener("click", () => onLogStudy(item));
+
+    if (notesToggle && notesSection) {
+      notesToggle.addEventListener("click", () => {
+        const isHidden = notesSection.classList.contains("hidden");
+        notesSection.classList.toggle("hidden");
+        notesToggle.classList.toggle(
+          "study-item__notes-btn--active",
+          isHidden,
+        );
+        if (isHidden && notesTextarea) notesTextarea.focus();
+      });
+
+      if (notesTextarea) {
+        let notesTimer = null;
+        notesTextarea.addEventListener("input", () => {
+          clearTimeout(notesTimer);
+          notesTimer = setTimeout(() => {
             onNotesUpdate(item, notesTextarea.value);
-          });
-        }
-      }
+          }, 800);
+        });
 
-      if (cipherToggle && cipherSection) {
-        cipherToggle.addEventListener("click", () => {
-          const isHidden = cipherSection.classList.contains("hidden");
-          cipherSection.classList.toggle("hidden");
-          cipherToggle.classList.toggle(
-            "study-item__cipher-btn--active",
-            isHidden,
-          );
-
-          if (isHidden) {
-            const currentNotes = notesTextarea
-              ? notesTextarea.value
-              : item.notes || "";
-            const cipherPre = cipherSection.querySelector(
-              ".study-item__cipher-text",
-            );
-            if (cipherPre) {
-              cipherPre.textContent = StudyView.cipherTextRaw(currentNotes);
-            }
-          }
+        notesTextarea.addEventListener("blur", () => {
+          clearTimeout(notesTimer);
+          onNotesUpdate(item, notesTextarea.value);
         });
       }
+    }
 
-      if (menuBtn) {
-        const menuItems = showArchived
-          ? [
-              { label: "Restore", onSelect: () => onArchive(item) },
-              { label: "Edit", onSelect: () => onEdit(item) },
-              { label: "Delete", onSelect: () => onDelete(item) },
-            ]
-          : [
-              {
-                label: "Convert to Priming",
-                onSelect: () => onConvertToPriming(item),
-              },
-              {
-                label: "Convert to Review",
-                onSelect: () => onConvertToReview(item),
-              },
-              { label: "Archive", onSelect: () => onArchive(item) },
-              { label: "Edit", onSelect: () => onEdit(item) },
-              { label: "Delete", onSelect: () => onDelete(item) },
-            ];
+    if (cipherToggle && cipherSection) {
+      cipherToggle.addEventListener("click", () => {
+        const isHidden = cipherSection.classList.contains("hidden");
+        cipherSection.classList.toggle("hidden");
+        cipherToggle.classList.toggle(
+          "study-item__cipher-btn--active",
+          isHidden,
+        );
 
-        const menu = createDropdownMenu({ items: menuItems });
-        menu.attachTo(menuBtn);
-        dropdownMenus.set(item.id, menu);
-      }
-    });
+        if (isHidden) {
+          const currentNotes = notesTextarea
+            ? notesTextarea.value
+            : item.notes || "";
+          const cipherPre = cipherSection.querySelector(
+            ".study-item__cipher-text",
+          );
+          if (cipherPre) {
+            cipherPre.textContent = StudyView.cipherTextRaw(currentNotes);
+          }
+        }
+      });
+    }
+
+    if (menuBtn) {
+      const menuItems = showArchived
+        ? [
+            { label: "Restore", onSelect: () => onArchive(item) },
+            { label: "Edit", onSelect: () => onEdit(item) },
+            { label: "Delete", onSelect: () => onDelete(item) },
+          ]
+        : [
+            {
+              label: "Convert to Priming",
+              onSelect: () => onConvertToPriming(item),
+            },
+            {
+              label: "Convert to Review",
+              onSelect: () => onConvertToReview(item),
+            },
+            { label: "Archive", onSelect: () => onArchive(item) },
+            { label: "Edit", onSelect: () => onEdit(item) },
+            { label: "Delete", onSelect: () => onDelete(item) },
+          ];
+
+      const menu = createDropdownMenu({ items: menuItems });
+      menu.attachTo(menuBtn);
+      dropdownMenus.set(item.id, menu);
+    }
   }
 
   static renderStudyItem(item, showArchived = false) {

@@ -171,17 +171,20 @@ class StudyItemViewSet(UserOwnedViewSet):
         if mode == 'priming':
             queryset = queryset.filter(is_priming=True).order_by(
                 F('last_primed_at').asc(nulls_last=True),
-                'created_at'
+                'created_at',
+                'id',
             )
         elif mode == 'studying':
             queryset = queryset.filter(is_studying=True).order_by(
                 F('last_studied_at').asc(nulls_last=True),
-                'created_at'
+                'created_at',
+                'id',
             )
         elif mode == 'reviewing':
             queryset = queryset.filter(is_reviewing=True).order_by(
                 F('last_reviewed_at').asc(nulls_last=True),
-                'created_at'
+                'created_at',
+                'id',
             )
 
         category = self.request.query_params.get('category')

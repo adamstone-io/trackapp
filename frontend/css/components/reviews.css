@@ -247,3 +247,11 @@
   margin: 0 auto;
   border-radius: 8px;
 }
+
+.review-list-sentinel {
+  width: 100%;
+  height: 1px;
+  opacity: 0;
+  pointer-events: none;
+}
+
