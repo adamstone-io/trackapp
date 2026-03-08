@@ -96,3 +96,15 @@
 .icon-btn .icon {
   fill: currentColor;
 }
+
+@media (max-width: 480px) {
+  .btn {
+    padding: 0.5rem 0.875rem;
+    font-size: 0.875rem;
+  }
+
+  .btn--small {
+    padding: 0.375rem 0.75rem;
+    font-size: 0.813rem;
+  }
+}

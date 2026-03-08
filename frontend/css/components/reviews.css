@@ -183,6 +183,13 @@
   .review-header__top {
     width: 100%;
   }
+
+  .category-input-wrapper input,
+  .form-group input,
+  .form-group textarea,
+  .review-item__notes-textarea {
+    font-size: 1rem;
+  }
 }
 
 .review-item__actions {
