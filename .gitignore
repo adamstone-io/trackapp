@@ -6,6 +6,7 @@ data/
 **/*.py[cod]
 **/*.sqlite3
 .env.*
+.env
 **/.DS_Store
 data/db-backups
 folder structure/
