@@ -33,6 +33,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   const timerDispose = createTimerController({
     onEntryAdded: async () => {
       await entriesController.refresh();
+      prefillStartTime();
     },
     countdownController,
   });
@@ -87,6 +88,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   momentController = createMomentController({
     onMomentsChanged: async () => {
       await entriesController.refresh();
+      prefillStartTime();
     },
   });
 
@@ -97,6 +99,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   const manualEntryController = createManualEntryController({
     onEntryAdded: async () => {
       await entriesController.refresh();
+      prefillStartTime();
     },
   });
 
@@ -145,6 +148,8 @@ document.addEventListener("DOMContentLoaded", async () => {
   if (qaeStartInput && qaeStartBtn) bindClockToggle(qaeStartInput, qaeStartBtn);
   if (qaeEndInput && qaeEndBtn) bindClockToggle(qaeEndInput, qaeEndBtn);
 
+  let endTimeUpdateInterval = null;
+
   function toTimeValue(isoString) {
     const d = new Date(isoString);
     const hh = String(d.getHours()).padStart(2, "0");
@@ -162,23 +167,55 @@ document.addEventListener("DOMContentLoaded", async () => {
     return `${String(Math.floor(total / 60) % 24).padStart(2, "0")}:${String(total % 60).padStart(2, "0")}`;
   }
 
-  async function prefillStartTime() {
-    if (!qaeStartInput) return;
-    try {
-      const todayData = await loadTodayEntries();
-      const lastEntry = todayData.find((item) => item.type === "time_entry");
-      qaeStartInput.value = lastEntry?.data?.ended_at
-        ? addMinutes(toTimeValue(lastEntry.data.ended_at), 1)
-        : nowTimeValue();
-    } catch {
-      qaeStartInput.value = nowTimeValue();
+  function getQuickAddStartTimeValue() {
+    const lastEntryEnd = entriesController?.getLastTimeEntry?.()?.endedAt || null;
+    const lastMomentTs = entriesController?.getLastMoment?.()?.timestamp || null;
+
+    const candidates = [lastEntryEnd, lastMomentTs]
+      .filter(Boolean)
+      .map((value) => new Date(value))
+      .filter((date) => !Number.isNaN(date.getTime()));
+
+    if (!candidates.length) {
+      return nowTimeValue();
     }
-    if (qaeEndInput) {
-      qaeEndInput.value = addMinutes(qaeStartInput.value, 10);
-    }
+
+    const latest = candidates.reduce((max, date) => (date > max ? date : max));
+    return toTimeValue(latest.toISOString());
   }
 
+  function prefillStartTime() {
+    if (!qaeStartInput) return;
+
+    qaeStartInput.value = getQuickAddStartTimeValue();
+
+    // Clear any existing interval before setting up a new one
+    if (endTimeUpdateInterval) {
+      clearInterval(endTimeUpdateInterval);
+    }
+
+    // Update end time immediately to current time
+    if (qaeEndInput) {
+      qaeEndInput.value = nowTimeValue();
+    }
+
+    // Then update every second to keep it current
+    endTimeUpdateInterval = setInterval(() => {
+      if (qaeEndInput) {
+        qaeEndInput.value = nowTimeValue();
+      }
+    }, 1000);
+  }
+
+  // Run immediately for responsiveness, then run again after entries load
+  // so start time can use latest entry end / latest moment.
   void prefillStartTime();
+  entriesController
+    ?.refresh?.()
+    .then(() => {
+      prefillStartTime();
+    })
+    .catch(() => {});
 
   function qaeShowError(msg) {
     if (!qaeError) return;
@@ -217,6 +254,12 @@ document.addEventListener("DOMContentLoaded", async () => {
       });
       qaeTaskInput.value = "";
       qaeEndInput.value = "";
+
+      if (endTimeUpdateInterval) {
+        clearInterval(endTimeUpdateInterval);
+        endTimeUpdateInterval = null;
+      }
+
       void prefillStartTime();
     } catch (err) {
       qaeShowError(err.message || "Failed to add entry.");
@@ -261,6 +304,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   }
 
   createMainTimeEntryWindowController({
+    entriesController,
     onManualEntrySaved: async (manualEntry) => {
       await manualEntryController.addManualEntry(manualEntry);
     },

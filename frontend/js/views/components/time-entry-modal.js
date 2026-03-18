@@ -15,6 +15,7 @@ export function createTimeEntryModal({ onSave } = {}) {
 
   let editingId = null;
   let editingTaskId = null;
+  let endTimeUpdateInterval = null;
 
   function toLocalDateTimeValue(date) {
     const pad = (n) => String(n).padStart(2, "0");
@@ -162,21 +163,44 @@ export function createTimeEntryModal({ onSave } = {}) {
     if (titleInput) titleInput.focus();
   }
 
-  async function openCreate() {
+  async function openCreate(lastEntry = null) {
     ensureCreated();
 
     editingId = null;
     editingTaskId = null;
     if (headingEl) headingEl.textContent = "Add time entry";
 
+    // Clear any existing interval before setting up a new one
+    if (endTimeUpdateInterval) {
+      clearInterval(endTimeUpdateInterval);
+      endTimeUpdateInterval = null;
+    }
+
     const now = new Date();
-    const thirtyMinAgo = new Date(now.getTime() - 30 * 60 * 1000);
+    let startTime = null;
+
+    // If a last entry is provided and has endedAt, use that as the start time
+    if (lastEntry?.endedAt) {
+      startTime = new Date(lastEntry.endedAt);
+    } else {
+      // Fallback: 30 min ago
+      startTime = new Date(now.getTime() - 30 * 60 * 1000);
+    }
 
     titleInput.value = "";
     await populateProjects(null);
-    startInput.value = toLocalDateTimeValue(thirtyMinAgo);
+    startInput.value = toLocalDateTimeValue(startTime);
+    
+    // Update end time immediately to current time
     endInput.value = toLocalDateTimeValue(now);
     categorySelect.value = "Other";
+
+    // Set up interval to update end time every second
+    endTimeUpdateInterval = setInterval(() => {
+      const currentNow = new Date();
+      endInput.value = toLocalDateTimeValue(currentNow);
+    }, 1000); // Update every second
+
     openBase();
   }
 
@@ -203,6 +227,12 @@ export function createTimeEntryModal({ onSave } = {}) {
 
   function close() {
     if (!backdrop || !root) return;
+
+    // Clear the end time update interval when closing
+    if (endTimeUpdateInterval) {
+      clearInterval(endTimeUpdateInterval);
+      endTimeUpdateInterval = null;
+    }
 
     backdrop.classList.add("hidden");
     root.classList.add("hidden");
@@ -263,6 +293,12 @@ export function createTimeEntryModal({ onSave } = {}) {
 
   function dispose() {
     document.removeEventListener("keydown", handleEscape);
+
+    // Clear interval on dispose
+    if (endTimeUpdateInterval) {
+      clearInterval(endTimeUpdateInterval);
+      endTimeUpdateInterval = null;
+    }
 
     if (backdrop) backdrop.remove();
     if (root) root.remove();

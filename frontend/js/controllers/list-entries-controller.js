@@ -19,6 +19,9 @@ import { TaskNameManager } from "../utils/task-name-manager.js";
 export function createEntriesController() {
   let cachedTasks = [];
   let cachedMoments = [];
+  let lastTimeEntry = null;
+  let lastMoment = null;
+  
   loadTasks()
     .then((t) => {
       cachedTasks = t;
@@ -290,6 +293,10 @@ export function createEntriesController() {
       // Attach menus
       attachEntryMenus(entriesWithProject);
       attachMomentMenus(moments);
+
+      // Cache latest items for quick-add defaults
+      lastTimeEntry = entriesWithProject.length > 0 ? entriesWithProject[0] : null;
+      lastMoment = moments.length > 0 ? moments[0] : null;
 
       cachedMoments = moments;
       loadTasks()
@@ -701,6 +708,8 @@ export function createEntriesController() {
     setMomentEditor: (handler) => {
       onEditMoment = typeof handler === "function" ? handler : null;
     },
+    getLastTimeEntry: () => lastTimeEntry,
+    getLastMoment: () => lastMoment,
     dispose: () => {
       disposeMenus();
       disposeMomentMenus();

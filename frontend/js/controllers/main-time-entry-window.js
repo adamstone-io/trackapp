@@ -13,7 +13,7 @@ function setTimerDefaultMode(mode) {
 }
 
 export function createMainTimeEntryWindowController(options = {}) {
-  const { onManualEntrySaved, onAddMoment, onDefaultModeChanged } = options;
+  const { entriesController, onManualEntrySaved, onAddMoment, onDefaultModeChanged } = options;
 
   const menuButton = document.getElementById("timer-menu-btn");
   let menu = null;
@@ -39,7 +39,14 @@ export function createMainTimeEntryWindowController(options = {}) {
     const items = [
       {
         label: "Add manual time entry",
-        onSelect: () => manualEntryModal.open(),
+        onSelect: () => {
+          const lastEntry = entriesController?.getLastTimeEntry?.() || null;
+          // Convert entry format to modal format
+          const lastEntryForModal = lastEntry ? {
+            endedAt: lastEntry.endedAt,
+          } : null;
+          manualEntryModal.openCreate(lastEntryForModal);
+        },
       },
     ];
 
