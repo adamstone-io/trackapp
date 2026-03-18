@@ -3,6 +3,7 @@ from rest_framework import permissions, status, viewsets
 from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework.views import APIView
+from django.conf import settings
 from django.utils import timezone
 from datetime import timedelta, timezone as dt_timezone
 from django.db.models import Count, Q, F
@@ -45,11 +46,18 @@ class RegisterView(APIView):
     def post(self, request):
         username = (request.data.get("username") or "").strip()
         password = request.data.get("password") or ""
+        registration_code = (request.data.get("registration_code") or "").strip()
 
         if not username or not password:
             return Response(
                 {"detail": "Username and password are required."},
                 status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        if registration_code != settings.REGISTRATION_CODE:
+            return Response(
+                {"detail": "Invalid registration code."},
+                status=status.HTTP_403_FORBIDDEN,
             )
 
         if User.objects.filter(username=username).exists():

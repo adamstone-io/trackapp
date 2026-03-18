@@ -4,6 +4,7 @@ import { TimeEntry } from "../domain/time-entry.js";
 import { Task } from "../domain/task.js";
 import { Project } from "../domain/project.js";
 import { StudyItem } from "../domain/study-item.js";
+import { scheduleSessionExpiry } from "../api/authApi.js";
 
 const STORAGE_KEYS = {
   moments: "moments",
@@ -61,6 +62,8 @@ export function setAuthTokens({ access, refresh } = {}) {
   if (refresh) {
     localStorage.setItem(AUTH_KEYS.refresh, refresh);
   }
+
+  scheduleSessionExpiry();
 }
 
 export function clearAuthTokens() {
@@ -141,6 +144,7 @@ async function requestUrl(url, options = {}, config = {}) {
     }
     clearAuthTokens();
     redirectToLogin();
+    throw new Error("Authentication required");
   }
 
   if (!response.ok) {
@@ -209,7 +213,10 @@ export async function getCurrentUser() {
 
 export async function ensureAuthenticated() {
   if (isLoginPage()) return true;
-  if (getAccessToken()) return true;
+  if (getAccessToken()) {
+    scheduleSessionExpiry();
+    return true;
+  }
   const refreshed = await refreshAccessToken();
   if (!refreshed) {
     redirectToLogin();

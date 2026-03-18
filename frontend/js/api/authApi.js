@@ -39,12 +39,15 @@ export function setAuthTokens({ access, refresh } = {}) {
   if (refresh) {
     localStorage.setItem(AUTH_KEYS.refresh, refresh);
   }
+
+  scheduleSessionExpiry();
 }
 
 export function clearAuthTokens() {
   localStorage.removeItem(AUTH_KEYS.access);
   localStorage.removeItem(AUTH_KEYS.refresh);
   localStorage.removeItem(AUTH_KEYS.username);
+  cancelSessionExpiry();
 }
 
 export function getUsername() {
@@ -65,6 +68,46 @@ function redirectToLogin() {
   if (isLoginPage()) return;
   const next = encodeURIComponent(window.location.pathname.split("/").pop());
   window.location.href = `${LOGIN_PAGE}?next=${next}`;
+}
+
+// ========== SESSION EXPIRY TIMER ==========
+
+let _sessionExpiryTimer = null;
+
+export function scheduleSessionExpiry() {
+  if (_sessionExpiryTimer) {
+    clearTimeout(_sessionExpiryTimer);
+    _sessionExpiryTimer = null;
+  }
+
+  const refresh = getRefreshToken();
+  if (!refresh || isLoginPage()) return;
+
+  try {
+    const payload = JSON.parse(atob(refresh.split(".")[1]));
+    const msUntilExpiry = payload.exp * 1000 - Date.now();
+
+    if (msUntilExpiry <= 0) {
+      clearAuthTokens();
+      redirectToLogin();
+      return;
+    }
+
+    _sessionExpiryTimer = setTimeout(() => {
+      clearAuthTokens();
+      redirectToLogin();
+    }, msUntilExpiry);
+  } catch (e) {
+    // ignore JWT decode errors
+  }
+
+}
+
+export function cancelSessionExpiry() {
+  if (_sessionExpiryTimer) {
+    clearTimeout(_sessionExpiryTimer);
+    _sessionExpiryTimer = null;
+  }
 }
 
 // ========== REFRESH TOKEN ==========
@@ -156,12 +199,16 @@ export async function authRequest(path, options = {}, config = {}) {
 
 // ========== AUTH ENDPOINTS ==========
 
-export async function registerUser({ username, password }) {
+export async function registerUser({ username, password, registrationCode }) {
   return authRequest(
     "/auth/register/",
     {
       method: "POST",
-      body: JSON.stringify({ username, password }),
+      body: JSON.stringify({
+        username,
+        password,
+        registration_code: registrationCode,
+      }),
     },
     { skipAuth: true, retry: false },
   );
@@ -197,7 +244,11 @@ export async function getCurrentUser() {
 
 export async function ensureAuthenticated() {
   if (isLoginPage()) return true;
-  if (getAccessToken()) return true;
+
+  if (getAccessToken()) {
+    scheduleSessionExpiry();
+    return true;
+  }
 
   const refreshed = await refreshAccessToken();
   if (!refreshed) {

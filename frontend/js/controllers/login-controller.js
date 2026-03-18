@@ -4,6 +4,8 @@ export function createLoginController() {
   const form = document.getElementById("auth-form");
   const usernameInput = document.getElementById("auth-username");
   const passwordInput = document.getElementById("auth-password");
+  const registrationCodeInput = document.getElementById("auth-registration-code");
+  const registrationCodeGroup = document.getElementById("auth-registration-code-group");
   const submitBtn = document.getElementById("auth-submit");
   const toggleBtn = document.getElementById("auth-toggle");
   const messageEl = document.getElementById("auth-message");
@@ -20,16 +22,29 @@ export function createLoginController() {
     mode = nextMode;
     if (mode === "login") {
       submitBtn.textContent = "Log In";
+      if (registrationCodeGroup) {
+        registrationCodeGroup.classList.add("hidden");
+      }
+      if (registrationCodeInput) {
+        registrationCodeInput.required = false;
+        registrationCodeInput.value = "";
+      }
       if (toggleBtn) {
         toggleBtn.textContent = "Need an account? Register";
       }
       setMessage("Log in to access your data.");
     } else {
       submitBtn.textContent = "Register";
+      if (registrationCodeGroup) {
+        registrationCodeGroup.classList.remove("hidden");
+      }
+      if (registrationCodeInput) {
+        registrationCodeInput.required = true;
+      }
       if (toggleBtn) {
         toggleBtn.textContent = "Have an account? Log In";
       }
-      setMessage("Create a new account to get started.");
+      setMessage("Enter the registration code to create an account.");
     }
   }
 
@@ -44,16 +59,21 @@ export function createLoginController() {
     event.preventDefault();
     const username = usernameInput.value.trim();
     const password = passwordInput.value;
+    const registrationCode = registrationCodeInput?.value.trim();
 
     if (!username || !password) {
       setMessage("Enter both username and password.");
+      return;
+    }
+    if (mode === "register" && !registrationCode) {
+      setMessage("Registration code is required.");
       return;
     }
 
     submitBtn.disabled = true;
     try {
       if (mode === "register") {
-        await registerUser({ username, password });
+        await registerUser({ username, password, registrationCode });
       }
       await loginUser({ username, password });
       window.location.href = getNextPath();

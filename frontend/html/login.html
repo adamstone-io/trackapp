@@ -35,6 +35,16 @@
             />
           </div>
 
+          <div id="auth-registration-code-group" class="form-group hidden">
+            <label for="auth-registration-code">Registration code</label>
+            <input
+              id="auth-registration-code"
+              name="registration-code"
+              type="text"
+              autocomplete="one-time-code"
+            />
+          </div>
+
           <button
             id="auth-submit"
             type="submit"
@@ -42,6 +52,15 @@
             style="width: 100%"
           >
             Log In
+          </button>
+
+          <button
+            id="auth-toggle"
+            type="button"
+            class="btn btn--ghost"
+            style="width: 100%"
+          >
+            Need an account? Register
           </button>
         </form>
       </div>
