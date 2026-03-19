@@ -3,93 +3,128 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>TempoTrack</title>
+    <title>TempoTrack — Time Tracking, Habits & Study</title>
     <link rel="stylesheet" href="../css/main.css" />
-    <style>
-      .home__title {
-        font-size: 2.5rem;
-        font-weight: 700;
-        color: var(--color-text);
-        margin: 0 0 0.5rem;
-        letter-spacing: 1px;
-      }
-
-      .home__subtitle {
-        font-size: 1.125rem;
-        color: var(--color-text-muted);
-        margin: 0 0 2.5rem;
-        max-width: 28rem;
-        line-height: 1.5;
-      }
-
-      .home__greeting {
-        font-size: 1.25rem;
-        color: var(--color-text-light);
-        margin: 0 0 2rem;
-      }
-
-      .home__actions {
-        display: flex;
-        gap: 1rem;
-        flex-wrap: wrap;
-        justify-content: center;
-      }
-
-      .home__actions .btn {
-        min-width: 10rem;
-      }
-    </style>
   </head>
   <body>
-    <div class="container">
-      <main class="auth-page" style="text-align: center">
-        <div>
-          <h1 class="home__title">TEMPO TRACK</h1>
-          <p class="home__subtitle">
-            Track your time, build habits, and study efficiently.
-          </p>
 
-          <!-- Shown when logged out -->
-          <div id="logged-out" class="hidden">
-            <div class="home__actions">
-              <a href="login.html" class="btn btn--primary">Log In</a>
+    <!-- Nav -->
+    <header class="landing-nav">
+      <div class="landing-nav__inner">
+        <span class="landing-nav__logo">TEMPO TRACK</span>
+        <div class="landing-nav__actions" id="nav-logged-out">
+          <a href="login.html" class="btn btn--outline btn--small">Log In</a>
+        </div>
+        <div class="landing-nav__actions hidden" id="nav-logged-in">
+          <a href="timer.html" class="btn btn--primary btn--small">Go to App</a>
+        </div>
+      </div>
+    </header>
+
+    <!-- Logged-out view -->
+    <div id="view-logged-out">
+
+      <!-- Hero -->
+      <section class="landing-hero">
+        <h1 class="landing-hero__title">
+          Track time.<br>Build habits.<br>Learn better.
+        </h1>
+        <p class="landing-hero__sub">
+          TempoTrack brings together time tracking, habit building, and a study system — in one focused tool built for people who take their work seriously.
+        </p>
+        <div class="landing-hero__actions">
+          <a href="login.html?mode=register" class="btn btn--primary btn--lg">Start Free Trial</a>
+          <a href="#pricing" class="btn btn--outline btn--lg">See Pricing</a>
+        </div>
+      </section>
+
+      <!-- Features -->
+      <div class="landing-features">
+        <div class="landing-features__inner">
+          <h2 class="landing-section-title">Everything in one place</h2>
+          <p class="landing-section-sub">No more switching between apps to stay on top of your work.</p>
+          <div class="landing-features__grid">
+            <div class="landing-feature-card">
+              <div class="landing-feature-card__icon">⏱</div>
+              <h3>Time Tracking</h3>
+              <p>Stopwatch and countdown timer with automatic session logging and daily entry review.</p>
             </div>
-          </div>
-
-          <!-- Shown when logged in -->
-          <div id="logged-in" class="hidden">
-            <p class="home__greeting">
-              Welcome back, <strong id="home-username"></strong>
-            </p>
-            <div class="home__actions">
-              <a href="timer.html" class="btn btn--primary">Go to Timer</a>
-              <button id="logout-btn" class="btn btn--outline" type="button">
-                Log Out
-              </button>
+            <div class="landing-feature-card">
+              <div class="landing-feature-card__icon">✅</div>
+              <h3>Habit Tracking</h3>
+              <p>Build streaks, log completions, and track your consistency day by day.</p>
+            </div>
+            <div class="landing-feature-card">
+              <div class="landing-feature-card__icon">📚</div>
+              <h3>Study System</h3>
+              <p>Prime new ideas, review what you've learned, and track study sessions over time.</p>
+            </div>
+            <div class="landing-feature-card">
+              <div class="landing-feature-card__icon">📊</div>
+              <h3>Stats & Reviews</h3>
+              <p>Weekly reviews, daily stats, and moment logging to keep you reflective and intentional.</p>
             </div>
           </div>
         </div>
-      </main>
+      </div>
+
+      <!-- Pricing -->
+      <section class="landing-pricing" id="pricing">
+        <h2 class="landing-section-title">Simple pricing</h2>
+        <p class="landing-section-sub">Try everything free for 7 days. No credit card required.</p>
+        <div class="landing-pricing__card">
+          <div class="landing-pricing__badge">7-day free trial</div>
+          <div class="landing-pricing__price">
+            <span class="landing-pricing__amount">$9.99</span>
+            <span class="landing-pricing__period">/ month</span>
+          </div>
+          <ul class="landing-pricing__features">
+            <li>✓&nbsp; Unlimited time entries</li>
+            <li>✓&nbsp; Habit tracking</li>
+            <li>✓&nbsp; Study & review system</li>
+            <li>✓&nbsp; Stats & workspace</li>
+            <li>✓&nbsp; Moment logging</li>
+          </ul>
+          <a href="login.html?mode=register" class="btn btn--primary btn--block landing-pricing__cta">
+            Start Free Trial
+          </a>
+          <p class="landing-pricing__note">No credit card required during trial</p>
+        </div>
+      </section>
+
     </div>
+
+    <!-- Logged-in view -->
+    <div id="view-logged-in" class="hidden">
+      <section class="landing-welcome">
+        <h1 class="landing-welcome__title">Welcome back, <span id="home-username"></span></h1>
+        <p class="landing-welcome__sub">Pick up where you left off.</p>
+        <div class="landing-welcome__actions">
+          <a href="timer.html" class="btn btn--primary btn--lg">Go to Timer</a>
+          <button id="logout-btn" class="btn btn--outline btn--lg" type="button">Log Out</button>
+        </div>
+      </section>
+    </div>
+
+    <footer class="landing-footer">
+      <p>© 2026 TempoTrack</p>
+    </footer>
 
     <script>
       (function () {
         var token = localStorage.getItem("authAccessToken");
         var username = localStorage.getItem("authUsername");
 
-        var loggedInEl = document.getElementById("logged-in");
-        var loggedOutEl = document.getElementById("logged-out");
-        var usernameEl = document.getElementById("home-username");
-        var logoutBtn = document.getElementById("logout-btn");
-
         if (token) {
-          loggedInEl.classList.remove("hidden");
-          usernameEl.textContent = username || "User";
-        } else {
-          loggedOutEl.classList.remove("hidden");
+          document.getElementById("view-logged-out").classList.add("hidden");
+          document.getElementById("view-logged-in").classList.remove("hidden");
+          document.getElementById("nav-logged-out").classList.add("hidden");
+          document.getElementById("nav-logged-in").classList.remove("hidden");
+          var el = document.getElementById("home-username");
+          if (el) el.textContent = username || "there";
         }
 
-        logoutBtn.addEventListener("click", function () {
+        document.getElementById("logout-btn").addEventListener("click", function () {
           localStorage.removeItem("authAccessToken");
           localStorage.removeItem("authRefreshToken");
           localStorage.removeItem("authUsername");

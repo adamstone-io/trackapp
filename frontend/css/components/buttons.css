@@ -67,6 +67,15 @@
   font-size: 0.875rem;
 }
 
+.btn--lg {
+  padding: 0.875rem 2rem;
+  font-size: 1rem;
+}
+
+.btn--block {
+  width: 100%;
+}
+
 /* Icon button (minimal, for menu dots etc.) */
 .icon-btn {
   background: transparent;

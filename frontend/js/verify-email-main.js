@@ -10,7 +10,7 @@ async function init() {
   if (!token) {
     titleEl.textContent = "Invalid Link";
     messageEl.textContent = "No verification token found. Please use the link from your email.";
-    actionsEl.style.display = "block";
+    actionsEl.classList.remove("hidden");
     return;
   }
 
@@ -25,7 +25,7 @@ async function init() {
         ? "This link is invalid or has already been used."
         : "Something went wrong. Please try again or request a new link.";
   } finally {
-    actionsEl.style.display = "block";
+    actionsEl.classList.remove("hidden");
   }
 }
 

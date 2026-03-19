@@ -9,6 +9,7 @@ export function createLoginController() {
   const submitBtn = document.getElementById("auth-submit");
   const toggleBtn = document.getElementById("auth-toggle");
   const messageEl = document.getElementById("auth-message");
+  const titleEl = document.getElementById("auth-title");
 
   let mode = "login";
   // After register success, hold the email so we can offer a resend link
@@ -48,12 +49,14 @@ export function createLoginController() {
     pendingVerificationEmail = null;
 
     if (mode === "login") {
+      if (titleEl) titleEl.textContent = "Sign in";
       submitBtn.textContent = "Log In";
       if (emailGroup) emailGroup.classList.add("hidden");
       if (emailInput) { emailInput.required = false; emailInput.value = ""; }
       if (toggleBtn) toggleBtn.textContent = "Need an account? Register";
       setMessage("Log in to access your data.");
     } else {
+      if (titleEl) titleEl.textContent = "Create account";
       submitBtn.textContent = "Create Account";
       if (emailGroup) emailGroup.classList.remove("hidden");
       if (emailInput) emailInput.required = true;
@@ -140,7 +143,10 @@ export function createLoginController() {
     updateMode(mode === "login" ? "register" : "login");
   }
 
-  updateMode("login");
+  const initialMode = new URLSearchParams(window.location.search).get("mode") === "register"
+    ? "register"
+    : "login";
+  updateMode(initialMode);
   form.addEventListener("submit", handleSubmit);
   if (toggleBtn) toggleBtn.addEventListener("click", handleToggle);
 
