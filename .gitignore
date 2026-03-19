@@ -13,6 +13,5 @@ data/db-backups
 folder structure/
 backups
 frontend/config.js
-README.md
 backend/media
 backend/convert_study_items.py

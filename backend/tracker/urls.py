@@ -10,11 +10,13 @@ from .views import (
     MomentViewSet,
     ProjectViewSet,
     RegisterView,
+    ResendVerificationView,
     StatsView,
     StudyItemViewSet,
     TaskViewSet,
     TimeEntryViewSet,
     TodayEntriesView,
+    VerifyEmailView,
 )
 
 router = DefaultRouter()
@@ -28,6 +30,8 @@ router.register(r"study-items", StudyItemViewSet)
 urlpatterns = [
     path("api/", include(router.urls)),
     path("api/auth/register/", RegisterView.as_view(), name="auth-register"),
+    path("api/auth/verify-email/", VerifyEmailView.as_view(), name="auth-verify-email"),
+    path("api/auth/resend-verification/", ResendVerificationView.as_view(), name="auth-resend-verification"),
     path("api/auth/user/", CurrentUserView.as_view(), name="current-user"),
     path("api/auth/token/", CustomTokenObtainPairView.as_view(), name="token-obtain"),
     path("api/auth/token/refresh/", TokenRefreshView.as_view(), name="token-refresh"),

@@ -199,16 +199,31 @@ export async function authRequest(path, options = {}, config = {}) {
 
 // ========== AUTH ENDPOINTS ==========
 
-export async function registerUser({ username, password, registrationCode }) {
+export async function registerUser({ username, email, password }) {
   return authRequest(
     "/auth/register/",
     {
       method: "POST",
-      body: JSON.stringify({
-        username,
-        password,
-        registration_code: registrationCode,
-      }),
+      body: JSON.stringify({ username, email, password }),
+    },
+    { skipAuth: true, retry: false },
+  );
+}
+
+export async function verifyEmail(token) {
+  return authRequest(
+    `/auth/verify-email/?token=${encodeURIComponent(token)}`,
+    { method: "GET" },
+    { skipAuth: true, retry: false },
+  );
+}
+
+export async function resendVerification(email) {
+  return authRequest(
+    "/auth/resend-verification/",
+    {
+      method: "POST",
+      body: JSON.stringify({ email }),
     },
     { skipAuth: true, retry: false },
   );

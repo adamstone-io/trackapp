@@ -6,6 +6,25 @@ from datetime import timedelta
 from uuid import uuid4
 import os
 
+class EmailVerification(models.Model):
+    """Tracks email verification state for a user account.
+
+    Created on registration; the user's account stays inactive until
+    is_verified is set to True via the verify-email endpoint.
+    """
+    user = models.OneToOneField(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name='email_verification',
+    )
+    token = models.UUIDField(default=uuid4, unique=True)
+    is_verified = models.BooleanField(default=False)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"EmailVerification({self.user.email}, verified={self.is_verified})"
+
+
 class Project(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid4, editable=False)
     user = models.ForeignKey(

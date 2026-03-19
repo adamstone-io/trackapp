@@ -9,8 +9,13 @@ from datetime import timedelta, timezone as dt_timezone
 from django.db.models import Count, Q, F
 from rest_framework.parsers import JSONParser, MultiPartParser, FormParser
 
+from django.core.validators import validate_email
+from django.core.exceptions import ValidationError as DjangoValidationError
+
+from .emails import send_verification_email
 from .models import (
     ActiveTimer,
+    EmailVerification,
     Habit,
     Moment,
     Project,
@@ -45,32 +50,123 @@ class RegisterView(APIView):
 
     def post(self, request):
         username = (request.data.get("username") or "").strip()
+        email = (request.data.get("email") or "").strip().lower()
         password = request.data.get("password") or ""
-        registration_code = (request.data.get("registration_code") or "").strip()
 
-        if not username or not password:
+        if not username or not email or not password:
             return Response(
-                {"detail": "Username and password are required."},
+                {"detail": "Username, email, and password are required."},
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
-        if registration_code != settings.REGISTRATION_CODE:
+        try:
+            validate_email(email)
+        except DjangoValidationError:
             return Response(
-                {"detail": "Invalid registration code."},
-                status=status.HTTP_403_FORBIDDEN,
+                {"detail": "Enter a valid email address."},
+                status=status.HTTP_400_BAD_REQUEST,
             )
 
         if User.objects.filter(username=username).exists():
             return Response(
-                {"detail": "Username already exists."},
+                {"detail": "Username already taken."},
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
-        user = User.objects.create_user(username=username, password=password)
+        if User.objects.filter(email=email).exists():
+            return Response(
+                {"detail": "An account with that email already exists."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        # Create inactive user; activated once email is verified
+        user = User.objects.create_user(
+            username=username, email=email, password=password, is_active=False
+        )
+        verification = EmailVerification.objects.create(user=user)
+
+        try:
+            send_verification_email(user, verification.token)
+        except Exception:
+            # Don't fail registration if email delivery errors; user can resend
+            pass
+
         return Response(
-            {"id": user.id, "username": user.username},
+            {"detail": "Account created. Check your email to verify your account."},
             status=status.HTTP_201_CREATED,
         )
+
+
+class VerifyEmailView(APIView):
+    permission_classes = [permissions.AllowAny]
+
+    def get(self, request):
+        token = request.query_params.get("token", "").strip()
+        if not token:
+            return Response(
+                {"detail": "Token is required."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        try:
+            verification = EmailVerification.objects.select_related("user").get(token=token)
+        except EmailVerification.DoesNotExist:
+            return Response(
+                {"detail": "Invalid or expired verification link."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        if verification.is_verified:
+            return Response({"detail": "Email already verified. You can log in."})
+
+        verification.is_verified = True
+        verification.save(update_fields=["is_verified"])
+        verification.user.is_active = True
+        verification.user.save(update_fields=["is_active"])
+
+        return Response({"detail": "Email verified. You can now log in."})
+
+
+class ResendVerificationView(APIView):
+    permission_classes = [permissions.AllowAny]
+
+    def post(self, request):
+        email = (request.data.get("email") or "").strip().lower()
+        if not email:
+            return Response(
+                {"detail": "Email is required."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        # Generic response to avoid exposing account existence
+        generic_ok = Response(
+            {"detail": "If that email is registered and unverified, we've sent a new link."}
+        )
+
+        try:
+            user = User.objects.get(email=email)
+        except User.DoesNotExist:
+            return generic_ok
+
+        try:
+            verification = user.email_verification
+        except EmailVerification.DoesNotExist:
+            return generic_ok
+
+        if verification.is_verified:
+            return generic_ok
+
+        # Rotate token on each resend for security
+        from uuid import uuid4
+        verification.token = uuid4()
+        verification.save(update_fields=["token"])
+
+        try:
+            send_verification_email(user, verification.token)
+        except Exception:
+            pass
+
+        return generic_ok
 
 
 class CurrentUserView(APIView):
