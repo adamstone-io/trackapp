@@ -6,6 +6,7 @@ import { ensureAuthenticated } from "./api/authApi.js";
 
 document.addEventListener("DOMContentLoaded", async () => {
   if (!(await ensureAuthenticated())) return;
+  document.body.style.visibility = '';
   // Initialize navigation
   initNavigation();
 

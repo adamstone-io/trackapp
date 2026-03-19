@@ -18,6 +18,7 @@ import { TaskNameManager } from "./utils/task-name-manager.js";
 
 document.addEventListener("DOMContentLoaded", async () => {
   if (!(await ensureAuthenticated())) return;
+  document.body.style.visibility = '';
   // Initialize navigation
   initNavigation();
   SoundManager.register(

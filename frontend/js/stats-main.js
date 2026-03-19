@@ -5,6 +5,7 @@ import { ensureAuthenticated } from "./data/storage.js";
 
 document.addEventListener("DOMContentLoaded", async () => {
   if (!(await ensureAuthenticated())) return;
+  document.body.style.visibility = '';
   // Initialize navigation
   initNavigation();
 
