@@ -16,6 +16,7 @@ export function createTimeEntryModal({ onSave } = {}) {
   let editingId = null;
   let editingTaskId = null;
   let endTimeUpdateInterval = null;
+  let endTimeManuallyEdited = false;
 
   function toLocalDateTimeValue(date) {
     const pad = (n) => String(n).padStart(2, "0");
@@ -128,6 +129,9 @@ export function createTimeEntryModal({ onSave } = {}) {
     cancelBtn.addEventListener("click", close);
     saveBtn.addEventListener("click", handleSave);
     backdrop.addEventListener("click", close);
+    endInput.addEventListener("input", () => {
+      endTimeManuallyEdited = true;
+    });
     document.addEventListener("keydown", handleEscape);
   }
 
@@ -168,6 +172,7 @@ export function createTimeEntryModal({ onSave } = {}) {
 
     editingId = null;
     editingTaskId = null;
+    endTimeManuallyEdited = false;
     if (headingEl) headingEl.textContent = "Add time entry";
 
     // Clear any existing interval before setting up a new one
@@ -197,8 +202,13 @@ export function createTimeEntryModal({ onSave } = {}) {
 
     // Set up interval to update end time every second
     endTimeUpdateInterval = setInterval(() => {
-      const currentNow = new Date();
-      endInput.value = toLocalDateTimeValue(currentNow);
+      const active = document.activeElement;
+      const userEditingTimeFields =
+        active === startInput || active === endInput;
+      if (!userEditingTimeFields && !endTimeManuallyEdited) {
+        const currentNow = new Date();
+        endInput.value = toLocalDateTimeValue(currentNow);
+      }
     }, 1000); // Update every second
 
     openBase();
@@ -209,6 +219,7 @@ export function createTimeEntryModal({ onSave } = {}) {
 
     editingId = entry.id;
     editingTaskId = entry.taskId ?? entry.task ?? null;
+    endTimeManuallyEdited = false;
     if (headingEl) headingEl.textContent = "Edit time entry";
 
     // supports taskTitle (frontend), task_title (API), or older title
@@ -245,6 +256,7 @@ export function createTimeEntryModal({ onSave } = {}) {
     if (categorySelect) categorySelect.value = "Other";
     editingId = null;
     editingTaskId = null;
+    endTimeManuallyEdited = false;
   }
 
   function handleSave() {
@@ -312,6 +324,7 @@ export function createTimeEntryModal({ onSave } = {}) {
     endInput = null;
     editingId = null;
     editingTaskId = null;
+    endTimeManuallyEdited = false;
   }
 
   return {

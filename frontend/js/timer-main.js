@@ -150,6 +150,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   if (qaeEndInput && qaeEndBtn) bindClockToggle(qaeEndInput, qaeEndBtn);
 
   let endTimeUpdateInterval = null;
+  let qaeEndTimeManuallyEdited = false;
 
   function toTimeValue(isoString) {
     const d = new Date(isoString);
@@ -187,6 +188,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   function prefillStartTime() {
     if (!qaeStartInput) return;
+    qaeEndTimeManuallyEdited = false;
 
     qaeStartInput.value = getQuickAddStartTimeValue();
 
@@ -203,10 +205,19 @@ document.addEventListener("DOMContentLoaded", async () => {
     // Then update every second to keep it current
     endTimeUpdateInterval = setInterval(() => {
       if (qaeEndInput) {
-        qaeEndInput.value = nowTimeValue();
+        const active = document.activeElement;
+        const userEditingQuickAddTime =
+          active === qaeStartInput || active === qaeEndInput;
+        if (!userEditingQuickAddTime && !qaeEndTimeManuallyEdited) {
+          qaeEndInput.value = nowTimeValue();
+        }
       }
     }, 1000);
   }
+
+  qaeEndInput?.addEventListener("input", () => {
+    qaeEndTimeManuallyEdited = true;
+  });
 
   // Run immediately for responsiveness, then run again after entries load
   // so start time can use latest entry end / latest moment.
@@ -260,6 +271,7 @@ document.addEventListener("DOMContentLoaded", async () => {
         clearInterval(endTimeUpdateInterval);
         endTimeUpdateInterval = null;
       }
+      qaeEndTimeManuallyEdited = false;
 
       void prefillStartTime();
     } catch (err) {
