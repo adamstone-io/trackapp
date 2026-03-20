@@ -199,12 +199,17 @@ export async function authRequest(path, options = {}, config = {}) {
 
 // ========== AUTH ENDPOINTS ==========
 
-export async function registerUser({ username, email, password }) {
+export async function registerUser({ username, email, password, registrationCode }) {
   return authRequest(
     "/auth/register/",
     {
       method: "POST",
-      body: JSON.stringify({ username, email, password }),
+      body: JSON.stringify({
+        username,
+        email,
+        password,
+        registration_code: registrationCode,
+      }),
     },
     { skipAuth: true, retry: false },
   );

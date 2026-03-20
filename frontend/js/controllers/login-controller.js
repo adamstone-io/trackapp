@@ -6,6 +6,8 @@ export function createLoginController() {
   const passwordInput = document.getElementById("auth-password");
   const emailInput = document.getElementById("auth-email");
   const emailGroup = document.getElementById("auth-email-group");
+  const registrationCodeInput = document.getElementById("auth-registration-code");
+  const registrationCodeGroup = document.getElementById("auth-registration-code-group");
   const submitBtn = document.getElementById("auth-submit");
   const toggleBtn = document.getElementById("auth-toggle");
   const messageEl = document.getElementById("auth-message");
@@ -53,6 +55,11 @@ export function createLoginController() {
       submitBtn.textContent = "Log In";
       if (emailGroup) emailGroup.classList.add("hidden");
       if (emailInput) { emailInput.required = false; emailInput.value = ""; }
+      if (registrationCodeGroup) registrationCodeGroup.classList.add("hidden");
+      if (registrationCodeInput) {
+        registrationCodeInput.required = false;
+        registrationCodeInput.value = "";
+      }
       if (toggleBtn) toggleBtn.textContent = "Need an account? Register";
       setMessage("Log in to access your data.");
     } else {
@@ -60,8 +67,10 @@ export function createLoginController() {
       submitBtn.textContent = "Create Account";
       if (emailGroup) emailGroup.classList.remove("hidden");
       if (emailInput) emailInput.required = true;
+      if (registrationCodeGroup) registrationCodeGroup.classList.remove("hidden");
+      if (registrationCodeInput) registrationCodeInput.required = true;
       if (toggleBtn) toggleBtn.textContent = "Have an account? Log In";
-      setMessage("Create a free account to get started.");
+      setMessage("Enter the registration code to create an account.");
     }
   }
 
@@ -76,6 +85,7 @@ export function createLoginController() {
     const username = usernameInput.value.trim();
     const password = passwordInput.value;
     const email = emailInput?.value.trim() || "";
+    const registrationCode = registrationCodeInput?.value.trim() || "";
 
     if (!username || !password) {
       setMessage("Enter your username and password.", { isError: true });
@@ -85,11 +95,15 @@ export function createLoginController() {
       setMessage("Email is required.", { isError: true });
       return;
     }
+    if (mode === "register" && !registrationCode) {
+      setMessage("Registration code is required.", { isError: true });
+      return;
+    }
 
     submitBtn.disabled = true;
     try {
       if (mode === "register") {
-        await registerUser({ username, email, password });
+        await registerUser({ username, email, password, registrationCode });
         // Don't auto-login — user must verify email first
         pendingVerificationEmail = email;
         setMessage(`Account created! Check ${email} for a verification link.`);

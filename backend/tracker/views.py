@@ -52,11 +52,18 @@ class RegisterView(APIView):
         username = (request.data.get("username") or "").strip()
         email = (request.data.get("email") or "").strip().lower()
         password = request.data.get("password") or ""
+        registration_code = (request.data.get("registration_code") or "").strip()
 
         if not username or not email or not password:
             return Response(
                 {"detail": "Username, email, and password are required."},
                 status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        if registration_code != settings.REGISTRATION_CODE:
+            return Response(
+                {"detail": "Invalid registration code."},
+                status=status.HTTP_403_FORBIDDEN,
             )
 
         try:
