@@ -25,6 +25,34 @@ class EmailVerification(models.Model):
         return f"EmailVerification({self.user.email}, verified={self.is_verified})"
 
 
+class UserSubscription(models.Model):
+    """Billing / trial state per user. Stripe fields reserved for later."""
+
+    user = models.OneToOneField(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="subscription",
+    )
+    # Existing accounts before trials: full access without a clock
+    is_grandfathered = models.BooleanField(default=False)
+    # Set when user verifies email; 7-day trial from that moment
+    trial_ends_at = models.DateTimeField(null=True, blank=True)
+    is_subscribed = models.BooleanField(default=False)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def has_app_access(self) -> bool:
+        if self.is_subscribed or self.is_grandfathered:
+            return True
+        if self.trial_ends_at is None:
+            # Registered but not verified yet — inactive user; treat as no app access
+            return False
+        return timezone.now() <= self.trial_ends_at
+
+    def __str__(self):
+        return f"UserSubscription({self.user_id}, trial_ends={self.trial_ends_at})"
+
+
 class Project(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid4, editable=False)
     user = models.ForeignKey(

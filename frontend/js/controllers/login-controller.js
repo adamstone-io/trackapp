@@ -1,4 +1,10 @@
-import { loginUser, registerUser, resendVerification } from "../api/authApi.js";
+import {
+  loginUser,
+  registerUser,
+  resendVerification,
+  getCurrentUser,
+} from "../api/authApi.js";
+import { redirectToTrialExpired } from "../utils/trial.js";
 
 export function createLoginController() {
   const form = document.getElementById("auth-form");
@@ -125,6 +131,17 @@ export function createLoginController() {
       }
 
       await loginUser({ username, password });
+      try {
+        const me = await getCurrentUser();
+        const sub = me?.subscription;
+        if (sub && !sub.has_app_access) {
+          redirectToTrialExpired();
+          return;
+        }
+      } catch (e) {
+        if (e?.message === "trial_expired") return;
+        // Network or other errors — still enter app; trial is enforced on API calls
+      }
       window.location.href = getNextPath();
     } catch (error) {
       const msg = error.message || "Authentication failed.";

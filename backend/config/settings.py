@@ -30,6 +30,7 @@ ALLOWED_HOSTS = os.getenv(
     "localhost,127.0.0.1"
 ).split(",")
 REGISTRATION_CODE = os.getenv("REGISTRATION_CODE", "4595")
+TRIAL_DAYS = int(os.getenv("TRIAL_DAYS", "7"))
 
 # Application definition
 

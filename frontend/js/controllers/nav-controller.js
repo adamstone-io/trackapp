@@ -5,6 +5,7 @@
  * Handles mobile menu toggle and accessibility
  */
 import { clearAuthTokens, getAccessToken, getUsername } from "../data/storage.js";
+import { getCurrentUser } from "../api/authApi.js";
 import { createDropdownMenu } from "../views/components/dropdown-menu.js";
 
 export function initNavigation() {
@@ -148,6 +149,29 @@ export function initNavigation() {
   });
 
   addUserMenu();
+
+  void (async () => {
+    if (!getAccessToken()) return;
+    try {
+      const me = await getCurrentUser();
+      const sub = me?.subscription;
+      if (!sub || sub.is_grandfathered || sub.is_subscribed) return;
+      const d = sub.trial_days_remaining;
+      if (d == null || d <= 0) return;
+      if (document.getElementById("trial-banner")) return;
+      const bar = document.createElement("div");
+      bar.id = "trial-banner";
+      bar.className = "trial-banner";
+      bar.setAttribute("role", "status");
+      const label = d === 1 ? "1 day left" : `${d} days left`;
+      bar.innerHTML = `<span class="trial-banner__text">Free trial: <strong>${label}</strong>. <a class="trial-banner__link" href="index.html#pricing">View plans</a></span>`;
+      const header = document.querySelector("header");
+      if (header) header.insertBefore(bar, header.firstChild);
+      else document.body.insertAdjacentElement("afterbegin", bar);
+    } catch {
+      /* ignore */
+    }
+  })();
 
   // Close menu when clicking outside
   document.addEventListener("click", handleClickOutside);

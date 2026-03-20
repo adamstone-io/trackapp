@@ -5,6 +5,7 @@ import { Task } from "../domain/task.js";
 import { Project } from "../domain/project.js";
 import { StudyItem } from "../domain/study-item.js";
 import { scheduleSessionExpiry } from "../api/authApi.js";
+import { handleTrialExpiredBody } from "../utils/trial.js";
 
 const STORAGE_KEYS = {
   moments: "moments",
@@ -145,6 +146,14 @@ async function requestUrl(url, options = {}, config = {}) {
     clearAuthTokens();
     redirectToLogin();
     throw new Error("Authentication required");
+  }
+
+  if (response.status === 403) {
+    const text = await response.text();
+    if (handleTrialExpiredBody(text)) {
+      throw new Error("trial_expired");
+    }
+    throw new Error(`API 403: ${text}`);
   }
 
   if (!response.ok) {

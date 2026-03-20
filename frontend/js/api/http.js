@@ -1,4 +1,5 @@
 import { clearAuthTokens, refreshAccessToken } from "./authApi.js";
+import { handleTrialExpiredBody } from "../utils/trial.js";
 
 const LOGIN_PAGE = "login.html";
 
@@ -40,6 +41,14 @@ export async function http(
     clearAuthTokens();
     redirectToLogin();
     throw new Error("Authentication required");
+  }
+
+  if (response.status === 403) {
+    const errorText = await response.text();
+    if (handleTrialExpiredBody(errorText)) {
+      throw new Error("trial_expired");
+    }
+    throw new Error(`API 403: ${errorText}`);
   }
 
   if (!response.ok) {

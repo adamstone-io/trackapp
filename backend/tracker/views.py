@@ -6,6 +6,7 @@ from rest_framework.views import APIView
 from django.conf import settings
 from django.utils import timezone
 from datetime import timedelta, timezone as dt_timezone
+from math import ceil
 from django.db.models import Count, Q, F
 from rest_framework.parsers import JSONParser, MultiPartParser, FormParser
 
@@ -22,7 +23,9 @@ from .models import (
     StudyItem,
     Task,
     TimeEntry,
+    UserSubscription,
 )
+from .permissions import HasAppAccess
 from .serializers import (
     ActiveTimerSerializer,
     HabitSerializer,
@@ -35,8 +38,34 @@ from .serializers import (
 )
 
 
+def _subscription_payload(user):
+    try:
+        sub = user.subscription
+    except UserSubscription.DoesNotExist:
+        return {
+            "is_grandfathered": True,
+            "is_subscribed": False,
+            "trial_ends_at": None,
+            "trial_days_remaining": None,
+            "has_app_access": True,
+        }
+
+    trial_days_remaining = None
+    if sub.trial_ends_at and not sub.is_grandfathered and not sub.is_subscribed:
+        delta = sub.trial_ends_at - timezone.now()
+        trial_days_remaining = max(0, ceil(delta.total_seconds() / 86400))
+
+    return {
+        "is_grandfathered": sub.is_grandfathered,
+        "is_subscribed": sub.is_subscribed,
+        "trial_ends_at": sub.trial_ends_at.isoformat() if sub.trial_ends_at else None,
+        "trial_days_remaining": trial_days_remaining,
+        "has_app_access": sub.has_app_access(),
+    }
+
+
 class UserOwnedViewSet(viewsets.ModelViewSet):
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [permissions.IsAuthenticated, HasAppAccess]
 
     def get_queryset(self):
         return self.queryset.filter(user=self.request.user)
@@ -91,6 +120,14 @@ class RegisterView(APIView):
             username=username, email=email, password=password, is_active=False
         )
         verification = EmailVerification.objects.create(user=user)
+        UserSubscription.objects.get_or_create(
+            user=user,
+            defaults={
+                "is_grandfathered": False,
+                "trial_ends_at": None,
+                "is_subscribed": False,
+            },
+        )
 
         try:
             send_verification_email(user, verification.token)
@@ -130,6 +167,18 @@ class VerifyEmailView(APIView):
         verification.save(update_fields=["is_verified"])
         verification.user.is_active = True
         verification.user.save(update_fields=["is_active"])
+
+        sub, _ = UserSubscription.objects.get_or_create(
+            user=verification.user,
+            defaults={
+                "is_grandfathered": False,
+                "trial_ends_at": None,
+                "is_subscribed": False,
+            },
+        )
+        if not sub.is_grandfathered and sub.trial_ends_at is None:
+            sub.trial_ends_at = timezone.now() + timedelta(days=settings.TRIAL_DAYS)
+            sub.save(update_fields=["trial_ends_at", "updated_at"])
 
         return Response({"detail": "Email verified. You can now log in."})
 
@@ -181,7 +230,11 @@ class CurrentUserView(APIView):
 
     def get(self, request):
         return Response(
-            {"id": request.user.id, "username": request.user.username},
+            {
+                "id": request.user.id,
+                "username": request.user.username,
+                "subscription": _subscription_payload(request.user),
+            },
             status=status.HTTP_200_OK,
         )
 
@@ -489,7 +542,7 @@ class TodayEntriesView(APIView):
     Accepts optional 'X-User-Timezone' header with IANA timezone (e.g., 'Australia/Brisbane')
     to calculate "today" in the user's local timezone.
     """
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [permissions.IsAuthenticated, HasAppAccess]
 
     def get(self, request):
         user_timezone = request.headers.get('X-User-Timezone', 'UTC')
@@ -600,7 +653,7 @@ class StatsView(APIView):
     Accepts optional 'X-User-Timezone' header with IANA timezone (e.g., 'Australia/Brisbane')
     to calculate time periods in the user's local timezone.
     """
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [permissions.IsAuthenticated, HasAppAccess]
 
     def get(self, request):
         user_timezone = request.headers.get('X-User-Timezone', 'UTC')
@@ -768,7 +821,7 @@ class ActiveTimerView(APIView):
     PATCH  /api/active-timer/  — update fields (pause / resume)
     DELETE /api/active-timer/  — clear the active timer (timer stopped)
     """
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [permissions.IsAuthenticated, HasAppAccess]
 
     def get(self, request):
         try:

@@ -6,6 +6,7 @@
 // ========== CONSTANTS ==========
 
 import { API_BASE, API_TIMEOUT } from "./config.js";
+import { handleTrialExpiredBody } from "../utils/trial.js";
 
 const LOGIN_PAGE = `login.html`;
 
@@ -187,6 +188,14 @@ export async function authRequest(path, options = {}, config = {}) {
     clearAuthTokens();
     redirectToLogin();
     throw new Error("Authentication required");
+  }
+
+  if (response.status === 403) {
+    const text = await response.text();
+    if (handleTrialExpiredBody(text)) {
+      throw new Error("trial_expired");
+    }
+    throw new Error(`API 403: ${text}`);
   }
 
   if (!response.ok) {
