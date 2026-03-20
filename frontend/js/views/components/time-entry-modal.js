@@ -44,6 +44,20 @@ export function createTimeEntryModal({ onSave } = {}) {
     return new Date(y, m - 1, d, hh, mm, 0, 0);
   }
 
+  function getApiErrorMessage(error, fallback) {
+    const raw = error?.message || "";
+    const jsonStart = raw.indexOf("{");
+    if (jsonStart >= 0) {
+      try {
+        const payload = JSON.parse(raw.slice(jsonStart));
+        const first = Object.values(payload || {})[0];
+        if (Array.isArray(first) && first[0]) return String(first[0]);
+        if (typeof first === "string") return first;
+      } catch {}
+    }
+    return raw || fallback;
+  }
+
   function ensureCreated() {
     if (root) return;
 
@@ -259,7 +273,7 @@ export function createTimeEntryModal({ onSave } = {}) {
     endTimeManuallyEdited = false;
   }
 
-  function handleSave() {
+  async function handleSave() {
     if (!titleInput || !projectSelect || !startInput || !endInput) return;
 
     const taskTitle = titleInput.value.trim();
@@ -284,15 +298,22 @@ export function createTimeEntryModal({ onSave } = {}) {
     const projectId = projectSelect.value || null;
 
     if (typeof onSave === "function") {
-      onSave({
-        id: editingId, // null => create, string => update
-        taskId: editingTaskId,
-        taskTitle,
-        projectId,
-        startedAt: startDate.toISOString(),
-        endedAt: endDate.toISOString(),
-        category: categorySelect.value || "Other",
-      });
+      try {
+        await Promise.resolve(
+          onSave({
+            id: editingId, // null => create, string => update
+            taskId: editingTaskId,
+            taskTitle,
+            projectId,
+            startedAt: startDate.toISOString(),
+            endedAt: endDate.toISOString(),
+            category: categorySelect.value || "Other",
+          }),
+        );
+      } catch (error) {
+        alert(getApiErrorMessage(error, "Could not save time entry."));
+        return;
+      }
     }
 
     resetForm();

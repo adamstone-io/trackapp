@@ -39,6 +39,38 @@ class ActiveTimerSerializer(serializers.ModelSerializer):
 
 
 class TimeEntrySerializer(serializers.ModelSerializer):
+    def validate(self, data):
+        started_at = data.get("started_at")
+        ended_at = data.get("ended_at")
+
+        # For partial updates, fall back to existing instance values.
+        if self.instance is not None:
+            if started_at is None:
+                started_at = self.instance.started_at
+            if ended_at is None:
+                ended_at = self.instance.ended_at
+
+        if started_at and timezone.is_naive(started_at):
+            started_at = timezone.make_aware(started_at, timezone.get_current_timezone())
+        if ended_at and timezone.is_naive(ended_at):
+            ended_at = timezone.make_aware(ended_at, timezone.get_current_timezone())
+
+        now = timezone.now()
+        if started_at and started_at > now:
+            raise serializers.ValidationError(
+                {"started_at": "Cannot add or edit a time entry in the future."}
+            )
+        if ended_at and ended_at > now:
+            raise serializers.ValidationError(
+                {"ended_at": "Cannot add or edit a time entry in the future."}
+            )
+        if started_at and ended_at and ended_at <= started_at:
+            raise serializers.ValidationError(
+                {"ended_at": "End time must be after start time."}
+            )
+
+        return data
+
     class Meta:
         model = TimeEntry
         fields = "__all__"

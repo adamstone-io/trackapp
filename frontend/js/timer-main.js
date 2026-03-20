@@ -236,6 +236,20 @@ document.addEventListener("DOMContentLoaded", async () => {
     setTimeout(() => qaeError.classList.add("hidden"), 3000);
   }
 
+  function getApiErrorMessage(error, fallback) {
+    const raw = error?.message || "";
+    const jsonStart = raw.indexOf("{");
+    if (jsonStart >= 0) {
+      try {
+        const payload = JSON.parse(raw.slice(jsonStart));
+        const first = Object.values(payload || {})[0];
+        if (Array.isArray(first) && first[0]) return String(first[0]);
+        if (typeof first === "string") return first;
+      } catch {}
+    }
+    return raw || fallback;
+  }
+
   qaeAddBtn?.addEventListener("click", async () => {
     const title = qaeTaskInput?.value.trim();
     const startVal = qaeStartInput?.value;
@@ -275,7 +289,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 
       void prefillStartTime();
     } catch (err) {
-      qaeShowError(err.message || "Failed to add entry.");
+      qaeShowError(getApiErrorMessage(err, "Failed to add entry."));
     } finally {
       qaeAddBtn.disabled = false;
     }

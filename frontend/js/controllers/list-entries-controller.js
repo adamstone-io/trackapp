@@ -17,6 +17,20 @@ import { Task } from "../domain/task.js";
 import { TaskNameManager } from "../utils/task-name-manager.js";
 
 export function createEntriesController() {
+  function getApiErrorMessage(error, fallback) {
+    const raw = error?.message || "";
+    const jsonStart = raw.indexOf("{");
+    if (jsonStart >= 0) {
+      try {
+        const payload = JSON.parse(raw.slice(jsonStart));
+        const first = Object.values(payload || {})[0];
+        if (Array.isArray(first) && first[0]) return String(first[0]);
+        if (typeof first === "string") return first;
+      } catch {}
+    }
+    return raw || fallback;
+  }
+
   let cachedTasks = [];
   let cachedMoments = [];
   let lastTimeEntry = null;
@@ -672,7 +686,8 @@ export function createEntriesController() {
             durationSeconds: duration,
           });
           await refresh();
-        } catch {
+        } catch (error) {
+          alert(getApiErrorMessage(error, "Could not update time entry."));
           await refresh();
         }
       }, 100);
