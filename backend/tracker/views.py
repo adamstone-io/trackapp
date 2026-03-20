@@ -26,6 +26,7 @@ from .models import (
     UserSubscription,
 )
 from .permissions import HasAppAccess
+from .subscription_utils import ensure_user_subscription
 from .serializers import (
     ActiveTimerSerializer,
     HabitSerializer,
@@ -39,16 +40,7 @@ from .serializers import (
 
 
 def _subscription_payload(user):
-    try:
-        sub = user.subscription
-    except UserSubscription.DoesNotExist:
-        return {
-            "is_grandfathered": True,
-            "is_subscribed": False,
-            "trial_ends_at": None,
-            "trial_days_remaining": None,
-            "has_app_access": True,
-        }
+    sub = ensure_user_subscription(user)
 
     trial_days_remaining = None
     if sub.trial_ends_at and not sub.is_grandfathered and not sub.is_subscribed:
@@ -168,17 +160,7 @@ class VerifyEmailView(APIView):
         verification.user.is_active = True
         verification.user.save(update_fields=["is_active"])
 
-        sub, _ = UserSubscription.objects.get_or_create(
-            user=verification.user,
-            defaults={
-                "is_grandfathered": False,
-                "trial_ends_at": None,
-                "is_subscribed": False,
-            },
-        )
-        if not sub.is_grandfathered and sub.trial_ends_at is None:
-            sub.trial_ends_at = timezone.now() + timedelta(days=settings.TRIAL_DAYS)
-            sub.save(update_fields=["trial_ends_at", "updated_at"])
+        ensure_user_subscription(verification.user)
 
         return Response({"detail": "Email verified. You can now log in."})
 

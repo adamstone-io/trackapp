@@ -1,7 +1,7 @@
 from rest_framework import permissions
 from rest_framework.exceptions import APIException
 
-from .models import UserSubscription
+from .subscription_utils import ensure_user_subscription
 
 
 class TrialExpired(APIException):
@@ -18,10 +18,7 @@ class HasAppAccess(permissions.BasePermission):
         if not user.is_authenticated:
             return True
 
-        try:
-            sub = user.subscription
-        except UserSubscription.DoesNotExist:
-            return True
+        sub = ensure_user_subscription(user)
 
         if sub.has_app_access():
             return True
