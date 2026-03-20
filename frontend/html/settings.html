@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Settings | TempoTrack</title>
+    <link rel="stylesheet" href="../css/main.css" />
+  </head>
+  <body style="visibility: hidden">
+    <header>
+      <nav class="nav">
+        <div class="nav__content">
+          <h1 class="nav__title">TEMPO TRACK</h1>
+        </div>
+
+        <ul class="nav__links">
+          <li class="nav__item"><a class="nav__link" href="habits.html">Habits</a></li>
+          <li class="nav__item"><a class="nav__link" href="timer.html">Time</a></li>
+          <li class="nav__item"><a class="nav__link" href="workspace.html">Workspace</a></li>
+          <li class="nav__item"><a class="nav__link" href="stats.html">Stats</a></li>
+          <li class="nav__item"><a class="nav__link" href="priming.html">Priming</a></li>
+          <li class="nav__item"><a class="nav__link" href="study.html">Study</a></li>
+          <li class="nav__item"><a class="nav__link" href="reviews.html">Reviews</a></li>
+          <li class="nav__item nav__user-menu" id="nav-user-menu">
+            <button class="nav__link nav__user-btn" id="nav-user-btn" type="button">
+              <span id="nav-user-name">&nbsp;</span>
+              <svg class="nav__user-arrow" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <polyline points="6 9 12 15 18 9"></polyline>
+              </svg>
+            </button>
+          </li>
+        </ul>
+      </nav>
+      <script>
+        (function() {
+          var u = localStorage.getItem("authUsername");
+          if (u) {
+            var nameEl = document.getElementById("nav-user-name");
+            if (nameEl) nameEl.textContent = u;
+          }
+        })();
+      </script>
+    </header>
+
+    <div class="container">
+      <main class="settings-page">
+        <section class="settings-card">
+          <h2 class="settings-title">Settings</h2>
+          <p id="settings-message" class="settings-message"></p>
+
+          <form id="settings-form" class="form-stack">
+            <div class="form-group">
+              <label for="settings-username">Username</label>
+              <input id="settings-username" type="text" disabled />
+              <small class="settings-help">Username cannot be changed.</small>
+            </div>
+
+            <div class="form-group">
+              <label for="settings-email">Email</label>
+              <input id="settings-email" type="email" autocomplete="email" required />
+            </div>
+
+            <button id="settings-save" class="btn btn--primary" type="submit">
+              Save changes
+            </button>
+          </form>
+        </section>
+
+        <section class="settings-card">
+          <h3 class="settings-section-title">Trial</h3>
+          <div class="settings-kv">
+            <span class="settings-kv__label">Status</span>
+            <span id="settings-trial-status" class="settings-kv__value">Loading...</span>
+          </div>
+          <div class="settings-kv">
+            <span class="settings-kv__label">Ends</span>
+            <span id="settings-trial-ends" class="settings-kv__value">—</span>
+          </div>
+        </section>
+
+        <section class="settings-card settings-card--danger">
+          <h3 class="settings-section-title">Delete account</h3>
+          <p class="settings-help">This permanently deletes your account and data.</p>
+          <button id="settings-delete-account" class="btn btn--outline" type="button">
+            Delete account
+          </button>
+        </section>
+      </main>
+    </div>
+
+    <script src="../js/utils/config-bootstrap.js"></script>
+    <script type="module" src="../js/settings-main.js"></script>
+  </body>
+</html>

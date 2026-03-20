@@ -215,10 +215,60 @@ class CurrentUserView(APIView):
             {
                 "id": request.user.id,
                 "username": request.user.username,
+                "email": request.user.email,
                 "subscription": _subscription_payload(request.user),
             },
             status=status.HTTP_200_OK,
         )
+
+    def patch(self, request):
+        if "username" in request.data:
+            requested_username = (request.data.get("username") or "").strip()
+            if requested_username and requested_username != request.user.username:
+                return Response(
+                    {"detail": "Username cannot be changed."},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+
+        email = (request.data.get("email") or "").strip().lower()
+        if not email:
+            return Response(
+                {"detail": "Email is required."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        try:
+            validate_email(email)
+        except DjangoValidationError:
+            return Response(
+                {"detail": "Enter a valid email address."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        email_owner = User.objects.filter(email=email).exclude(pk=request.user.pk).exists()
+        if email_owner:
+            return Response(
+                {"detail": "An account with that email already exists."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        if request.user.email != email:
+            request.user.email = email
+            request.user.save(update_fields=["email"])
+
+        return Response(
+            {
+                "id": request.user.id,
+                "username": request.user.username,
+                "email": request.user.email,
+                "subscription": _subscription_payload(request.user),
+            },
+            status=status.HTTP_200_OK,
+        )
+
+    def delete(self, request):
+        request.user.delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)
 
 
 class ProjectViewSet(UserOwnedViewSet):

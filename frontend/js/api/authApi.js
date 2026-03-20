@@ -271,6 +271,20 @@ export async function getCurrentUser() {
   return authRequest("/auth/user/");
 }
 
+export async function updateCurrentUser({ email, username } = {}) {
+  return authRequest("/auth/user/", {
+    method: "PATCH",
+    body: JSON.stringify({
+      ...(email !== undefined ? { email } : {}),
+      ...(username !== undefined ? { username } : {}),
+    }),
+  });
+}
+
+export async function deleteCurrentUser() {
+  return authRequest("/auth/user/", { method: "DELETE" });
+}
+
 export async function ensureAuthenticated() {
   if (isLoginPage()) return true;
 

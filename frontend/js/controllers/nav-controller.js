@@ -63,8 +63,7 @@ export function initNavigation() {
       {
         label: "Settings",
         onSelect: () => {
-          // Settings page to be implemented
-          console.log("Settings clicked");
+          window.location.href = "settings.html";
         },
       },
       {
