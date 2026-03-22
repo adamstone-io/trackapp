@@ -654,6 +654,9 @@ class TodayEntriesView(APIView):
                 'id': str(entry.id),
                 'data': entry_data,
                 'sort_time': entry.started_at.isoformat(),
+                '_sort_primary': entry.started_at,
+                '_sort_secondary': entry.ended_at or entry.started_at,
+                '_sort_type_priority': 1,  # Keep entries above moments when start times tie.
             })
 
         for moment in moments:
@@ -662,10 +665,26 @@ class TodayEntriesView(APIView):
                 'id': str(moment.id),
                 'data': MomentSerializer(moment).data,
                 'sort_time': moment.timestamp.isoformat(),
+                '_sort_primary': moment.timestamp,
+                '_sort_secondary': moment.timestamp,
+                '_sort_type_priority': 0,
             })
 
-        # Sort by sort_time descending (latest on top)
-        combined.sort(key=lambda x: x['sort_time'], reverse=True)
+        # Sort latest on top by start/timestamp, then by effective end, then by type.
+        # This keeps a time entry above a moment when they share the same start time.
+        combined.sort(
+            key=lambda x: (
+                x['_sort_primary'],
+                x['_sort_secondary'],
+                x['_sort_type_priority'],
+            ),
+            reverse=True,
+        )
+
+        for item in combined:
+            item.pop('_sort_primary', None)
+            item.pop('_sort_secondary', None)
+            item.pop('_sort_type_priority', None)
 
         return combined
 
