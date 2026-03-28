@@ -3,6 +3,7 @@ import { EntriesView } from "../views/list-entries-view.js";
 import {
   loadTodayEntries,
   loadTasks,
+  loadMoments,
   loadProjects,
   updateTimeEntry,
   updateMoment,
@@ -36,11 +37,22 @@ export function createEntriesController() {
   let lastTimeEntry = null;
   let lastMoment = null;
   
-  loadTasks()
-    .then((t) => {
-      cachedTasks = t;
-    })
-    .catch(() => {});
+  function refreshSuggestionCaches() {
+    loadTasks()
+      .then((t) => {
+        cachedTasks = t;
+      })
+      .catch(() => {});
+
+    // Keep moment suggestions global (all historical moments), not day-scoped.
+    loadMoments()
+      .then((m) => {
+        cachedMoments = m;
+      })
+      .catch(() => {});
+  }
+
+  refreshSuggestionCaches();
 
   const modal = createTimeEntryModal({
     onSave: async (payload) => {
@@ -312,12 +324,7 @@ export function createEntriesController() {
       lastTimeEntry = entriesWithProject.length > 0 ? entriesWithProject[0] : null;
       lastMoment = moments.length > 0 ? moments[0] : null;
 
-      cachedMoments = moments;
-      loadTasks()
-        .then((t) => {
-          cachedTasks = t;
-        })
-        .catch(() => {});
+      refreshSuggestionCaches();
     } catch (error) {
       console.error("Failed to refresh entries:", error);
       // Optionally show error in UI
@@ -411,6 +418,8 @@ export function createEntriesController() {
 
     const taskManager = new TaskNameManager(input, dropdown, {
       onSelect: () => input.blur(),
+      includeTasks: false,
+      includeMoments: true,
     });
     taskManager.setTasks(cachedTasks);
     taskManager.setMoments(cachedMoments);
@@ -537,6 +546,8 @@ export function createEntriesController() {
 
     const taskManager = new TaskNameManager(input, dropdown, {
       onSelect: () => input.blur(),
+      includeTasks: true,
+      includeMoments: false,
     });
     taskManager.setTasks(cachedTasks);
     taskManager.setMoments(cachedMoments);

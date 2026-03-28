@@ -127,7 +127,10 @@ export function createTimerController({ onEntryAdded, countdownController = null
   const taskNameDropdown = document.getElementById("task-name-dropdown");
   const taskNameManager =
     taskNameInput && taskNameDropdown
-      ? new TaskNameManager(taskNameInput, taskNameDropdown)
+      ? new TaskNameManager(taskNameInput, taskNameDropdown, {
+          includeTasks: true,
+          includeMoments: false,
+        })
       : null;
 
   loadTasks()

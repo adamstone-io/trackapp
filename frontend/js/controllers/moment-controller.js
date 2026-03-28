@@ -54,7 +54,10 @@ export function createMomentController({
     if (!input || !dropdown) return;
 
     descriptionManager?.dispose();
-    descriptionManager = new TaskNameManager(input, dropdown);
+    descriptionManager = new TaskNameManager(input, dropdown, {
+      includeTasks: false,
+      includeMoments: true,
+    });
 
     Promise.all([loadTasks().catch(() => []), loadMoments().catch(() => [])])
       .then(([tasks, moments]) => {

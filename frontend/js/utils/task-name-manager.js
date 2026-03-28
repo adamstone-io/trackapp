@@ -4,15 +4,22 @@
  * as the user types.
  */
 export class TaskNameManager {
-  constructor(inputElement, dropdownElement, { onSelect } = {}) {
+  constructor(
+    inputElement,
+    dropdownElement,
+    { onSelect, includeTasks = true, includeMoments = true } = {},
+  ) {
     this.input = inputElement;
     this.dropdown = dropdownElement;
     this.tasks = []; // [{ title, entryCount }]
     this.selectedIndex = -1;
     this._onSelect = typeof onSelect === "function" ? onSelect : null;
+    this._includeTasks = Boolean(includeTasks);
+    this._includeMoments = Boolean(includeMoments);
+    this._untitledValues = new Set(["untitled", "untitled task"]);
 
     this._onInputBound = () => this._handleInput();
-    this._onFocusBound = () => this._handleInput();
+    this._onFocusBound = () => this._handleFocus();
     this._onKeydownBound = (e) => this._handleKeydown(e);
     this._onDocClickBound = (e) => this._handleDocClick(e);
 
@@ -40,26 +47,31 @@ export class TaskNameManager {
     this._rebuild();
   }
 
+  _addSuggestion(seen, rawTitle, weight = 1) {
+    const title = (rawTitle || "").trim();
+    if (!title) return;
+    const key = title.toLowerCase();
+    const existing = seen.get(key) ?? { title, entryCount: 0 };
+    existing.entryCount += weight;
+    seen.set(key, existing);
+  }
+
   _rebuild() {
     const seen = new Map();
 
-    for (const t of (this._rawTasks ?? [])) {
-      const title = (t.title || "").trim();
-      if (!title) continue;
-      const count = Number(t.entry_count ?? 0);
-      const key = title.toLowerCase();
-      const existing = seen.get(key) ?? { title, entryCount: 0 };
-      existing.entryCount += Number.isFinite(count) ? count : 0;
-      seen.set(key, existing);
+    if (this._includeTasks) {
+      for (const t of (this._rawTasks ?? [])) {
+        const count = Number(t.entry_count ?? 0);
+        this._addSuggestion(seen, t.title, Number.isFinite(count) ? count : 0);
+      }
     }
 
-    for (const m of (this._rawMoments ?? [])) {
-      const title = (m.description || "").trim();
-      if (!title) continue;
-      const key = title.toLowerCase();
-      const existing = seen.get(key) ?? { title, entryCount: 0 };
-      existing.entryCount += 1;
-      seen.set(key, existing);
+    if (this._includeMoments) {
+      for (const m of (this._rawMoments ?? [])) {
+        // Moments contribute their own title/description history only.
+        this._addSuggestion(seen, m.description, 1);
+        this._addSuggestion(seen, m.title, 1);
+      }
     }
 
     this.tasks = [...seen.values()].sort((a, b) => b.entryCount - a.entryCount);
@@ -81,6 +93,14 @@ export class TaskNameManager {
     if (this._justSelected) return;
     this.selectedIndex = -1;
     this._renderDropdown(this.input.value);
+  }
+
+  _handleFocus() {
+    const current = (this.input.value || "").trim().toLowerCase();
+    if (this._untitledValues.has(current)) {
+      this.input.value = "";
+    }
+    this._handleInput();
   }
 
   _handleKeydown(e) {

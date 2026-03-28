@@ -3,7 +3,6 @@ from rest_framework.exceptions import APIException
 
 from .subscription_utils import ensure_user_subscription
 
-
 class TrialExpired(APIException):
     status_code = 403
     default_detail = "Your free trial has ended. Subscribe to keep using TempoTrack."

@@ -113,7 +113,10 @@ document.addEventListener("DOMContentLoaded", async () => {
   const qaeError = document.getElementById("qae-error");
 
   const qaeTaskManager = qaeTaskInput && qaeTaskDropdown
-    ? new TaskNameManager(qaeTaskInput, qaeTaskDropdown)
+    ? new TaskNameManager(qaeTaskInput, qaeTaskDropdown, {
+        includeTasks: true,
+        includeMoments: false,
+      })
     : null;
 
   loadTasks()
