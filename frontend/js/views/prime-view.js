@@ -160,13 +160,6 @@ export class PrimeView {
                   )}</span>`
                 : ""
             }
-            ${
-              item.notes
-                ? `<p class="prime-item__description">${this.escapeHtml(
-                    item.notes,
-                  )}</p>`
-                : ""
-            }
           </div>
           <button
             id="menu-prime-${item.id}"
