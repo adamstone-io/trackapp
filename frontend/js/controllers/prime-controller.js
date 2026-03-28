@@ -25,6 +25,8 @@ import {
   removeNoteImage,
 } from "../api/studyItemApi.js";
 
+import { parseStudyItemMarkdown } from "../utils/study-item-markdown-import.js";
+
 let studyItems = [];
 
 export function createPrimeController() {
@@ -418,6 +420,67 @@ export function createPrimeController() {
 
   // ---------- HEADER MENU ----------
 
+  let importMarkdownFileInput = null;
+
+  async function importPrimeItemsFromMarkdownFile(file) {
+    const text = await file.text();
+    const { category, items } = parseStudyItemMarkdown(text);
+
+    if (!items.length) {
+      alert("No study items found in that file.");
+      return;
+    }
+
+    const preview = items.slice(0, 3).map((x) => `- ${x.prompt}`).join("\n");
+    const ok = confirm(
+      `Import ${items.length} priming items?\n\nCategory: ${category || "(none)"}\n\nFirst items:\n${preview}`,
+    );
+    if (!ok) return;
+
+    let created = 0;
+    for (const item of items) {
+      await createStudyItem({
+        prompt: item.prompt,
+        notes: item.notes,
+        category: item.category,
+        is_priming: true,
+        is_studying: false,
+        is_reviewing: false,
+      });
+      created += 1;
+    }
+
+    await refreshCategories();
+    resetAndLoad();
+    alert(`Imported ${created} priming items.`);
+  }
+
+  function handleImportMarkdown() {
+    if (!importMarkdownFileInput) {
+      importMarkdownFileInput = document.createElement("input");
+      importMarkdownFileInput.type = "file";
+      importMarkdownFileInput.accept = ".md,.markdown,text/markdown";
+      importMarkdownFileInput.style.display = "none";
+      document.body.appendChild(importMarkdownFileInput);
+
+      importMarkdownFileInput.addEventListener("change", async (e) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+
+        try {
+          await importPrimeItemsFromMarkdownFile(file);
+        } catch (err) {
+          console.error("Import failed:", err);
+          alert("Import failed. Check the console for details.");
+        } finally {
+          e.target.value = "";
+        }
+      });
+    }
+
+    importMarkdownFileInput.click();
+  }
+
   const categoryFilterModal = createCategoryFilterModal({
     title: "Filter by Category",
     onFilter: (category) => {
@@ -463,6 +526,10 @@ export function createPrimeController() {
             applyQuickAddNotesVisibility(next);
             updateHeaderMenu();
           },
+        },
+        {
+          label: "Import Markdown…",
+          onSelect: () => handleImportMarkdown(),
         },
         {
           label: showArchived ? "Hide Archived" : "Show Archived",

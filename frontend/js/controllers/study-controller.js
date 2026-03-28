@@ -23,6 +23,8 @@ import {
   removeNoteImage,
 } from "../api/studyItemApi.js";
 
+import { parseStudyItemMarkdown } from "../utils/study-item-markdown-import.js";
+
 let studyItems = [];
 
 export function createStudyController() {
@@ -300,6 +302,69 @@ export function createStudyController() {
   const getArchivedLabel = () =>
     showArchived ? "Hide Archived" : "Show Archived";
 
+  let importMarkdownFileInput = null;
+
+  async function importStudyItemsFromMarkdownFile(file) {
+    const text = await file.text();
+    const { category, items } = parseStudyItemMarkdown(text);
+
+    if (!items.length) {
+      alert("No study items found in that file.");
+      return;
+    }
+
+    const preview = items.slice(0, 3).map((x) => `- ${x.prompt}`).join("\n");
+    const ok = confirm(
+      `Import ${items.length} study items?\n\nCategory: ${category || "(none)"}\n\nFirst items:\n${preview}`,
+    );
+    if (!ok) return;
+
+    let created = 0;
+    for (const item of items) {
+      await createStudyItem({
+        prompt: item.prompt,
+        notes: item.notes,
+        category: item.category,
+        is_priming: false,
+        is_studying: true,
+        is_reviewing: false,
+      });
+      created += 1;
+    }
+
+    await refreshStudyItems({ refreshCategories: true });
+    alert(`Imported ${created} study items.`);
+  }
+
+  function ensureImportMarkdownFileInput() {
+    if (importMarkdownFileInput) return;
+
+    importMarkdownFileInput = document.createElement("input");
+    importMarkdownFileInput.type = "file";
+    importMarkdownFileInput.accept = ".md,.markdown,text/markdown";
+    importMarkdownFileInput.style.display = "none";
+    document.body.appendChild(importMarkdownFileInput);
+
+    importMarkdownFileInput.addEventListener("change", async (e) => {
+      const file = e.target.files?.[0];
+      if (!file) return;
+
+      try {
+        await importStudyItemsFromMarkdownFile(file);
+      } catch (err) {
+        console.error("Import failed:", err);
+        alert("Import failed. Check the console for details.");
+      } finally {
+        e.target.value = "";
+      }
+    });
+  }
+
+  function handleImportMarkdown() {
+    ensureImportMarkdownFileInput();
+    importMarkdownFileInput.click();
+  }
+
   const categoryFilterModal = createCategoryFilterModal({
     title: "Filter by Category",
     onFilter: (category) => {
@@ -316,6 +381,8 @@ export function createStudyController() {
 
   const updateHeaderMenu = () => {
     if (headerMenu) headerMenu.dispose();
+
+    ensureImportMarkdownFileInput();
 
     const filterLabel = currentCategoryFilter
       ? `Category: ${currentCategoryFilter}`
@@ -340,6 +407,10 @@ export function createStudyController() {
             },
           }]
         : []),
+      {
+        label: "Import Markdown…",
+        onSelect: () => handleImportMarkdown(),
+      },
       { label: "New Study Item", onSelect: handleCreateNew },
       { label: getArchivedLabel(), onSelect: handleToggleArchived },
     ];
@@ -538,6 +609,7 @@ export function createStudyController() {
         onConvertToReview: handleConvertToReview,
         onConvertToPriming: handleConvertToPriming,
         onNotesUpdate: handleNotesUpdate,
+
       },
       showArchived,
       { showSentinel },
