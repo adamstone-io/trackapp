@@ -98,6 +98,7 @@ export function createStudyController() {
     const currentPinnedCategory = getPinnedCategory();
     if (currentPinnedCategory) {
       setPinnedCategory("");
+      quickAddCategoryInput.value = "";
       return;
     }
 

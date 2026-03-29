@@ -128,6 +128,7 @@ export function createPrimeController() {
     const currentPinnedCategory = getPinnedCategory();
     if (currentPinnedCategory) {
       setPinnedCategory("");
+      quickAddCategoryInput.value = "";
       return;
     }
 
