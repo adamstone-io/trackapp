@@ -131,13 +131,25 @@
             <div class="priming-header__bottom-row">
               <div class="quick-add-row">
                 <div class="category-input-wrapper">
-                  <input
-                    id="quick-add-category-input"
-                    type="text"
-                    placeholder="Category (optional)"
-                    maxlength="50"
-                    autocomplete="off"
-                  />
+                  <div class="category-input-group">
+                    <input
+                      id="quick-add-category-input"
+                      type="text"
+                      placeholder="Category (optional)"
+                      maxlength="50"
+                      autocomplete="off"
+                    />
+                    <button
+                      id="quick-add-category-pin-btn"
+                      class="category-pin-btn"
+                      type="button"
+                      aria-label="Pin category"
+                      aria-pressed="false"
+                      title="Pin category"
+                    >
+                      📌
+                    </button>
+                  </div>
                   <div
                     id="category-dropdown"
                     class="category-dropdown hidden"

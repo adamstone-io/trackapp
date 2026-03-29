@@ -2,6 +2,7 @@ export const primeIds = {
   // Quick add
   quickAddPrimeInput: "quick-add-prime-input",
   quickAddCategoryInput: "quick-add-category-input",
+  quickAddCategoryPinBtn: "quick-add-category-pin-btn",
   categoryDropdown: "category-dropdown",
   addPrimeBtn: "add-prime-btn",
 

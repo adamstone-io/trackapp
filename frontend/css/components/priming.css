@@ -302,6 +302,12 @@
   max-width: 15rem; /* 350px */
 }
 
+.category-input-group {
+  display: flex;
+  align-items: stretch;
+  gap: 0.375rem;
+}
+
 .category-input-wrapper input {
   width: 100%;
   padding: 0.625rem 0.875rem;
@@ -311,12 +317,45 @@
   background: var(--color-bg);
   color: var(--color-text);
   font-family: inherit;
-  transition: border-color 0.2s ease;
+  transition: border-color 0.2s ease, background-color 0.2s ease;
 }
 
 .category-input-wrapper input:focus {
   outline: none;
   border-color: var(--color-primary);
+}
+
+.category-pin-btn {
+  flex: 0 0 auto;
+  min-width: 2.5rem;
+  padding: 0 0.7rem;
+  border: 2px solid var(--color-border);
+  border-radius: 4px;
+  background: var(--color-bg);
+  color: var(--color-text-muted);
+  cursor: pointer;
+  transition:
+    border-color 0.2s ease,
+    background-color 0.2s ease,
+    color 0.2s ease,
+    transform 0.15s ease;
+}
+
+.category-pin-btn:hover {
+  border-color: var(--color-primary);
+  color: var(--color-primary);
+}
+
+.category-pin-btn:focus-visible {
+  outline: none;
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 3px var(--color-primary-light);
+}
+
+.category-pin-btn--active {
+  border-color: var(--color-primary);
+  background: var(--color-primary-light);
+  color: var(--color-primary);
 }
 
 .category-input-wrapper input::placeholder {
