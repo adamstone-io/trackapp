@@ -27,6 +27,7 @@ export const studyIds = {
   quickAddNotesInput: "quick-add-notes-input",
   quickAddNotesToggleBtn: "quick-add-notes-toggle-btn",
   quickAddCategoryInput: "quick-add-category-input",
+  quickAddCategoryPinBtn: "quick-add-category-pin-btn",
   quickAddCategoryDropdown: "category-dropdown",
   addStudyBtn: "add-study-btn",
 

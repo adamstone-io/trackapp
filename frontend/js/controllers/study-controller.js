@@ -45,6 +45,7 @@ export function createStudyController() {
   const quickAddNotesInput = byId(studyIds.quickAddNotesInput);
   const quickAddNotesToggleBtn = byId(studyIds.quickAddNotesToggleBtn);
   const quickAddCategoryInput = byId(studyIds.quickAddCategoryInput);
+  const quickAddCategoryPinBtn = byId(studyIds.quickAddCategoryPinBtn);
   const quickAddCategoryDropdown = byId(studyIds.quickAddCategoryDropdown);
   const addStudyBtn = byId(studyIds.addStudyBtn);
 
@@ -53,6 +54,58 @@ export function createStudyController() {
   const headerMenuBtn = byId(studyIds.headerMenuBtn);
 
   let quickAddNotesVisible = true;
+  const QUICK_ADD_PINNED_CATEGORY_KEY = "studyQuickAddPinnedCategory";
+
+  function getPinnedCategory() {
+    return localStorage.getItem(QUICK_ADD_PINNED_CATEGORY_KEY) || "";
+  }
+
+  function setPinnedCategory(category) {
+    const normalized = category.trim();
+    if (normalized) {
+      localStorage.setItem(QUICK_ADD_PINNED_CATEGORY_KEY, normalized);
+    } else {
+      localStorage.removeItem(QUICK_ADD_PINNED_CATEGORY_KEY);
+    }
+    syncPinnedCategoryUi();
+  }
+
+  function syncPinnedCategoryUi() {
+    const pinnedCategory = getPinnedCategory();
+    if (!quickAddCategoryPinBtn) return;
+
+    const isPinned = Boolean(pinnedCategory);
+    quickAddCategoryPinBtn.classList.toggle("category-pin-btn--active", isPinned);
+    quickAddCategoryPinBtn.setAttribute("aria-pressed", String(isPinned));
+    quickAddCategoryPinBtn.setAttribute(
+      "aria-label",
+      isPinned ? `Unpin category ${pinnedCategory}` : "Pin category",
+    );
+    quickAddCategoryPinBtn.title = isPinned
+      ? `Pinned to ${pinnedCategory}. Click to unpin.`
+      : "Pin current category";
+  }
+
+  function applyPinnedCategoryToInput() {
+    const pinnedCategory = getPinnedCategory();
+    if (pinnedCategory) {
+      quickAddCategoryInput.value = pinnedCategory;
+    }
+    syncPinnedCategoryUi();
+  }
+
+  function togglePinnedCategory() {
+    const currentPinnedCategory = getPinnedCategory();
+    if (currentPinnedCategory) {
+      setPinnedCategory("");
+      quickAddCategoryInput.value = "";
+      return;
+    }
+
+    const category = quickAddCategoryInput.value.trim();
+    if (!category) return;
+    setPinnedCategory(category);
+  }
 
   function applyQuickAddNotesVisibility(isVisible) {
     quickAddNotesVisible = isVisible;
@@ -72,6 +125,17 @@ export function createStudyController() {
   bindAutoGrow(quickAddInput);
   bindAutoGrow(quickAddNotesInput);
   applyQuickAddNotesVisibility(true);
+  applyPinnedCategoryToInput();
+
+  quickAddCategoryPinBtn?.addEventListener("click", () => {
+    togglePinnedCategory();
+  });
+
+  quickAddCategoryInput?.addEventListener("input", () => {
+    if (getPinnedCategory()) {
+      setPinnedCategory(quickAddCategoryInput.value);
+    }
+  });
 
   quickAddNotesToggleBtn?.addEventListener("click", () => {
     applyQuickAddNotesVisibility(!quickAddNotesVisible);
@@ -253,7 +317,7 @@ export function createStudyController() {
 
     if (quickAddInput) quickAddInput.value = "";
     if (quickAddNotesInput) quickAddNotesInput.value = "";
-    if (quickAddCategoryInput) quickAddCategoryInput.value = "";
+    applyPinnedCategoryToInput();
     if (quickAddImageInput) quickAddImageInput.value = "";
     quickAddImageFile = null;
     quickAddImagePreviewImg.src = "";
@@ -281,6 +345,14 @@ export function createStudyController() {
         imageFile,
         noteImageFile,
       );
+
+      if (category?.trim()) {
+        quickAddCategoryManager.incrementCategory(category);
+        if (getPinnedCategory()) {
+          setPinnedCategory(category);
+        }
+      }
+
       await refreshStudyItems({ refreshCategories: true });
     } catch (error) {
       console.error("Failed to create study item:", error);

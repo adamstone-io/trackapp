@@ -66,6 +66,7 @@ export function createPrimeController() {
   const addBtn = byId(primeIds.addPrimeBtn);
   const quickAddInput = byId(primeIds.quickAddPrimeInput);
   const quickAddCategoryInput = byId(primeIds.quickAddCategoryInput);
+  const quickAddCategoryPinBtn = byId(primeIds.quickAddCategoryPinBtn);
   const headerMenuBtn = byId(primeIds.headerMenuBtn);
   const quickAddImageBtn = byId(primeIds.quickAddImageBtn);
   const quickAddImageInput = byId(primeIds.quickAddImageInput);
@@ -83,6 +84,58 @@ export function createPrimeController() {
   const quickAddNotesInput = byId(primeIds.quickAddNotesInput);
 
   let quickAddNotesVisible = false;
+  const QUICK_ADD_PINNED_CATEGORY_KEY = "primeQuickAddPinnedCategory";
+
+  function getPinnedCategory() {
+    return localStorage.getItem(QUICK_ADD_PINNED_CATEGORY_KEY) || "";
+  }
+
+  function setPinnedCategory(category) {
+    const normalized = category.trim();
+    if (normalized) {
+      localStorage.setItem(QUICK_ADD_PINNED_CATEGORY_KEY, normalized);
+    } else {
+      localStorage.removeItem(QUICK_ADD_PINNED_CATEGORY_KEY);
+    }
+    syncPinnedCategoryUi();
+  }
+
+  function syncPinnedCategoryUi() {
+    const pinnedCategory = getPinnedCategory();
+    if (!quickAddCategoryPinBtn) return;
+
+    const isPinned = Boolean(pinnedCategory);
+    quickAddCategoryPinBtn.classList.toggle("category-pin-btn--active", isPinned);
+    quickAddCategoryPinBtn.setAttribute("aria-pressed", String(isPinned));
+    quickAddCategoryPinBtn.setAttribute(
+      "aria-label",
+      isPinned ? `Unpin category ${pinnedCategory}` : "Pin category",
+    );
+    quickAddCategoryPinBtn.title = isPinned
+      ? `Pinned to ${pinnedCategory}. Click to unpin.`
+      : "Pin current category";
+  }
+
+  function applyPinnedCategoryToInput() {
+    const pinnedCategory = getPinnedCategory();
+    if (pinnedCategory) {
+      quickAddCategoryInput.value = pinnedCategory;
+    }
+    syncPinnedCategoryUi();
+  }
+
+  function togglePinnedCategory() {
+    const currentPinnedCategory = getPinnedCategory();
+    if (currentPinnedCategory) {
+      setPinnedCategory("");
+      quickAddCategoryInput.value = "";
+      return;
+    }
+
+    const category = quickAddCategoryInput.value.trim();
+    if (!category) return;
+    setPinnedCategory(category);
+  }
 
   function getQuickAddNotesDefault() {
     return localStorage.getItem(QUICK_ADD_NOTES_DEFAULT_KEY) === "on";
@@ -125,7 +178,18 @@ export function createPrimeController() {
   bindAutoGrow(quickAddInput);
   bindAutoGrow(quickAddNotesInput);
   applyQuickAddNotesVisibility(getQuickAddNotesDefault());
+  applyPinnedCategoryToInput();
   updateButtonText();
+
+  quickAddCategoryPinBtn?.addEventListener("click", () => {
+    togglePinnedCategory();
+  });
+
+  quickAddCategoryInput?.addEventListener("input", () => {
+    if (getPinnedCategory()) {
+      setPinnedCategory(quickAddCategoryInput.value);
+    }
+  });
 
   quickAddNotesToggleBtn?.addEventListener("click", () => {
     applyQuickAddNotesVisibility(!quickAddNotesVisible);
@@ -185,7 +249,7 @@ export function createPrimeController() {
     });
 
     quickAddInput.value = "";
-    quickAddCategoryInput.value = "";
+    applyPinnedCategoryToInput();
     quickAddImageInput.value = "";
     quickAddImageFile = null;
     quickAddImagePreviewImg.src = "";
@@ -314,6 +378,13 @@ export function createPrimeController() {
         data.imageFile ?? null,
         data.noteImageFile ?? null,
       );
+
+      if (data.category?.trim()) {
+        quickAddCategoryManager.incrementCategory(data.category);
+        if (getPinnedCategory()) {
+          setPinnedCategory(data.category);
+        }
+      }
 
       await refreshPrimeItems();
     } catch (error) {
