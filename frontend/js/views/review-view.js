@@ -197,15 +197,15 @@ export class ReviewView {
               <span class="review-stat__label">Total</span>
               <span class="review-stat__value">${totalCount}</span>
             </div>
-            <div class="review-stat">
+            <div class="review-stat stat--hide-mobile">
               <span class="review-stat__label">Today</span>
               <span class="review-stat__value">${todayCount}</span>
             </div>
-            <div class="review-stat">
+            <div class="review-stat stat--hide-mobile">
               <span class="review-stat__label">This Week</span>
               <span class="review-stat__value">${weekCount}</span>
             </div>
-            <div class="review-stat">
+            <div class="review-stat stat--hide-mobile">
               <span class="review-stat__label">This Month</span>
               <span class="review-stat__value">${monthCount}</span>
             </div>

@@ -246,11 +246,11 @@ export class StudyView {
               <span class="study-stat__label">Total</span>
               <span class="study-stat__value">${totalCount}</span>
             </div>
-            <div class="study-stat">
+            <div class="study-stat stat--hide-mobile">
               <span class="study-stat__label">This Week</span>
               <span class="study-stat__value">${weekCount}</span>
             </div>
-            <div class="study-stat">
+            <div class="study-stat stat--hide-mobile">
               <span class="study-stat__label">This Month</span>
               <span class="study-stat__value">${monthCount}</span>
             </div>

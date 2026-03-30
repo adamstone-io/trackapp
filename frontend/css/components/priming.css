@@ -340,9 +340,6 @@
   background: var(--color-bg-secondary);
 } */
 
-#add-prime-btn {
-  margin-left: auto;
-}
 
 .btn--success {
   background: var(--color-success, #10b981);
@@ -372,6 +369,10 @@
 }
 
 @media (max-width: 768px) {
+  .stat--hide-mobile {
+    display: none;
+  }
+
   .prime-item__footer,
   .study-item__footer,
   .review-item__footer {

@@ -195,9 +195,9 @@ export class PrimeView {
         
           <div class="prime-item__stats">
             <div class="prime-stat"><span>Total</span><span>${totalCount}</span></div>
-            <div class="prime-stat"><span>Today</span><span>${todayCount}</span></div>
-            <div class="prime-stat"><span>This Week</span><span>${weekCount}</span></div>
-            <div class="prime-stat"><span>This Month</span><span>${monthCount}</span></div>
+            <div class="prime-stat stat--hide-mobile"><span>Today</span><span>${todayCount}</span></div>
+            <div class="prime-stat stat--hide-mobile"><span>This Week</span><span>${weekCount}</span></div>
+            <div class="prime-stat stat--hide-mobile"><span>This Month</span><span>${monthCount}</span></div>
             <div class="prime-stat"><span>First</span><span>${firstPrimeText}</span></div>
             <div class="prime-stat"><span>Last</span><span>${lastPrimeText}</span></div>
           </div>
