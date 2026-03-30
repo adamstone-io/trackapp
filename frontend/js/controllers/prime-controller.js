@@ -150,14 +150,10 @@ export function createPrimeController() {
     if (quickAddNotesWrap) {
       quickAddNotesWrap.classList.toggle("hidden", !isVisible);
     }
-    if (quickAddNotesToggleBtn) {
-      quickAddNotesToggleBtn.textContent = isVisible
-        ? "Hide Notes"
-        : "Add Notes";
-    }
     if (!isVisible && quickAddNotesInput) {
       quickAddNotesInput.value = "";
     }
+    updateButtonText();
   }
 
   const quickAddCategoryManager = new CategoryManager(
@@ -273,15 +269,30 @@ export function createPrimeController() {
   }
 
   function updateButtonText() {
-    if (quickAddImageFile) {
-      quickAddImageBtn.textContent = isMobile(480) ? "📷 ✓" : "Change Prompt Image";
-    } else {
-      quickAddImageBtn.textContent = isMobile(480) ? "📷" : "Prompt Image";
+    const mobile = isMobile(768);
+
+    if (quickAddNotesToggleBtn) {
+      if (mobile) {
+        quickAddNotesToggleBtn.textContent = quickAddNotesVisible ? "📝 ✓" : "📝";
+      } else {
+        quickAddNotesToggleBtn.textContent = quickAddNotesVisible ? "Hide Notes" : "Add Notes";
+      }
     }
-    if (quickAddNoteImageFile) {
-      quickAddNoteImageBtn.textContent = isMobile(480) ? "🗒️ ✓" : "Change Note Image";
-    } else {
-      quickAddNoteImageBtn.textContent = isMobile(480) ? "🗒️" : "Note Image";
+
+    if (quickAddImageBtn) {
+      if (mobile) {
+        quickAddImageBtn.textContent = quickAddImageFile ? "📷 ✓" : "📷";
+      } else {
+        quickAddImageBtn.textContent = quickAddImageFile ? "Change Prompt Image" : "Prompt Image";
+      }
+    }
+
+    if (quickAddNoteImageBtn) {
+      if (mobile) {
+        quickAddNoteImageBtn.textContent = quickAddNoteImageFile ? "🗒️ ✓" : "🗒️";
+      } else {
+        quickAddNoteImageBtn.textContent = quickAddNoteImageFile ? "Change Note Image" : "Note Image";
+      }
     }
   }
 

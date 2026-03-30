@@ -7,6 +7,7 @@ import { createDropdownMenu } from "../views/components/dropdown-menu.js";
 import { createCategoryFilterModal } from "../views/components/category-filter-modal.js";
 import { CategoryManager } from "../utils/category-manager.js";
 import { SoundManager } from "../utils/sound-manager.js";
+import { isMobile } from "../utils/viewport.js";
 import { bindAutoGrow } from "../utils/textarea.js";
 import {
   createStudyItem,
@@ -112,14 +113,10 @@ export function createStudyController() {
     if (quickAddNotesWrap) {
       quickAddNotesWrap.classList.toggle("hidden", !isVisible);
     }
-    if (quickAddNotesToggleBtn) {
-      quickAddNotesToggleBtn.textContent = isVisible
-        ? "Hide Notes"
-        : "Add Notes";
-    }
     if (!isVisible && quickAddNotesInput) {
       quickAddNotesInput.value = "";
     }
+    updateImageButtonText();
   }
 
   bindAutoGrow(quickAddInput);
@@ -154,15 +151,30 @@ export function createStudyController() {
   let quickAddNoteImageFile = null;
 
   function updateImageButtonText() {
-    if (quickAddImageBtn) {
-      quickAddImageBtn.textContent = quickAddImageFile
-        ? "Change Prompt Image"
-        : "Prompt Image";
+    const mobile = isMobile(768);
+
+    if (quickAddNotesToggleBtn) {
+      if (mobile) {
+        quickAddNotesToggleBtn.textContent = quickAddNotesVisible ? "📝 ✓" : "📝";
+      } else {
+        quickAddNotesToggleBtn.textContent = quickAddNotesVisible ? "Hide Notes" : "Add Notes";
+      }
     }
+
+    if (quickAddImageBtn) {
+      if (mobile) {
+        quickAddImageBtn.textContent = quickAddImageFile ? "📷 ✓" : "📷";
+      } else {
+        quickAddImageBtn.textContent = quickAddImageFile ? "Change Prompt Image" : "Prompt Image";
+      }
+    }
+
     if (quickAddNoteImageBtn) {
-      quickAddNoteImageBtn.textContent = quickAddNoteImageFile
-        ? "Change Note Image"
-        : "Note Image";
+      if (mobile) {
+        quickAddNoteImageBtn.textContent = quickAddNoteImageFile ? "🗒️ ✓" : "🗒️";
+      } else {
+        quickAddNoteImageBtn.textContent = quickAddNoteImageFile ? "Change Note Image" : "Note Image";
+      }
     }
   }
 
@@ -198,6 +210,9 @@ export function createStudyController() {
     if (quickAddInput) quickAddInput.classList.toggle("hidden", !!quickAddImageFile);
     if (quickAddNotesWrap) quickAddNotesWrap.classList.toggle("hidden", !!quickAddNoteImageFile);
   }
+
+  updateImageButtonText();
+  window.addEventListener("resize", updateImageButtonText);
 
   const quickAddCategoryManager = new CategoryManager(
     quickAddCategoryInput,
