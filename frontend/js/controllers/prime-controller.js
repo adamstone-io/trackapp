@@ -413,7 +413,8 @@ export function createPrimeController() {
 
       // remove it locally so it disappears immediately
       studyItems = studyItems.filter((i) => i.id !== item.id);
-      renderList();
+      renderList({ showSentinel: hasNextPage });
+      attachSentinelObserver();
     } catch (error) {
       console.error("Failed to log prime:", error);
       alert("Failed to log prime.");
@@ -428,6 +429,7 @@ export function createPrimeController() {
 
       studyItems = studyItems.filter((i) => i.id !== item.id);
       renderList({ showSentinel: hasNextPage });
+      attachSentinelObserver();
     } catch (error) {
       console.error("Failed to transition to study:", error);
       alert("Failed to convert to study.");

@@ -119,11 +119,6 @@ export function createStudyController() {
     updateImageButtonText();
   }
 
-  bindAutoGrow(quickAddInput);
-  bindAutoGrow(quickAddNotesInput);
-  applyQuickAddNotesVisibility(true);
-  applyPinnedCategoryToInput();
-
   quickAddCategoryPinBtn?.addEventListener("click", () => {
     togglePinnedCategory();
   });
@@ -211,6 +206,10 @@ export function createStudyController() {
     if (quickAddNotesWrap) quickAddNotesWrap.classList.toggle("hidden", !!quickAddNoteImageFile);
   }
 
+  bindAutoGrow(quickAddInput);
+  bindAutoGrow(quickAddNotesInput);
+  applyQuickAddNotesVisibility(true);
+  applyPinnedCategoryToInput();
   updateImageButtonText();
   window.addEventListener("resize", updateImageButtonText);
 

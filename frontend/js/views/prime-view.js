@@ -2,6 +2,7 @@
 import { byId } from "../ui/ui-core.js";
 import { primeIds } from "../ui/prime-ids.js";
 import { createDropdownMenu } from "./components/dropdown-menu.js";
+import { sortByInteractionPriority } from "../utils/study-sort.js";
 
 const dropdownMenus = new Map();
 let renderedItemIds = new Set();
@@ -65,7 +66,7 @@ export class PrimeView {
 
     emptyEl.style.display = "none";
 
-    const sorted = [...items];
+    const sorted = sortByInteractionPriority(items, "lastPrimedAt");
 
     const itemsToRender =
       typeof limit === "number" ? sorted.slice(0, limit) : sorted;

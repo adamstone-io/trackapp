@@ -7,7 +7,7 @@ from django.conf import settings
 from django.utils import timezone
 from datetime import timedelta, timezone as dt_timezone
 from math import ceil
-from django.db.models import Count, Q, F
+from django.db.models import Case, Count, F, IntegerField, Q, Value, When
 from rest_framework.parsers import JSONParser, MultiPartParser, FormParser
 
 from django.core.validators import validate_email
@@ -358,29 +358,42 @@ class StudyItemViewSet(UserOwnedViewSet):
         context = super().get_serializer_context()
         context['request'] = self.request
         return context
-    
+
+    @staticmethod
+    def _apply_interaction_priority(queryset, timestamp_field):
+        cutoff = timezone.now() - timedelta(hours=24)
+        field_isnull = f'{timestamp_field}__isnull'
+        field_lt = f'{timestamp_field}__lt'
+        return queryset.annotate(
+            _interaction_priority=Case(
+                When(**{field_isnull: False, field_lt: cutoff}, then=Value(0)),
+                When(**{field_isnull: True}, then=Value(1)),
+                default=Value(2),
+                output_field=IntegerField(),
+            ),
+        ).order_by(
+            '_interaction_priority',
+            F(timestamp_field).asc(nulls_last=True),
+            'created_at',
+            'id',
+        )
+
     def get_queryset(self):
         queryset = super().get_queryset()
 
         mode = self.request.query_params.get('mode')
 
         if mode == 'priming':
-            queryset = queryset.filter(is_priming=True).order_by(
-                F('last_primed_at').asc(nulls_last=True),
-                'created_at',
-                'id',
+            queryset = self._apply_interaction_priority(
+                queryset.filter(is_priming=True), 'last_primed_at',
             )
         elif mode == 'studying':
-            queryset = queryset.filter(is_studying=True).order_by(
-                F('last_studied_at').asc(nulls_last=True),
-                'created_at',
-                'id',
+            queryset = self._apply_interaction_priority(
+                queryset.filter(is_studying=True), 'last_studied_at',
             )
         elif mode == 'reviewing':
-            queryset = queryset.filter(is_reviewing=True).order_by(
-                F('last_reviewed_at').asc(nulls_last=True),
-                'created_at',
-                'id',
+            queryset = self._apply_interaction_priority(
+                queryset.filter(is_reviewing=True), 'last_reviewed_at',
             )
 
         category = self.request.query_params.get('category')

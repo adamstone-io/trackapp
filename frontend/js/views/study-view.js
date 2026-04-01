@@ -2,6 +2,7 @@
 import { byId } from "../ui/ui-core.js";
 import { studyIds } from "../ui/study-ids.js";
 import { createDropdownMenu } from "./components/dropdown-menu.js";
+import { sortByInteractionPriority } from "../utils/study-sort.js";
 
 const dropdownMenus = new Map();
 let renderedItemIds = new Set();
@@ -47,19 +48,7 @@ export class StudyView {
 
     emptyEl.style.display = "none";
 
-    const sorted = [...studyItems].sort((a, b) => {
-      const aLast = a.lastStudiedAt
-        ? new Date(a.lastStudiedAt).getTime()
-        : Infinity;
-      const bLast = b.lastStudiedAt
-        ? new Date(b.lastStudiedAt).getTime()
-        : Infinity;
-      if (aLast !== bLast) return aLast - bLast;
-
-      const aCreated = a.createdAt ? new Date(a.createdAt).getTime() : Infinity;
-      const bCreated = b.createdAt ? new Date(b.createdAt).getTime() : Infinity;
-      return aCreated - bCreated;
-    });
+    const sorted = sortByInteractionPriority(studyItems, "lastStudiedAt");
 
     const callbacks = { onLogStudy, onEdit, onDelete, onArchive, onConvertToReview, onConvertToPriming, onNotesUpdate };
     const currentRenderCount = sorted.length;
