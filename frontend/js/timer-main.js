@@ -16,10 +16,9 @@ import {
 } from "./data/storage.js";
 import { TaskNameManager } from "./utils/task-name-manager.js";
 
-document.addEventListener("DOMContentLoaded", async () => {
+(async () => {
   if (!(await ensureAuthenticated())) return;
   document.body.style.visibility = '';
-  // Initialize navigation
   initNavigation();
   SoundManager.register(
     "timerFinished",
@@ -357,4 +356,4 @@ document.addEventListener("DOMContentLoaded", async () => {
       manualEntryController,
     };
   }
-});
+})();

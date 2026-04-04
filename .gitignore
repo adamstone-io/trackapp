@@ -16,3 +16,5 @@ frontend/config.js
 backend/media
 backend/convert_study_items.py
 .vscode
+frontend/dist/
+node_modules/
