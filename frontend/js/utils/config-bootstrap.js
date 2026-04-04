@@ -5,9 +5,12 @@ const isLocal =
   location.hostname.endsWith(".localhost");
 
 if (!isLocal) {
-  const s = document.createElement("script");
-  s.src = "/html/config.js";
-  document.head.appendChild(s);
+  const xhr = new XMLHttpRequest();
+  xhr.open("GET", "/html/config.js", false);
+  xhr.send();
+  if (xhr.status === 200) {
+    new Function(xhr.responseText)();
+  }
 } else {
   window.APP_CONFIG = window.APP_CONFIG || {};
 }

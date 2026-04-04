@@ -2,6 +2,7 @@ import * as esbuild from "esbuild";
 import path from "path";
 
 const isWatch = process.argv.includes("--watch");
+const apiOrigin = process.env.API_ORIGIN || "";
 
 const jsEntries = [
   "priming-main.js",
@@ -29,6 +30,9 @@ const jsBuild = {
   outdir: "frontend/dist/js",
   format: "iife",
   entryNames: "[name].bundle",
+  define: {
+    "__API_ORIGIN__": JSON.stringify(apiOrigin),
+  },
 };
 
 const cssBuild = {

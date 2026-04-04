@@ -1,8 +1,3 @@
-/*
- * API Configuration Layer
- * Detects environment and sets up base API URL
- */
-
 const isLocalFrontend =
   location.protocol === "file:" ||
   ["localhost", "127.0.0.1"].includes(location.hostname) ||
@@ -10,9 +5,9 @@ const isLocalFrontend =
 
 const apiOrigin = isLocalFrontend
   ? "http://127.0.0.1:8000"
-  : window.APP_CONFIG?.API_ORIGIN || "";
+  : __API_ORIGIN__;
 
-if (!apiOrigin) throw new Error("Missing API origin");
+if (!apiOrigin) throw new Error("Missing API origin — set API_ORIGIN env var at build time");
 
 export const API_BASE = `${apiOrigin.replace(/\/$/, "")}/api`;
 
