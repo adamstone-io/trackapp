@@ -5,7 +5,10 @@ import { Task } from "../domain/task.js";
 import { Project } from "../domain/project.js";
 import { StudyItem } from "../domain/study-item.js";
 import { scheduleSessionExpiry } from "../api/authApi.js";
+import { API_BASE } from "../api/config.js";
 import { handleTrialExpiredBody } from "../utils/trial.js";
+
+export { API_BASE };
 
 const STORAGE_KEYS = {
   moments: "moments",
@@ -16,19 +19,6 @@ const STORAGE_KEYS = {
   primeItems: "primeItems",
   reviewItems: "reviewItems",
 };
-
-const isLocalFrontend =
-  location.protocol === "file:" ||
-  ["localhost", "127.0.0.1"].includes(location.hostname) ||
-  location.hostname.endsWith(".local");
-
-const apiOrigin = isLocalFrontend
-  ? "http://127.0.0.1:8000" // your local Django server
-  : window.APP_CONFIG?.API_ORIGIN || "";
-
-if (!apiOrigin) throw new Error("Missing API origin");
-
-export const API_BASE = `${apiOrigin.replace(/\/$/, "")}/api`;
 
 export const AUTH_KEYS = {
   access: "authAccessToken",
