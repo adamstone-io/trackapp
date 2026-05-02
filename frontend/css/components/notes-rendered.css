@@ -1,0 +1,58 @@
+/* Read-only rendered notes (plain text + fenced code blocks) */
+@import "../../../node_modules/prismjs/themes/prism.min.css";
+
+.notes-rendered {
+  font-size: 0.875rem;
+  line-height: 1.55;
+  color: var(--text-primary);
+  word-break: break-word;
+}
+
+.notes-rendered__p {
+  margin: 0 0 0.5rem;
+}
+
+.notes-rendered__p:last-child {
+  margin-bottom: 0;
+}
+
+.notes-rendered__pre {
+  margin: 0.5rem 0;
+  padding: 0.75rem 1rem;
+  overflow-x: auto;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+  background: var(--background);
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 0.8125rem;
+  line-height: 1.45;
+}
+
+.notes-rendered__pre:first-child {
+  margin-top: 0;
+}
+
+.notes-rendered__pre:last-child {
+  margin-bottom: 0;
+}
+
+.notes-rendered__code {
+  font-family: inherit;
+  white-space: pre;
+  word-wrap: normal;
+}
+
+.notes-rendered__pre code[class*="language-"] .token {
+  font-family: inherit;
+}
+
+.notes-rendered__pre[class*="language-"] {
+  background: var(--color-bg-secondary, #f5f5f5);
+}
+
+.notes-rendered__empty {
+  margin: 0;
+  font-size: 0.875rem;
+  color: var(--text-secondary);
+  font-style: italic;
+}
