@@ -28,8 +28,7 @@ const jsBuild = {
   ...shared,
   entryPoints: jsEntries,
   outdir: "frontend/dist/js",
-  format: "esm",
-  splitting: true,
+  format: "iife",
   entryNames: "[name].bundle",
   define: {
     "__API_ORIGIN__": JSON.stringify(apiOrigin),
