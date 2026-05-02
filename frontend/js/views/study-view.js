@@ -3,6 +3,8 @@ import { byId } from "../ui/ui-core.js";
 import { studyIds } from "../ui/study-ids.js";
 import { createDropdownMenu } from "./components/dropdown-menu.js";
 import { sortByInteractionPriority } from "../utils/study-sort.js";
+import { renderNotesToHtml } from "../utils/notes-renderer.js";
+import { highlightNotesCodeBlocks } from "../utils/notes-syntax-highlight.js";
 
 const dropdownMenus = new Map();
 let renderedItemIds = new Set();
@@ -25,7 +27,6 @@ export class StudyView {
       onArchive,
       onConvertToReview,
       onConvertToPriming,
-      onNotesUpdate,
     },
     showArchived = false,
     { showSentinel = false } = {},
@@ -50,7 +51,7 @@ export class StudyView {
 
     const sorted = sortByInteractionPriority(studyItems, "lastStudiedAt");
 
-    const callbacks = { onLogStudy, onEdit, onDelete, onArchive, onConvertToReview, onConvertToPriming, onNotesUpdate };
+    const callbacks = { onLogStudy, onEdit, onDelete, onArchive, onConvertToReview, onConvertToPriming };
     const currentRenderCount = sorted.length;
     const canIncrement = currentRenderCount > lastRenderCount;
 
@@ -86,19 +87,19 @@ export class StudyView {
       );
     }
 
+    highlightNotesCodeBlocks(listEl);
     lastRenderCount = currentRenderCount;
   }
 
   static attachItemListeners(
     item,
-    { onLogStudy, onEdit, onDelete, onArchive, onConvertToReview, onConvertToPriming, onNotesUpdate },
+    { onLogStudy, onEdit, onDelete, onArchive, onConvertToReview, onConvertToPriming },
     showArchived,
   ) {
     const logBtn = byId(`log-study-${item.id}`);
     const menuBtn = byId(`menu-study-${item.id}`);
     const notesToggle = byId(`notes-toggle-${item.id}`);
     const notesSection = byId(`notes-section-${item.id}`);
-    const notesTextarea = document.getElementById(`notes-textarea-${item.id}`);
     const cipherToggle = byId(`cipher-toggle-${item.id}`);
     const cipherSection = byId(`cipher-section-${item.id}`);
 
@@ -112,23 +113,7 @@ export class StudyView {
           "study-item__notes-btn--active",
           isHidden,
         );
-        if (isHidden && notesTextarea) notesTextarea.focus();
       });
-
-      if (notesTextarea) {
-        let notesTimer = null;
-        notesTextarea.addEventListener("input", () => {
-          clearTimeout(notesTimer);
-          notesTimer = setTimeout(() => {
-            onNotesUpdate(item, notesTextarea.value);
-          }, 800);
-        });
-
-        notesTextarea.addEventListener("blur", () => {
-          clearTimeout(notesTimer);
-          onNotesUpdate(item, notesTextarea.value);
-        });
-      }
     }
 
     if (cipherToggle && cipherSection) {
@@ -141,9 +126,7 @@ export class StudyView {
         );
 
         if (isHidden) {
-          const currentNotes = notesTextarea
-            ? notesTextarea.value
-            : item.notes || "";
+          const currentNotes = item.notes || "";
           const cipherPre = cipherSection.querySelector(
             ".study-item__cipher-text",
           );
@@ -290,12 +273,8 @@ export class StudyView {
                   src="${item.noteImageUrl}"
                   alt="Note image"
                 />`
-              : `<textarea
-                  id="notes-textarea-${item.id}"
-                  class="study-item__notes-textarea"
-                  placeholder="Add study notes..."
-                  rows="4"
-                >${this.escapeHtml(item.notes || "")}</textarea>`
+              : renderNotesToHtml(item.notes || "") ||
+                `<p class="notes-rendered__empty">No notes yet. Use Edit in the menu to add some.</p>`
           }
         </div>
 

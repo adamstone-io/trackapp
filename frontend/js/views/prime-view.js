@@ -3,6 +3,8 @@ import { byId } from "../ui/ui-core.js";
 import { primeIds } from "../ui/prime-ids.js";
 import { createDropdownMenu } from "./components/dropdown-menu.js";
 import { sortByInteractionPriority } from "../utils/study-sort.js";
+import { renderNotesToHtml } from "../utils/notes-renderer.js";
+import { highlightNotesCodeBlocks } from "../utils/notes-syntax-highlight.js";
 
 const dropdownMenus = new Map();
 let renderedItemIds = new Set();
@@ -138,6 +140,7 @@ export class PrimeView {
       });
     }
 
+    highlightNotesCodeBlocks(listEl);
     lastRenderCount = currentRenderCount;
   }
 
@@ -148,6 +151,9 @@ export class PrimeView {
     const monthCount = item.getMonthCount();
     const firstPrimeText = item.getFirstPrimedTimeAgo();
     const lastPrimeText = item.getLastPrimedTimeAgo();
+    const hasNotesContent =
+      Boolean(item.noteImageUrl) ||
+      Boolean(item.notes && String(item.notes).trim());
 
     return `
       <div class="prime-item" data-id="${item.id}">
@@ -205,15 +211,46 @@ export class PrimeView {
 
           ${
             !showArchived
-              ? `<button 
-                  id="log-prime-${item.id}"
-                  class="btn btn--primary prime-item__log-btn"
-                  type="button">
-                  Log Prime
-                </button>`
+              ? `<div class="prime-item__actions">
+                  ${
+                    hasNotesContent
+                      ? `<button
+                    id="notes-toggle-${item.id}"
+                    class="btn btn--outline prime-item__notes-btn"
+                    type="button"
+                  >
+                    Notes
+                  </button>`
+                      : ""
+                  }
+                  <button
+                    id="log-prime-${item.id}"
+                    class="btn btn--primary prime-item__log-btn"
+                    type="button"
+                  >
+                    Log Prime
+                  </button>
+                </div>`
               : ""
           }
         </div>
+        ${
+          hasNotesContent
+            ? `
+        <div id="notes-section-${item.id}" class="prime-item__notes hidden">
+          ${
+            item.noteImageUrl
+              ? `<img
+                  class="prime-item__note-image"
+                  src="${item.noteImageUrl}"
+                  alt="Note image"
+                />`
+              : renderNotesToHtml(item.notes || "") ||
+                `<p class="notes-rendered__empty">No notes yet. Use Edit in the menu to add some.</p>`
+          }
+        </div>`
+            : ""
+        }
       </div>
     `;
   }
@@ -232,9 +269,22 @@ export class PrimeView {
   ) {
     const logBtn = byId(`log-prime-${item.id}`);
     const menuBtn = byId(`menu-prime-${item.id}`);
+    const notesToggle = byId(`notes-toggle-${item.id}`);
+    const notesSection = byId(`notes-section-${item.id}`);
 
     if (logBtn) {
       logBtn.addEventListener("click", () => onLogPrime(item));
+    }
+
+    if (notesToggle && notesSection) {
+      notesToggle.addEventListener("click", () => {
+        const isHidden = notesSection.classList.contains("hidden");
+        notesSection.classList.toggle("hidden");
+        notesToggle.classList.toggle(
+          "prime-item__notes-btn--active",
+          isHidden,
+        );
+      });
     }
 
     if (menuBtn) {

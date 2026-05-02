@@ -1,6 +1,8 @@
 import { byId } from "../ui/ui-core.js";
 import { reviewIds } from "../ui/review-ids.js";
 import { createDropdownMenu } from "./components/dropdown-menu.js";
+import { renderNotesToHtml } from "../utils/notes-renderer.js";
+import { highlightNotesCodeBlocks } from "../utils/notes-syntax-highlight.js";
 
 const dropdownMenus = new Map();
 let renderedItemIds = new Set();
@@ -95,6 +97,7 @@ export class ReviewView {
       );
     }
 
+    highlightNotesCodeBlocks(listEl);
     lastRenderCount = currentRenderCount;
   }
 
@@ -249,11 +252,8 @@ export class ReviewView {
                   src="${item.noteImageUrl}"
                   alt="Note image"
                 />`
-              : `<textarea
-                  class="review-item__notes-textarea"
-                  rows="4"
-                  readonly
-                >${this.escapeHtml(item.notes || "")}</textarea>`
+              : renderNotesToHtml(item.notes || "") ||
+                `<p class="notes-rendered__empty">No notes yet. Use Edit in the menu to add some.</p>`
           }
         </div>
       </div>

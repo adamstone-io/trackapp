@@ -666,20 +666,6 @@ export function createStudyController() {
     }
   }
 
-  async function handleNotesUpdate(item, newNotes) {
-    if (item.notes === newNotes) return;
-
-    try {
-      await updateStudyItem(item.id, { notes: newNotes });
-      const itemIndex = studyItems.findIndex((s) => s.id === item.id);
-      if (itemIndex !== -1) {
-        studyItems[itemIndex].notes = newNotes;
-      }
-    } catch (error) {
-      console.error("Failed to update notes:", error);
-    }
-  }
-
   function renderList({ showSentinel = false } = {}) {
     const itemsToShow = showArchived
       ? studyItems.filter((item) => item.isArchived)
@@ -694,8 +680,6 @@ export function createStudyController() {
         onArchive: showArchived ? handleRestore : handleArchive,
         onConvertToReview: handleConvertToReview,
         onConvertToPriming: handleConvertToPriming,
-        onNotesUpdate: handleNotesUpdate,
-
       },
       showArchived,
       { showSentinel },
