@@ -151,10 +151,6 @@ export class PrimeView {
     const monthCount = item.getMonthCount();
     const firstPrimeText = item.getFirstPrimedTimeAgo();
     const lastPrimeText = item.getLastPrimedTimeAgo();
-    const hasNotesContent =
-      Boolean(item.noteImageUrl) ||
-      Boolean(item.notes && String(item.notes).trim());
-
     return `
       <div class="prime-item" data-id="${item.id}">
         <div class="prime-item__header">
@@ -197,9 +193,9 @@ export class PrimeView {
         `
             : ""
         }
-        
+
         <div class="prime-item__footer">
-        
+
           <div class="prime-item__stats">
             <div class="prime-stat"><span>Total</span><span>${totalCount}</span></div>
             <div class="prime-stat stat--hide-mobile"><span>Today</span><span>${todayCount}</span></div>
@@ -212,17 +208,13 @@ export class PrimeView {
           ${
             !showArchived
               ? `<div class="prime-item__actions">
-                  ${
-                    hasNotesContent
-                      ? `<button
+                  <button
                     id="notes-toggle-${item.id}"
                     class="btn btn--outline prime-item__notes-btn"
                     type="button"
                   >
                     Notes
-                  </button>`
-                      : ""
-                  }
+                  </button>
                   <button
                     id="log-prime-${item.id}"
                     class="btn btn--primary prime-item__log-btn"
@@ -234,9 +226,7 @@ export class PrimeView {
               : ""
           }
         </div>
-        ${
-          hasNotesContent
-            ? `
+
         <div id="notes-section-${item.id}" class="prime-item__notes hidden">
           ${
             item.noteImageUrl
@@ -248,9 +238,7 @@ export class PrimeView {
               : renderNotesToHtml(item.notes || "") ||
                 `<p class="notes-rendered__empty">No notes yet. Use Edit in the menu to add some.</p>`
           }
-        </div>`
-            : ""
-        }
+        </div>
       </div>
     `;
   }
