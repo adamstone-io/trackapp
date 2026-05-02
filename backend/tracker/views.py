@@ -7,7 +7,7 @@ from django.conf import settings
 from django.utils import timezone
 from datetime import timedelta, timezone as dt_timezone
 from math import ceil
-from django.db.models import Case, Count, F, IntegerField, Q, Value, When
+from django.db.models import Case, Count, F, IntegerField, Q, Sum, Value, When
 from rest_framework.parsers import JSONParser, MultiPartParser, FormParser
 
 from django.core.validators import validate_email
@@ -282,7 +282,8 @@ class TaskViewSet(UserOwnedViewSet):
 
     def get_queryset(self):
         return Task.objects.filter(user=self.request.user).annotate(
-            entry_count=Count("time_entries")
+            entry_count=Count("time_entries"),
+            total_seconds=Sum("time_entries__duration_seconds"),
         )
 
 

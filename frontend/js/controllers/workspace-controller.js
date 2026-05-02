@@ -2,7 +2,6 @@
 import {
   loadProjects,
   loadTasks,
-  loadTimeEntries,
   createProject,
   updateProject,
   deleteProject,
@@ -17,7 +16,6 @@ import { WorkspaceView } from "../views/workspace-view.js";
 export function createWorkspaceController() {
   let projects = [];
   let tasks = [];
-  let timeEntries = [];
   let editingProjectId = null;
   let editingTaskId = null;
 
@@ -91,22 +89,11 @@ export function createWorkspaceController() {
   async function refresh() {
     projects = await loadProjects();
     tasks = await loadTasks();
-    timeEntries = await loadTimeEntries();
 
     const projectStats = calculateProjectStats();
     WorkspaceView.renderProjects(projects, projectStats);
     updateDateLabel();
     renderScheduledTasks();
-  }
-
-  function entryTaskId(e) {
-    // API returns the task FK as `task` (UUID string), not `taskId`
-    return e.task ?? e.taskId ?? null;
-  }
-
-  function entryDuration(e) {
-    // API returns snake_case `duration_seconds`
-    return e.duration_seconds ?? e.durationSeconds ?? 0;
   }
 
   function calculateProjectStats() {
@@ -116,13 +103,8 @@ export function createWorkspaceController() {
       const projectTasks = tasks.filter(
         (t) => (t.project ?? t.projectId) === project.id && !t.archived,
       );
-      const taskIds = new Set(projectTasks.map((t) => t.id));
-
-      const projectEntries = timeEntries.filter((e) =>
-        taskIds.has(entryTaskId(e)),
-      );
-      const totalSeconds = projectEntries.reduce(
-        (sum, e) => sum + entryDuration(e),
+      const totalSeconds = projectTasks.reduce(
+        (sum, t) => sum + (t.total_seconds ?? 0),
         0,
       );
 
@@ -138,10 +120,11 @@ export function createWorkspaceController() {
   function calculateTaskTime() {
     const taskTimeMap = new Map();
 
-    for (const entry of timeEntries) {
-      const id = entryTaskId(entry);
-      if (!id) continue;
-      taskTimeMap.set(id, (taskTimeMap.get(id) || 0) + entryDuration(entry));
+    for (const task of tasks) {
+      const seconds = task.total_seconds ?? 0;
+      if (seconds > 0) {
+        taskTimeMap.set(task.id, seconds);
+      }
     }
 
     return taskTimeMap;
