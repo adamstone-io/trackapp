@@ -29,7 +29,7 @@ let pauseStartMs = null;
 let pauseTickerId = null;
 let isStarting = false;
 
-export function createTimerController({ onEntryAdded, countdownController = null }) {
+export function createTimerController({ onEntryAdded, onOptimisticEntry, onEntryFailed, countdownController = null }) {
   const timer = new Timer();
   const breakModal = createBreakModal({
     onSave: async ({ label }) => {
@@ -467,25 +467,50 @@ export function createTimerController({ onEntryAdded, countdownController = null
     // Clear server-side active timer record
     deleteActiveTimer().catch(() => {});
 
-    try {
-      const ensuredTaskId = await ensureTaskExists(activeTask);
-      if (ensuredTaskId) {
-        activeEntry.taskId = ensuredTaskId;
-      }
+    // Finalize the entry locally — we have all the data we need right now
+    activeEntry.finalize({
+      endedAt: new Date().toISOString(),
+      durationSeconds: duration,
+    });
 
-      activeEntry.finalize({
-        endedAt: new Date().toISOString(),
-        durationSeconds: duration,
-      });
-
-      const payload = {
-        task: activeEntry.taskId,
+    // Show the entry in the list immediately without waiting for the server
+    if (typeof onOptimisticEntry === "function") {
+      onOptimisticEntry({
         taskTitle: activeEntry.taskTitle,
         startedAt: activeEntry.startedAt,
         endedAt: activeEntry.endedAt,
         durationSeconds: activeEntry.durationSeconds,
-        notes: activeEntry.notes,
-        breaks: activeEntry.breaks,
+      });
+    }
+
+    // Capture before clearing so the async block below can still use them
+    const savedActiveEntry = activeEntry;
+    const savedActiveTask = activeTask;
+
+    // Clear UI immediately — don't make the user wait for the server
+    currentTask.clearCurrentTask();
+    CurrentTaskView.clearInputs();
+    activeEntry = null;
+    activeTask = null;
+    CurrentTaskView.render({ taskTitle: "", running: false });
+    document.dispatchEvent(new CustomEvent("timer:runningChange", { detail: { running: false } }));
+    if (isCountdownUiActive()) showCountdownFavorites();
+
+    // Persist to server in the background
+    try {
+      const ensuredTaskId = await ensureTaskExists(savedActiveTask);
+      if (ensuredTaskId) {
+        savedActiveEntry.taskId = ensuredTaskId;
+      }
+
+      const payload = {
+        task: savedActiveEntry.taskId,
+        taskTitle: savedActiveEntry.taskTitle,
+        startedAt: savedActiveEntry.startedAt,
+        endedAt: savedActiveEntry.endedAt,
+        durationSeconds: savedActiveEntry.durationSeconds,
+        notes: savedActiveEntry.notes,
+        breaks: savedActiveEntry.breaks,
       };
       const savedEntry = await createTimeEntry(payload);
 
@@ -494,26 +519,9 @@ export function createTimerController({ onEntryAdded, countdownController = null
       }
     } catch (err) {
       console.error("Failed to save time entry to API:", err);
-      alert(
-        `Could not save time entry: ${err.message || "Network or server error"}. Check console and that the backend is running at ${"http://127.0.0.1:8000"}.`,
-      );
-      return;
-    }
-
-    currentTask.clearCurrentTask();
-    CurrentTaskView.clearInputs();
-    activeEntry = null;
-    activeTask = null;
-
-    CurrentTaskView.render({
-      taskTitle: "",
-      running: false,
-    });
-
-    document.dispatchEvent(new CustomEvent("timer:runningChange", { detail: { running: false } }));
-
-    if (isCountdownUiActive()) {
-      showCountdownFavorites();
+      if (typeof onEntryFailed === "function") {
+        onEntryFailed(err);
+      }
     }
   }
 

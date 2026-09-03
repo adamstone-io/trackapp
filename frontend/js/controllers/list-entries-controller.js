@@ -727,6 +727,13 @@ export function createEntriesController() {
 
   return {
     refresh,
+    prependOptimisticEntry(entry) {
+      EntriesView.prependOptimisticEntry(entry);
+      lastTimeEntry = entry;
+    },
+    removeOptimisticEntry() {
+      EntriesView.removeOptimisticEntry();
+    },
     setDate: (dateStr) => {
       selectedDate = dateStr || null;
       refresh();

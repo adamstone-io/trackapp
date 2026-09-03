@@ -31,9 +31,17 @@ import { TaskNameManager } from "./utils/task-name-manager.js";
   const entriesController = createEntriesController();
   const countdownController = createCountdownController();
   const timerDispose = createTimerController({
+    onOptimisticEntry: (entry) => {
+      entriesController.prependOptimisticEntry(entry);
+      prefillStartTime();
+    },
     onEntryAdded: async () => {
       await entriesController.refresh();
       prefillStartTime();
+    },
+    onEntryFailed: (err) => {
+      entriesController.removeOptimisticEntry();
+      alert(`Could not save time entry: ${err?.message || "Network or server error"}.`);
     },
     countdownController,
   });

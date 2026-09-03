@@ -203,6 +203,28 @@ export const EntriesView = {
     return listEl();
   },
 
+  prependOptimisticEntry(entry) {
+    const list = listEl();
+    const empty = emptyEl();
+    if (empty) empty.style.display = "none";
+
+    const temp = document.createElement("div");
+    temp.innerHTML = renderEntry(entry);
+    const card = temp.firstElementChild;
+    if (!card) return;
+    card.setAttribute("data-optimistic", "true");
+    card.style.opacity = "0.6";
+    list.prepend(card);
+  },
+
+  removeOptimisticEntry() {
+    const list = listEl();
+    const card = list.querySelector("[data-optimistic]");
+    if (card) card.remove();
+    const empty = emptyEl();
+    if (empty && list.children.length === 0) empty.style.display = "block";
+  },
+
   render(items) {
     const list = listEl();
     const empty = emptyEl();
