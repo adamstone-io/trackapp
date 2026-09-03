@@ -1,0 +1,32 @@
+{
+  "name": "trackapp-prime",
+  "title": "TrackApp Prime",
+  "description": "Flash prime items from TrackApp",
+  "icon": "command-icon.png",
+  "author": "adam",
+  "license": "MIT",
+  "commands": [
+    {
+      "name": "study",
+      "title": "Study",
+      "description": "Flash study items (priming or studying mode)",
+      "mode": "view"
+    }
+  ],
+  "dependencies": {
+    "@raycast/api": "^1.93.0",
+    "node-fetch": "^3.3.2"
+  },
+  "devDependencies": {
+    "@raycast/eslint-config": "^1.0.11",
+    "@types/node": "^22.0.0",
+    "@types/react": "^19.0.0",
+    "eslint": "^8.57.0",
+    "typescript": "^5.7.0"
+  },
+  "scripts": {
+    "build": "ray build",
+    "dev": "ray develop",
+    "lint": "ray lint"
+  }
+}

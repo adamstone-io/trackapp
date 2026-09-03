@@ -18,3 +18,5 @@ backend/convert_study_items.py
 .vscode
 frontend/dist/
 node_modules/
+CLAUDE.md
+raycast/node_modules/
