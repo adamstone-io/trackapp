@@ -391,6 +391,21 @@ async function cmdPreset(action, ...args) {
   }
 }
 
+async function cmdLog(...args) {
+  const title = args.join(' ').trim() || null;
+
+  const body = {
+    timestamp: new Date().toISOString(),
+    description: title || 'Untitled',
+    category: 'general',
+  };
+
+  if (title) body.task_title = title;
+
+  await api('POST', '/moments/', body);
+  console.log(title ? `Logged: "${title}"` : 'Moment logged.');
+}
+
 // ---------------------------------------------------------------------------
 // Entry point
 // ---------------------------------------------------------------------------
@@ -403,6 +418,7 @@ const COMMANDS = {
   pause:  { fn: cmdPause,  usage: 'track pause' },
   resume: { fn: cmdResume, usage: 'track resume' },
   status: { fn: cmdStatus, usage: 'track status' },
+  log:    { fn: cmdLog,    usage: 'track log ["Title"]' },
   preset: { fn: cmdPreset, usage: 'track preset <add|remove|list>' },
 };
 
