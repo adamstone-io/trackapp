@@ -11,6 +11,15 @@ class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
         return token
 
     def validate(self, attrs):
+        # The login form accepts an email address as the identifier; resolve it
+        # to the account's username before authenticating. Emails aren't unique
+        # at the DB level, so only substitute on an unambiguous match.
+        identifier = (attrs.get(self.username_field) or "").strip()
+        if "@" in identifier and not User.objects.filter(username=identifier).exists():
+            matches = User.objects.filter(email__iexact=identifier)[:2]
+            if len(matches) == 1:
+                attrs[self.username_field] = matches[0].username
+
         # Before the parent runs (which raises a generic "no active account" error),
         # check if the user exists but hasn't verified their email yet so we can
         # surface a more helpful message.

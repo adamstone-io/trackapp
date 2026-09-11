@@ -1,0 +1,93 @@
+/* Shared styles for the unauthenticated pages: login, verify-email, trial-expired. */
+
+.page {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--container-pad);
+}
+
+.card {
+  width: 100%;
+  max-width: var(--container-narrow);
+  background: var(--color-bg-raised);
+  border: var(--border-hairline) solid var(--color-border);
+  border-radius: var(--radius-lg);
+  padding: var(--space-6) var(--space-5);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.message {
+  color: var(--color-text-secondary);
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.label {
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  letter-spacing: var(--letter-spacing-wide);
+  text-transform: uppercase;
+  color: var(--color-text-secondary);
+}
+
+.input {
+  background: var(--color-bg);
+  border: var(--border-hairline) solid var(--color-border-strong);
+  border-radius: var(--radius-md);
+  padding: 0 var(--space-3);
+  min-height: var(--touch-target);
+  transition: border-color var(--transition-fast);
+}
+
+.input:focus {
+  outline: none;
+  border-color: var(--color-accent);
+}
+
+.primaryAction {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: var(--touch-target);
+  background: var(--color-accent);
+  color: var(--color-text-inverse);
+  font-family: var(--font-mono);
+  font-size: var(--text-sm);
+  font-weight: var(--font-weight-medium);
+  border-radius: var(--radius-md);
+  transition: background var(--transition-fast);
+}
+
+.primaryAction:hover {
+  background: var(--color-accent-hover);
+  color: var(--color-text-inverse);
+}
+
+.primaryAction:disabled {
+  opacity: var(--opacity-disabled);
+  cursor: default;
+}
+
+.error {
+  color: var(--color-danger);
+  font-size: var(--text-sm);
+}
+
+.hint {
+  color: var(--color-text-muted);
+  font-size: var(--text-sm);
+}

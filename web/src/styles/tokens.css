@@ -1,0 +1,106 @@
+/*
+ * Design tokens — single source of truth for all visual values.
+ * Dark theme, coral accent. No component may hardcode a color, size,
+ * radius, shadow, or duration; always reference a token.
+ */
+
+:root {
+  /* ---- Color: surfaces ---- */
+  --color-bg: #0a0a0a;
+  --color-bg-raised: #111111;
+  --color-bg-overlay: #1a1a1a;
+  --color-border: #262626;
+  --color-border-strong: #3a3a3a;
+
+  /* ---- Color: text ---- */
+  --color-text: #e6e6e6;
+  --color-text-secondary: #9a9a9a;
+  --color-text-muted: #6b6b6b;
+  --color-text-inverse: #0a0a0a;
+
+  /* ---- Color: accent (rationed — active nav underline, links, primary CTA
+     fill, kicker labels, selected tags, callout stripes only) ---- */
+  --color-accent: #e8613a;
+  --color-accent-hover: #f0754f;
+  --color-accent-muted: rgba(232, 97, 58, 0.15);
+
+  /* ---- Color: feedback ---- */
+  --color-danger: #e5484d;
+  --color-danger-muted: rgba(229, 72, 77, 0.15);
+  --color-success: #46a758;
+  --color-warning: #f5a524;
+
+  /* ---- Typography ---- */
+  --font-sans: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+
+  --text-xs: 0.6875rem; /* 11px */
+  --text-sm: 0.8125rem; /* 13px */
+  --text-base: 0.9375rem; /* 15px */
+  --text-md: 1.0625rem; /* 17px */
+  --text-lg: 1.25rem; /* 20px */
+  --text-xl: 1.5rem; /* 24px */
+  --text-2xl: 2rem; /* 32px */
+  --text-timer: 3rem; /* 48px */
+
+  --font-weight-normal: 400;
+  --font-weight-medium: 500;
+  --font-weight-semibold: 600;
+  --font-weight-bold: 700;
+
+  --line-height-tight: 1.2;
+  --line-height-base: 1.5;
+  --line-height-relaxed: 1.7;
+
+  --letter-spacing-wide: 0.08em;
+
+  /* ---- Spacing ---- */
+  --space-1: 0.25rem;
+  --space-2: 0.5rem;
+  --space-3: 0.75rem;
+  --space-4: 1rem;
+  --space-5: 1.5rem;
+  --space-6: 2rem;
+  --space-7: 3rem;
+  --space-8: 4rem;
+
+  /* ---- Borders & lines ---- */
+  --border-hairline: 1px;
+  --underline-width: 2px;
+  --focus-ring-width: 2px;
+
+  /* ---- Opacity ---- */
+  --opacity-disabled: 0.6;
+
+  /* ---- Layers ---- */
+  --z-nav: 100;
+
+  /* ---- Radius ---- */
+  --radius-sm: 4px;
+  --radius-md: 8px;
+  --radius-lg: 12px;
+  --radius-full: 9999px;
+
+  /* ---- Shadows ---- */
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.4);
+  --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.5);
+  --shadow-lg: 0 12px 32px rgba(0, 0, 0, 0.6);
+
+  /* ---- Transitions ---- */
+  --transition-fast: 120ms ease;
+  --transition-base: 200ms ease;
+  --transition-slow: 350ms ease;
+
+  /* ---- Layout ---- */
+  --container-max: 64rem; /* 1024px */
+  --container-narrow: 28rem; /* 448px */
+  --container-pad: var(--space-4);
+  --nav-height: 3.5rem;
+  --touch-target: 44px;
+}
+
+@media (min-width: 768px) {
+  :root {
+    --container-pad: var(--space-6);
+  }
+}
