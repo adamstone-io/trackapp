@@ -64,6 +64,21 @@
   font-size: var(--text-sm);
   color: var(--color-text-secondary);
   overflow-wrap: anywhere;
+  text-align: left;
+}
+
+button.momentText:hover {
+  color: var(--color-text);
+}
+
+.momentInput {
+  background: var(--color-bg-raised);
+  border: var(--border-hairline) solid var(--color-border);
+  border-radius: var(--radius-sm);
+  padding: var(--space-1) var(--space-2);
+  color: var(--color-text);
+  font-size: var(--text-sm);
+  min-width: 12rem;
 }
 
 .meta {

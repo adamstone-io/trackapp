@@ -1,8 +1,9 @@
+import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { getTodayEntries } from "../../api/entries";
 import type { TodayEntry } from "../../api/types";
 import { formatClockTime, formatDuration } from "../../lib/time";
-import { TODAY_ENTRIES_KEY } from "./useTimeEntries";
+import { TODAY_ENTRIES_KEY, useRenameMoment } from "./useTimeEntries";
 import styles from "./TodayLog.module.css";
 
 export function TodayLog() {
@@ -54,13 +55,54 @@ function TimeEntryRow({ entry }: { entry: Extract<TodayEntry, { type: "time_entr
 
 function MomentRow({ entry }: { entry: Extract<TodayEntry, { type: "moment" }> }) {
   const data = entry.data;
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState(data.description);
+  const renameMoment = useRenameMoment();
+  // A just-added moment is still being created server-side; let it settle first.
+  const editable = !entry.id.startsWith("optimistic-");
+
+  function commit() {
+    setEditing(false);
+    const description = draft.trim();
+    if (!description || description === data.description) return;
+    renameMoment.mutate({ id: entry.id, description });
+  }
+
   return (
     <>
       <div className={styles.main}>
         <span className={styles.momentMark} aria-hidden="true">
           ◆
         </span>
-        <span className={styles.momentText}>{data.description}</span>
+        {editing ? (
+          <input
+            className={styles.momentInput}
+            type="text"
+            aria-label="Moment text"
+            value={draft}
+            autoFocus
+            onChange={(event) => setDraft(event.target.value)}
+            onBlur={commit}
+            onKeyDown={(event) => {
+              if (event.key === "Enter") commit();
+              if (event.key === "Escape") setEditing(false);
+            }}
+          />
+        ) : editable ? (
+          <button
+            className={styles.momentText}
+            type="button"
+            title="Rename moment"
+            onClick={() => {
+              setDraft(data.description);
+              setEditing(true);
+            }}
+          >
+            {data.description}
+          </button>
+        ) : (
+          <span className={styles.momentText}>{data.description}</span>
+        )}
       </div>
       <div className={styles.meta}>
         <span>{formatClockTime(data.timestamp)}</span>

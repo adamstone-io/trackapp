@@ -10,15 +10,19 @@ interface AddMomentButtonProps {
 
 export function AddMomentButton({ taskTitle, onAdded }: AddMomentButtonProps) {
   const addMoment = useAddMoment();
-  const description = taskTitle.trim();
 
   function handleClick() {
-    addMoment.mutate({ description, timestamp: new Date().toISOString() });
+    // On the go there's often no time to type — log the time now as
+    // "Untitled" and rename it from the log later.
+    addMoment.mutate({
+      description: taskTitle.trim() || "Untitled",
+      timestamp: new Date().toISOString(),
+    });
     onAdded();
   }
 
   return (
-    <button className={styles.button} type="button" disabled={!description} onClick={handleClick}>
+    <button className={styles.button} type="button" onClick={handleClick}>
       Add moment
     </button>
   );

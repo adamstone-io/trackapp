@@ -1,5 +1,5 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { createMoment, createTimeEntry, type MomentCreate } from "../../api/entries";
+import { createMoment, createTimeEntry, patchMoment, type MomentCreate } from "../../api/entries";
 import { ensureTaskId } from "../../api/tasks";
 import { deleteActiveTimer } from "../../api/timer";
 import type { ActiveTimer, TimeEntry, TodayEntry } from "../../api/types";
@@ -134,6 +134,39 @@ export function useAddMoment() {
     onError: (error, _draft, context) => {
       rollbackOptimisticEntry(queryClient, context?.previousEntries);
       showToast(error instanceof Error ? error.message : "Could not save the moment.");
+    },
+  });
+}
+
+export function useRenameMoment() {
+  const queryClient = useQueryClient();
+  const { showToast } = useToast();
+
+  return useMutation({
+    mutationFn: ({ id, description }: { id: string; description: string }) =>
+      patchMoment(id, { description }),
+    onMutate: async ({ id, description }) => {
+      await queryClient.cancelQueries({ queryKey: TODAY_ENTRIES_KEY });
+      const previousEntries = queryClient.getQueryData<TodayEntry[]>(TODAY_ENTRIES_KEY);
+      queryClient.setQueryData<TodayEntry[]>(TODAY_ENTRIES_KEY, (current) =>
+        current?.map((entry) =>
+          entry.type === "moment" && entry.id === id
+            ? { ...entry, data: { ...entry.data, description } }
+            : entry,
+        ),
+      );
+      return { previousEntries };
+    },
+    onSuccess: (saved) => {
+      queryClient.setQueryData<TodayEntry[]>(TODAY_ENTRIES_KEY, (current) =>
+        current?.map((entry) =>
+          entry.type === "moment" && entry.id === saved.id ? { ...entry, data: saved } : entry,
+        ),
+      );
+    },
+    onError: (error, _variables, context) => {
+      rollbackOptimisticEntry(queryClient, context?.previousEntries);
+      showToast(error instanceof Error ? error.message : "Could not rename the moment.");
     },
   });
 }

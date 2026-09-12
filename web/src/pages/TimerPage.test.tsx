@@ -638,11 +638,67 @@ describe("add moment", () => {
     expect(taskInput).toHaveValue("");
   });
 
-  it("is disabled while the task title is empty", async () => {
+  it("creates an Untitled moment when the task field is empty", async () => {
+    const user = userEvent.setup();
+    let posted: Record<string, unknown> | null = null;
+    server.use(
+      http.post(api("/moments/"), async ({ request }) => {
+        posted = (await request.json()) as Record<string, unknown>;
+        return HttpResponse.json(
+          { id: "m-9", category: "general", task: null, task_title: "", is_milestone: false, ...posted },
+          { status: 201 },
+        );
+      }),
+    );
+
     renderApp("/timer");
 
     await screen.findByLabelText(/task/i);
-    expect(screen.getByRole("button", { name: /add moment/i })).toBeDisabled();
+    await user.click(screen.getByRole("button", { name: /add moment/i }));
+
+    const log = await screen.findByRole("list", { name: /today/i });
+    expect(within(log).getByText("Untitled")).toBeInTheDocument();
+    await waitFor(() => expect(posted).not.toBeNull());
+    expect(posted).toMatchObject({ description: "Untitled" });
+  });
+
+  it("renames a moment by clicking its text in the log", async () => {
+    const user = userEvent.setup();
+    let patched: Record<string, unknown> | null = null;
+    const moment = {
+      id: "m-1",
+      description: "Untitled",
+      category: "general",
+      timestamp: "2026-09-12T09:15:00Z",
+      task: null,
+      task_title: "",
+      is_milestone: false,
+    };
+    server.use(
+      http.get(api("/today-entries/"), () =>
+        HttpResponse.json([{ type: "moment", id: "m-1", sort_time: moment.timestamp, data: moment }]),
+      ),
+      http.patch(api("/moments/m-1/"), async ({ request }) => {
+        patched = (await request.json()) as Record<string, unknown>;
+        return HttpResponse.json({ ...moment, ...patched });
+      }),
+    );
+
+    renderApp("/timer");
+
+    const log = await screen.findByRole("list", { name: /today/i });
+    await user.click(within(log).getByRole("button", { name: "Untitled" }));
+
+    const input = within(log).getByLabelText(/moment text/i);
+    await user.clear(input);
+    await user.type(input, "Saw a great heron{Enter}");
+
+    // Optimistic: the new text shows immediately and the editor closes.
+    expect(within(log).getByText("Saw a great heron")).toBeInTheDocument();
+    expect(within(log).queryByLabelText(/moment text/i)).not.toBeInTheDocument();
+
+    await waitFor(() => expect(patched).not.toBeNull());
+    expect(patched).toMatchObject({ description: "Saw a great heron" });
   });
 });
 

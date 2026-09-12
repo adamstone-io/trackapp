@@ -27,3 +27,7 @@ export interface MomentCreate {
 export function createMoment(payload: MomentCreate): Promise<Moment> {
   return apiFetch<Moment>("/moments/", { method: "POST", body: payload });
 }
+
+export function patchMoment(id: string, patch: { description: string }): Promise<Moment> {
+  return apiFetch<Moment>(`/moments/${id}/`, { method: "PATCH", body: patch });
+}
