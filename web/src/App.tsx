@@ -9,7 +9,6 @@ import { WorkspacePage } from "./pages/WorkspacePage";
 import { CalendarPage } from "./pages/CalendarPage";
 import { StudyPage } from "./pages/StudyPage";
 import { HabitsPage } from "./pages/HabitsPage";
-import { MomentsPage } from "./pages/MomentsPage";
 import { StatsPage } from "./pages/StatsPage";
 import { SettingsPage } from "./pages/SettingsPage";
 import { LoginPage } from "./pages/LoginPage";
@@ -54,7 +53,6 @@ export function App({ queryClient }: AppProps) {
           <Route path="/calendar" element={<CalendarPage />} />
           <Route path="/study" element={<StudyPage />} />
           <Route path="/habits" element={<HabitsPage />} />
-          <Route path="/moments" element={<MomentsPage />} />
           <Route path="/stats" element={<StatsPage />} />
           <Route path="/settings" element={<SettingsPage />} />
         </Route>

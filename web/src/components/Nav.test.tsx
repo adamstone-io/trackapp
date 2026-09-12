@@ -9,7 +9,6 @@ const PAGES = [
   ["Calendar", "/calendar"],
   ["Study", "/study"],
   ["Habits", "/habits"],
-  ["Moments", "/moments"],
   ["Stats", "/stats"],
   ["Settings", "/settings"],
 ] as const;
