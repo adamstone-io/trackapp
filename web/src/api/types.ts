@@ -40,6 +40,24 @@ export interface Task {
   archived: boolean;
 }
 
+export interface Habit {
+  id: string;
+  name: string;
+  daily_target: number;
+  weekly_target: number;
+  monthly_target: number;
+  /** Effective counts: the backend zeroes them past a day/week/month boundary. */
+  daily_count: number;
+  weekly_count: number;
+  monthly_count: number;
+  is_active: boolean;
+  /** Consecutive days the daily target was met; 0 while broken by a gap. */
+  streak_count: number;
+  last_completed_date: string | null;
+  last_logged_at: string | null;
+  created_at?: string;
+}
+
 export type TimerMode = "stopwatch" | "countdown";
 
 export interface ActiveTimer {
