@@ -87,27 +87,27 @@ function StartTimerForm({ title, onTitleChange }: { title: string; onTitleChange
             Countdown
           </button>
         </div>
-        {mode === "countdown" && (
-          <div className={styles.field}>
-            <label className={styles.label} htmlFor="timer-duration">
-              Minutes
-            </label>
-            <input
-              id="timer-duration"
-              className={styles.durationInput}
-              type="text"
-              inputMode="numeric"
-              value={durationMinutes}
-              onChange={(event) => setDurationMinutes(event.target.value.replace(/\D/g, ""))}
-              placeholder="25"
-              autoComplete="off"
-            />
-          </div>
-        )}
         <button className={styles.startButton} type="submit">
           Start
         </button>
       </div>
+      {mode === "countdown" && (
+        <div className={styles.field}>
+          <label className={styles.label} htmlFor="timer-duration">
+            Minutes
+          </label>
+          <input
+            id="timer-duration"
+            className={styles.durationInput}
+            type="text"
+            inputMode="numeric"
+            value={durationMinutes}
+            onChange={(event) => setDurationMinutes(event.target.value.replace(/\D/g, ""))}
+            placeholder="25"
+            autoComplete="off"
+          />
+        </div>
+      )}
     </form>
   );
 }
