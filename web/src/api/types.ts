@@ -38,6 +38,21 @@ export interface Task {
   project: string | null;
   notes: string;
   archived: boolean;
+  /** Annotations from the backend — total tracked time and entry count. */
+  total_seconds: number;
+  entry_count: number;
+  created_at?: string;
+}
+
+export interface Project {
+  id: string;
+  name: string;
+  description: string;
+  color: string;
+  archived: boolean;
+  /** Annotation: total tracked time across all the project's tasks. */
+  total_seconds: number;
+  created_at?: string;
 }
 
 export interface Habit {

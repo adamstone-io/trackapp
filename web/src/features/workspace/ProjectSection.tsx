@@ -1,0 +1,289 @@
+import { useState, type FormEvent } from "react";
+import type { Project } from "../../api/types";
+import type { ProjectCreate } from "../../api/projects";
+import { formatDuration } from "../../lib/time";
+import { useCreateProject, useDeleteProject, useEditProject, useProjectsQuery } from "./useWorkspace";
+import styles from "./workspace.module.css";
+import formStyles from "./forms.module.css";
+
+/** Preset palette; a swatch picker beats a raw hex field for a quick pick. */
+export const PROJECT_COLORS = [
+  { name: "Coral", value: "#e8613a" },
+  { name: "Amber", value: "#d9a03f" },
+  { name: "Green", value: "#4fa06a" },
+  { name: "Teal", value: "#3f9fa0" },
+  { name: "Blue", value: "#4f7fd9" },
+  { name: "Violet", value: "#8b6fd9" },
+  { name: "Magenta", value: "#c95f9f" },
+  { name: "Slate", value: "#8a94a6" },
+];
+
+/** A just-created optimistic row has no server id yet; let it settle first. */
+export function isSettled(id: string): boolean {
+  return !id.startsWith("optimistic-");
+}
+
+export function ProjectSection() {
+  const { data: projects } = useProjectsQuery();
+
+  if (!projects) return null;
+  const active = projects.filter((project) => !project.archived);
+  const archived = projects.filter((project) => project.archived);
+
+  return (
+    <>
+      <section className={styles.section}>
+        <h2 id="projects-heading" className={styles.heading}>
+          Projects
+        </h2>
+        {active.length === 0 ? (
+          <p className={styles.empty}>Create your first project.</p>
+        ) : (
+          <ul className={styles.list} aria-labelledby="projects-heading">
+            {active.map((project) => (
+              <li key={project.id} className={styles.item}>
+                <ProjectRow project={project} />
+              </li>
+            ))}
+          </ul>
+        )}
+        <AddProjectForm />
+      </section>
+      {archived.length > 0 && <ArchivedProjects projects={archived} />}
+    </>
+  );
+}
+
+function ArchivedProjects({ projects }: { projects: Project[] }) {
+  const editMutation = useEditProject();
+  return (
+    <section className={styles.section}>
+      <h2 id="archived-projects-heading" className={styles.heading}>
+        Archived projects
+      </h2>
+      <ul className={styles.list} aria-labelledby="archived-projects-heading">
+        {projects.map((project) => (
+          <li key={project.id} className={styles.item}>
+            <div className={styles.main}>
+              <ColorDot color={project.color} />
+              <span className={styles.archivedName}>{project.name}</span>
+            </div>
+            <button
+              className={styles.moreAction}
+              type="button"
+              aria-label={`Restore ${project.name}`}
+              disabled={!isSettled(project.id)}
+              onClick={() => editMutation.mutate({ id: project.id, patch: { archived: false } })}
+            >
+              Restore
+            </button>
+          </li>
+        ))}
+      </ul>
+    </section>
+  );
+}
+
+function ProjectRow({ project }: { project: Project }) {
+  const [moreOpen, setMoreOpen] = useState(false);
+  const [editing, setEditing] = useState(false);
+  const [confirmingDelete, setConfirmingDelete] = useState(false);
+  const editMutation = useEditProject();
+  const deleteMutation = useDeleteProject();
+
+  if (editing) {
+    return (
+      <ProjectForm
+        idPrefix={`edit-project-${project.id}`}
+        initial={project}
+        onSubmit={(draft) => {
+          editMutation.mutate({ id: project.id, patch: draft });
+          setEditing(false);
+        }}
+        onCancel={() => setEditing(false)}
+      />
+    );
+  }
+
+  return (
+    <>
+      <div className={styles.main}>
+        <ColorDot color={project.color} />
+        <span className={styles.name}>{project.name}</span>
+        {project.description && <span className={styles.description}>{project.description}</span>}
+      </div>
+      <span className={styles.time}>{formatDuration(project.total_seconds)}</span>
+      <div className={styles.actions}>
+        <button
+          className={styles.moreButton}
+          type="button"
+          aria-label={`More ${project.name}`}
+          aria-expanded={moreOpen}
+          disabled={!isSettled(project.id)}
+          onClick={() => {
+            setMoreOpen((open) => !open);
+            setConfirmingDelete(false);
+          }}
+        >
+          ⋯
+        </button>
+      </div>
+      {moreOpen &&
+        (confirmingDelete ? (
+          <div className={styles.moreRow}>
+            <span className={styles.confirmNote}>
+              Tasks keep their history and become unassigned.
+            </span>
+            <button
+              className={styles.dangerAction}
+              type="button"
+              onClick={() => deleteMutation.mutate(project.id)}
+            >
+              Confirm delete
+            </button>
+            <button
+              className={styles.moreAction}
+              type="button"
+              onClick={() => setConfirmingDelete(false)}
+            >
+              Cancel
+            </button>
+          </div>
+        ) : (
+          <div className={styles.moreRow}>
+            <button className={styles.moreAction} type="button" onClick={() => setEditing(true)}>
+              Edit
+            </button>
+            <button
+              className={styles.moreAction}
+              type="button"
+              onClick={() => editMutation.mutate({ id: project.id, patch: { archived: true } })}
+            >
+              Archive
+            </button>
+            <button
+              className={styles.dangerAction}
+              type="button"
+              onClick={() => setConfirmingDelete(true)}
+            >
+              Delete
+            </button>
+          </div>
+        ))}
+    </>
+  );
+}
+
+export function ColorDot({ color }: { color: string }) {
+  return <span className={styles.dot} style={{ background: color }} data-color={color} aria-hidden="true" />;
+}
+
+function AddProjectForm() {
+  const [open, setOpen] = useState(false);
+  const createMutation = useCreateProject();
+
+  if (!open) {
+    return (
+      <button className={formStyles.openButton} type="button" onClick={() => setOpen(true)}>
+        Add project
+      </button>
+    );
+  }
+
+  return (
+    <ProjectForm
+      idPrefix="add-project"
+      onSubmit={(draft) => {
+        createMutation.mutate(draft);
+        setOpen(false);
+      }}
+      onCancel={() => setOpen(false)}
+    />
+  );
+}
+
+/** Name/description/color form shared by add (no initial) and edit. */
+function ProjectForm({
+  idPrefix,
+  initial,
+  onSubmit,
+  onCancel,
+}: {
+  idPrefix: string;
+  initial?: Project;
+  onSubmit: (draft: ProjectCreate) => void;
+  onCancel: () => void;
+}) {
+  const [name, setName] = useState(initial?.name ?? "");
+  const [description, setDescription] = useState(initial?.description ?? "");
+  const [color, setColor] = useState(initial?.color ?? PROJECT_COLORS[0].value);
+
+  function handleSubmit(event: FormEvent) {
+    event.preventDefault();
+    const trimmed = name.trim();
+    if (!trimmed) return;
+    onSubmit({ name: trimmed, description: description.trim(), color });
+  }
+
+  return (
+    <form className={initial ? formStyles.rowForm : formStyles.form} onSubmit={handleSubmit}>
+      <div className={formStyles.field}>
+        <label className={formStyles.label} htmlFor={`${idPrefix}-name`}>
+          Name
+        </label>
+        <input
+          id={`${idPrefix}-name`}
+          className={formStyles.nameInput}
+          type="text"
+          value={name}
+          onChange={(event) => setName(event.target.value)}
+          autoComplete="off"
+          autoFocus
+          required
+        />
+      </div>
+      <div className={formStyles.field}>
+        <label className={formStyles.label} htmlFor={`${idPrefix}-description`}>
+          Description
+        </label>
+        <input
+          id={`${idPrefix}-description`}
+          className={formStyles.nameInput}
+          type="text"
+          value={description}
+          onChange={(event) => setDescription(event.target.value)}
+          autoComplete="off"
+        />
+      </div>
+      <div className={formStyles.field}>
+        <span className={formStyles.label} id={`${idPrefix}-color-label`}>
+          Color
+        </span>
+        <div
+          className={formStyles.swatches}
+          role="radiogroup"
+          aria-labelledby={`${idPrefix}-color-label`}
+        >
+          {PROJECT_COLORS.map((swatch) => (
+            <input
+              key={swatch.value}
+              className={formStyles.swatch}
+              type="radio"
+              name={`${idPrefix}-color`}
+              aria-label={swatch.name}
+              checked={color === swatch.value}
+              onChange={() => setColor(swatch.value)}
+              style={{ background: swatch.value }}
+            />
+          ))}
+        </div>
+      </div>
+      <button className={formStyles.saveButton} type="submit">
+        Save
+      </button>
+      <button className={formStyles.cancelButton} type="button" onClick={onCancel}>
+        Cancel
+      </button>
+    </form>
+  );
+}

@@ -1,12 +1,29 @@
 import { apiFetch, fetchAllPages } from "./client";
 import type { Task } from "./types";
 
-function listAllTasks(): Promise<Task[]> {
+export function listAllTasks(): Promise<Task[]> {
   return fetchAllPages<Task>("/tasks/");
 }
 
-function createTask(title: string): Promise<Task> {
-  return apiFetch<Task>("/tasks/", { method: "POST", body: { title } });
+export interface TaskCreate {
+  title: string;
+  category?: string;
+  project?: string | null;
+}
+
+export function createTask(payload: TaskCreate): Promise<Task> {
+  return apiFetch<Task>("/tasks/", { method: "POST", body: payload });
+}
+
+export type TaskPatch = Partial<Pick<Task, "title" | "category" | "project" | "archived">>;
+
+export function patchTask(id: string, patch: TaskPatch): Promise<Task> {
+  return apiFetch<Task>(`/tasks/${id}/`, { method: "PATCH", body: patch });
+}
+
+/** Permanent delete. The backend cascades the task's time entries away. */
+export function deleteTask(id: string): Promise<void> {
+  return apiFetch<void>(`/tasks/${id}/`, { method: "DELETE" });
 }
 
 /**
@@ -19,5 +36,5 @@ export async function ensureTaskId(title: string): Promise<string> {
     (task) => task.title.trim().toLowerCase() === normalized,
   );
   if (existing) return existing.id;
-  return (await createTask(title)).id;
+  return (await createTask({ title })).id;
 }

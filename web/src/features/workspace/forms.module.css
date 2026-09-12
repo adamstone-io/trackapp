@@ -1,0 +1,82 @@
+/* Form controls shared by the workspace's add/edit project and task forms. */
+
+.openButton {
+  composes: secondaryButton from "../timer/controls.module.css";
+  margin-top: var(--space-4);
+}
+
+.form {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: var(--space-3);
+  margin-top: var(--space-4);
+}
+
+/* An edit form replaces its list row, so it fills the row's width. */
+.rowForm {
+  composes: form;
+  flex-basis: 100%;
+  margin-top: 0;
+}
+
+.field {
+  composes: field from "../timer/controls.module.css";
+}
+
+.label {
+  composes: label from "../timer/controls.module.css";
+}
+
+.input {
+  composes: input from "../timer/controls.module.css";
+}
+
+.nameInput {
+  composes: input;
+  flex: 1 1 12rem;
+}
+
+.select {
+  composes: input;
+}
+
+.saveButton {
+  composes: primaryButton from "../timer/controls.module.css";
+}
+
+.cancelButton {
+  composes: secondaryButton from "../timer/controls.module.css";
+}
+
+.swatches {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-height: var(--touch-target);
+}
+
+.swatch {
+  appearance: none;
+  width: 1.4rem;
+  height: 1.4rem;
+  margin: 0;
+  border: var(--border-hairline) solid var(--color-border-strong);
+  border-radius: var(--radius-full);
+  cursor: pointer;
+  transition: transform var(--transition-fast);
+}
+
+.swatch:hover {
+  transform: scale(1.15);
+}
+
+.swatch:checked {
+  outline: var(--focus-ring-width) solid var(--color-text);
+  outline-offset: var(--focus-ring-offset);
+}
+
+.swatch:focus-visible {
+  outline: var(--focus-ring-width) solid var(--color-accent);
+  outline-offset: var(--focus-ring-offset);
+}
