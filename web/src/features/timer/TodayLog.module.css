@@ -88,6 +88,9 @@ button.momentText:hover {
 .category {
   font-family: var(--font-mono);
   font-size: var(--text-xs);
+  /* Stored values are lowercase (legacy convention); display them capitalized
+     like the legacy modal's labels. */
+  text-transform: capitalize;
   color: var(--color-text-muted);
   border: var(--border-hairline) solid var(--color-border);
   border-radius: var(--radius-sm);
@@ -107,6 +110,7 @@ button.category:hover {
   color: var(--color-text);
   font-family: var(--font-mono);
   font-size: var(--text-xs);
+  text-transform: capitalize;
 }
 
 .meta {
