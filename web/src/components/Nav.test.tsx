@@ -1,4 +1,4 @@
-import { screen } from "@testing-library/react";
+import { screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { renderApp, seedSession } from "../test/render";
 
@@ -18,9 +18,7 @@ describe("navigation", () => {
     seedSession();
     renderApp("/");
 
-    await screen.findByRole("heading", { name: "Dashboard" });
-
-    const nav = screen.getByRole("navigation", { name: /main/i });
+    const nav = await screen.findByRole("navigation", { name: /main/i });
     for (const [label] of PAGES) {
       expect(
         screen.getByRole("link", { name: label }),
@@ -35,28 +33,25 @@ describe("navigation", () => {
     const user = userEvent.setup();
     await user.click(screen.getByRole("link", { name: "Habits" }));
 
-    expect(
-      await screen.findByRole("heading", { name: "Habits" }),
-    ).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: "Habits" })).toHaveAttribute(
-      "aria-current",
-      "page",
+    await waitFor(() =>
+      expect(screen.getByRole("link", { name: "Habits" })).toHaveAttribute(
+        "aria-current",
+        "page",
+      ),
     );
     expect(screen.getByRole("link", { name: "Dashboard" })).not.toHaveAttribute(
       "aria-current",
     );
   });
 
-  it("renders every route as a titled shell", async () => {
+  it("marks the matching nav link current on every route", async () => {
     seedSession();
 
+    // Pages have no h1 — the highlighted nav link is what names the page.
     for (const [label, path] of PAGES) {
       const { unmount } = renderApp(path);
-      // The timer page has no h1 (the active nav link names it); its log heading stands in.
-      const heading = label === "Timer" ? "Today" : label;
-      expect(
-        await screen.findByRole("heading", { name: heading }),
-      ).toBeInTheDocument();
+      const link = await screen.findByRole("link", { name: label });
+      expect(link).toHaveAttribute("aria-current", "page");
       unmount();
     }
   });

@@ -24,7 +24,8 @@ describe("login", () => {
     await user.type(screen.getByLabelText(/password/i), "hunter2");
     await user.click(screen.getByRole("button", { name: /sign in/i }));
 
-    await screen.findByRole("heading", { name: "Dashboard" });
+    const dashboardLink = await screen.findByRole("link", { name: "Dashboard" });
+    expect(dashboardLink).toHaveAttribute("aria-current", "page");
 
     expect(credentials).toEqual({ username: "adam@example.com", password: "hunter2" });
     expect(getAccessToken()).toBeTruthy();

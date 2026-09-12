@@ -62,9 +62,8 @@ describe("auth guard", () => {
     await user.type(screen.getByLabelText(/password/i), "hunter2");
     await user.click(screen.getByRole("button", { name: /sign in/i }));
 
-    expect(
-      await screen.findByRole("heading", { name: "Habits" }),
-    ).toBeInTheDocument();
+    const habitsLink = await screen.findByRole("link", { name: "Habits" });
+    expect(habitsLink).toHaveAttribute("aria-current", "page");
   });
 
   it("shows an error instead of a blank screen when the user check fails", async () => {

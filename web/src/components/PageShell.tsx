@@ -1,17 +1,7 @@
 import type { ReactNode } from "react";
 import styles from "./PageShell.module.css";
 
-interface PageShellProps {
-  /** Omit on pages where the active nav link already names the page. */
-  title?: string;
-  children?: ReactNode;
-}
-
-export function PageShell({ title, children }: PageShellProps) {
-  return (
-    <main className={styles.page}>
-      {title && <h1>{title}</h1>}
-      {children}
-    </main>
-  );
+/** Page container. Pages have no h1 — the highlighted nav link names them. */
+export function PageShell({ children }: { children?: ReactNode }) {
+  return <main className={styles.page}>{children}</main>;
 }

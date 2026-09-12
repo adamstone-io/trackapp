@@ -60,7 +60,7 @@ describe("persistent timer bar", () => {
     renderApp("/");
 
     // Wait for the dashboard to settle, then confirm there is no timer bar.
-    await screen.findByRole("heading", { name: /dashboard/i });
+    await screen.findByRole("link", { name: "Dashboard" });
     await waitFor(() =>
       expect(screen.queryByRole("link", { name: /active timer/i })).not.toBeInTheDocument(),
     );
