@@ -4,7 +4,7 @@ from django.contrib.auth.models import User
 from django.test import TestCase
 from django.utils import timezone
 
-from .models import Habit
+from .models import Habit, Project, Task, TimeEntry
 
 
 class EmailLoginTests(TestCase):
@@ -587,3 +587,73 @@ class HabitCrudTests(HabitApiTestCase):
         ).json()
         self.assertTrue(restored["is_active"])
         self.assertEqual(restored["streak_count"], 7)
+
+
+class WorkspaceApiTestCase(TestCase):
+    """Project/task endpoints as the workspace page uses them (ticket 05)."""
+
+    def setUp(self):
+        self.user = User.objects.create_user(
+            username="adam", email="adam@example.com", password="hunter2"
+        )
+        token = self.client.post(
+            "/api/auth/token/",
+            {"username": "adam", "password": "hunter2"},
+            content_type="application/json",
+        ).json()["access"]
+        self.headers = {"authorization": f"Bearer {token}"}
+
+    def entry(self, task, seconds):
+        return TimeEntry.objects.create(
+            user=self.user,
+            task=task,
+            task_title=task.title,
+            started_at=timezone.now() - timedelta(seconds=seconds),
+            ended_at=timezone.now(),
+            duration_seconds=seconds,
+        )
+
+
+class ProjectTotalsTests(WorkspaceApiTestCase):
+    """R18: total tracked time per project comes annotated from the backend."""
+
+    def test_project_total_sums_time_across_all_its_tasks(self):
+        project = Project.objects.create(user=self.user, name="TrackApp")
+        write = Task.objects.create(user=self.user, title="Write", project=project)
+        edit = Task.objects.create(user=self.user, title="Edit", project=project)
+        self.entry(write, 600)
+        self.entry(write, 300)
+        self.entry(edit, 100)
+
+        rows = self.client.get("/api/projects/", headers=self.headers).json()["results"]
+        self.assertEqual(rows[0]["total_seconds"], 1000)
+
+    def test_project_with_no_tracked_time_reports_zero_not_null(self):
+        Project.objects.create(user=self.user, name="Empty")
+
+        rows = self.client.get("/api/projects/", headers=self.headers).json()["results"]
+        self.assertEqual(rows[0]["total_seconds"], 0)
+
+    def test_task_with_no_tracked_time_reports_zero_not_null(self):
+        Task.objects.create(user=self.user, title="Untracked")
+
+        rows = self.client.get("/api/tasks/", headers=self.headers).json()["results"]
+        self.assertEqual(rows[0]["total_seconds"], 0)
+
+
+class ProjectDeleteTests(WorkspaceApiTestCase):
+    """R16: deleting a project leaves its tasks (and their history) intact."""
+
+    def test_deleting_a_project_unassigns_its_tasks(self):
+        project = Project.objects.create(user=self.user, name="TrackApp")
+        task = Task.objects.create(user=self.user, title="Write", project=project)
+        self.entry(task, 600)
+
+        response = self.client.delete(
+            f"/api/projects/{project.id}/", headers=self.headers
+        )
+        self.assertEqual(response.status_code, 204)
+
+        task.refresh_from_db()
+        self.assertIsNone(task.project)
+        self.assertEqual(task.time_entries.count(), 1)

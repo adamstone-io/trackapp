@@ -8,6 +8,7 @@ from django.utils import timezone
 from datetime import date, timedelta, timezone as dt_timezone
 from math import ceil
 from django.db.models import Case, Count, F, IntegerField, Q, Sum, Value, When
+from django.db.models.functions import Coalesce
 from rest_framework.parsers import JSONParser, MultiPartParser, FormParser
 
 from django.core.validators import validate_email
@@ -276,6 +277,11 @@ class ProjectViewSet(UserOwnedViewSet):
     queryset = Project.objects.all()
     serializer_class = ProjectSerializer
 
+    def get_queryset(self):
+        return Project.objects.filter(user=self.request.user).annotate(
+            total_seconds=Coalesce(Sum("tasks__time_entries__duration_seconds"), 0),
+        )
+
 
 class TaskViewSet(UserOwnedViewSet):
     queryset = Task.objects.all()
@@ -284,7 +290,7 @@ class TaskViewSet(UserOwnedViewSet):
     def get_queryset(self):
         return Task.objects.filter(user=self.request.user).annotate(
             entry_count=Count("time_entries"),
-            total_seconds=Sum("time_entries__duration_seconds"),
+            total_seconds=Coalesce(Sum("time_entries__duration_seconds"), 0),
         )
 
 

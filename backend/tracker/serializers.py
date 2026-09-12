@@ -17,6 +17,8 @@ from .models import (
 
 
 class ProjectSerializer(serializers.ModelSerializer):
+    total_seconds = serializers.IntegerField(read_only=True, default=0)
+
     class Meta:
         model = Project
         fields = "__all__"
