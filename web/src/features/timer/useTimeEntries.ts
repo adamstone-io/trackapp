@@ -1,5 +1,11 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { createMoment, createTimeEntry, patchMoment, type MomentCreate } from "../../api/entries";
+import {
+  createMoment,
+  createTimeEntry,
+  patchMoment,
+  patchTimeEntry,
+  type MomentCreate,
+} from "../../api/entries";
 import { ensureTaskId } from "../../api/tasks";
 import { deleteActiveTimer } from "../../api/timer";
 import type { ActiveTimer, TimeEntry, TodayEntry } from "../../api/types";
@@ -167,6 +173,39 @@ export function useRenameMoment() {
     onError: (error, _variables, context) => {
       rollbackOptimisticEntry(queryClient, context?.previousEntries);
       showToast(error instanceof Error ? error.message : "Could not rename the moment.");
+    },
+  });
+}
+
+export function useRenameTimeEntry() {
+  const queryClient = useQueryClient();
+  const { showToast } = useToast();
+
+  return useMutation({
+    mutationFn: ({ id, taskTitle }: { id: string; taskTitle: string }) =>
+      patchTimeEntry(id, { task_title: taskTitle }),
+    onMutate: async ({ id, taskTitle }) => {
+      await queryClient.cancelQueries({ queryKey: TODAY_ENTRIES_KEY });
+      const previousEntries = queryClient.getQueryData<TodayEntry[]>(TODAY_ENTRIES_KEY);
+      queryClient.setQueryData<TodayEntry[]>(TODAY_ENTRIES_KEY, (current) =>
+        current?.map((entry) =>
+          entry.type === "time_entry" && entry.id === id
+            ? { ...entry, data: { ...entry.data, task_title: taskTitle } }
+            : entry,
+        ),
+      );
+      return { previousEntries };
+    },
+    onSuccess: (saved) => {
+      queryClient.setQueryData<TodayEntry[]>(TODAY_ENTRIES_KEY, (current) =>
+        current?.map((entry) =>
+          entry.type === "time_entry" && entry.id === saved.id ? { ...entry, data: saved } : entry,
+        ),
+      );
+    },
+    onError: (error, _variables, context) => {
+      rollbackOptimisticEntry(queryClient, context?.previousEntries);
+      showToast(error instanceof Error ? error.message : "Could not rename the entry.");
     },
   });
 }

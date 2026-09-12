@@ -542,6 +542,48 @@ describe("duration favorites", () => {
   });
 });
 
+describe("renaming a time entry", () => {
+  it("renames a time entry by clicking its title in the log", async () => {
+    const user = userEvent.setup();
+    let patched: Record<string, unknown> | null = null;
+    const entryData = {
+      id: "te-1",
+      task: "task-1",
+      task_title: "Write spec",
+      started_at: "2026-09-12T10:00:00Z",
+      ended_at: "2026-09-12T11:30:00Z",
+      duration_seconds: 5400,
+      notes: "",
+      breaks: [],
+    };
+    server.use(
+      http.get(api("/today-entries/"), () =>
+        HttpResponse.json([{ type: "time_entry", id: "te-1", sort_time: entryData.started_at, data: entryData }]),
+      ),
+      http.patch(api("/time-entries/te-1/"), async ({ request }) => {
+        patched = (await request.json()) as Record<string, unknown>;
+        return HttpResponse.json({ ...entryData, ...patched });
+      }),
+    );
+
+    renderApp("/timer");
+
+    const log = await screen.findByRole("list", { name: /today/i });
+    await user.click(within(log).getByRole("button", { name: "Write spec" }));
+
+    const input = within(log).getByLabelText(/entry title/i);
+    await user.clear(input);
+    await user.type(input, "Write the rebuild spec{Enter}");
+
+    // Optimistic: the new title shows immediately and the editor closes.
+    expect(within(log).getByText("Write the rebuild spec")).toBeInTheDocument();
+    expect(within(log).queryByLabelText(/entry title/i)).not.toBeInTheDocument();
+
+    await waitFor(() => expect(patched).not.toBeNull());
+    expect(patched).toMatchObject({ task_title: "Write the rebuild spec" });
+  });
+});
+
 describe("manual time entry", () => {
   it("defaults start to the end of the last entry and end to now, then records the entry", async () => {
     vi.useFakeTimers({ shouldAdvanceTime: true });

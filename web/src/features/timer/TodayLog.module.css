@@ -46,6 +46,14 @@
   font-size: var(--text-base);
   color: var(--color-text);
   overflow-wrap: anywhere;
+  text-align: left;
+}
+
+button.title:hover,
+button.momentText:hover {
+  color: var(--color-text);
+  text-decoration: underline;
+  text-decoration-color: var(--color-border-strong);
 }
 
 .project {
@@ -67,11 +75,7 @@
   text-align: left;
 }
 
-button.momentText:hover {
-  color: var(--color-text);
-}
-
-.momentInput {
+.editInput {
   background: var(--color-bg-raised);
   border: var(--border-hairline) solid var(--color-border);
   border-radius: var(--radius-sm);
