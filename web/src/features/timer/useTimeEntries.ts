@@ -5,6 +5,7 @@ import {
   patchMoment,
   patchTimeEntry,
   type MomentCreate,
+  type MomentPatch,
 } from "../../api/entries";
 import { ensureTaskId } from "../../api/tasks";
 import { deleteActiveTimer } from "../../api/timer";
@@ -144,20 +145,19 @@ export function useAddMoment() {
   });
 }
 
-export function useRenameMoment() {
+export function useEditMoment() {
   const queryClient = useQueryClient();
   const { showToast } = useToast();
 
   return useMutation({
-    mutationFn: ({ id, description }: { id: string; description: string }) =>
-      patchMoment(id, { description }),
-    onMutate: async ({ id, description }) => {
+    mutationFn: ({ id, patch }: { id: string; patch: MomentPatch }) => patchMoment(id, patch),
+    onMutate: async ({ id, patch }) => {
       await queryClient.cancelQueries({ queryKey: TODAY_ENTRIES_KEY });
       const previousEntries = queryClient.getQueryData<TodayEntry[]>(TODAY_ENTRIES_KEY);
       queryClient.setQueryData<TodayEntry[]>(TODAY_ENTRIES_KEY, (current) =>
         current?.map((entry) =>
           entry.type === "moment" && entry.id === id
-            ? { ...entry, data: { ...entry.data, description } }
+            ? { ...entry, data: { ...entry.data, ...patch } }
             : entry,
         ),
       );
@@ -172,7 +172,7 @@ export function useRenameMoment() {
     },
     onError: (error, _variables, context) => {
       rollbackOptimisticEntry(queryClient, context?.previousEntries);
-      showToast(error instanceof Error ? error.message : "Could not rename the moment.");
+      showToast(error instanceof Error ? error.message : "Could not update the moment.");
     },
   });
 }

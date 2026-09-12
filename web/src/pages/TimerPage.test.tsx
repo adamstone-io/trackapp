@@ -744,6 +744,76 @@ describe("add moment", () => {
   });
 });
 
+describe("moment category", () => {
+  const moment = {
+    id: "m-1",
+    description: "Saw a great heron",
+    category: "general",
+    timestamp: "2026-09-12T09:15:00Z",
+    task: null,
+    task_title: "",
+    is_milestone: false,
+  };
+
+  it("changes a moment's category from the chip in the log", async () => {
+    const user = userEvent.setup();
+    let patched: Record<string, unknown> | null = null;
+    server.use(
+      http.get(api("/today-entries/"), () =>
+        HttpResponse.json([{ type: "moment", id: "m-1", sort_time: moment.timestamp, data: moment }]),
+      ),
+      http.patch(api("/moments/m-1/"), async ({ request }) => {
+        patched = (await request.json()) as Record<string, unknown>;
+        return HttpResponse.json({ ...moment, ...patched });
+      }),
+    );
+
+    renderApp("/timer");
+
+    const log = await screen.findByRole("list", { name: /today/i });
+    await user.click(within(log).getByRole("button", { name: "general" }));
+
+    const select = within(log).getByLabelText(/moment category/i);
+    await user.selectOptions(select, "insight");
+
+    // Optimistic: the chip shows the new category and the picker closes.
+    expect(within(log).getByRole("button", { name: "insight" })).toBeInTheDocument();
+    expect(within(log).queryByLabelText(/moment category/i)).not.toBeInTheDocument();
+
+    await waitFor(() => expect(patched).not.toBeNull());
+    expect(patched).toMatchObject({ category: "insight" });
+  });
+
+  it("rolls back the category and shows a toast when the server rejects", async () => {
+    const user = userEvent.setup();
+    let releasePatch!: () => void;
+    const patchGate = new Promise<void>((resolve) => (releasePatch = resolve));
+    server.use(
+      http.get(api("/today-entries/"), () =>
+        HttpResponse.json([{ type: "moment", id: "m-1", sort_time: moment.timestamp, data: moment }]),
+      ),
+      http.patch(api("/moments/m-1/"), async () => {
+        await patchGate;
+        return HttpResponse.json({ detail: "nope" }, { status: 500 });
+      }),
+    );
+
+    renderApp("/timer");
+
+    const log = await screen.findByRole("list", { name: /today/i });
+    await user.click(within(log).getByRole("button", { name: "general" }));
+    await user.selectOptions(within(log).getByLabelText(/moment category/i), "blocker");
+
+    // Optimistic: the chip shows the new category while the PATCH is in flight.
+    expect(within(log).getByRole("button", { name: "blocker" })).toBeInTheDocument();
+    releasePatch();
+
+    await screen.findByText("nope");
+    expect(within(log).getByRole("button", { name: "general" })).toBeInTheDocument();
+    expect(within(log).queryByRole("button", { name: "blocker" })).not.toBeInTheDocument();
+  });
+});
+
 describe("today's log", () => {
   it("shows time entries and moments combined, in the order the API returns", async () => {
     server.use(

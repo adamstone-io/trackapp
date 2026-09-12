@@ -3,7 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { getTodayEntries } from "../../api/entries";
 import type { TodayEntry } from "../../api/types";
 import { formatClockTime, formatDuration } from "../../lib/time";
-import { TODAY_ENTRIES_KEY, useRenameMoment, useRenameTimeEntry } from "./useTimeEntries";
+import { TODAY_ENTRIES_KEY, useEditMoment, useRenameTimeEntry } from "./useTimeEntries";
 import styles from "./TodayLog.module.css";
 
 export function TodayLog() {
@@ -127,9 +127,59 @@ function TimeEntryRow({ entry }: { entry: Extract<TodayEntry, { type: "time_entr
   );
 }
 
+// Same set the legacy moment modal offered; the backend stores free text.
+const MOMENT_CATEGORIES = ["general", "insight", "progress", "milestone", "blocker", "decision"];
+
+/** Click-to-edit category chip: a button that swaps to a select; picking commits. */
+function CategoryChip({
+  value,
+  editable,
+  onCommit,
+}: {
+  value: string;
+  editable: boolean;
+  onCommit: (next: string) => void;
+}) {
+  const [editing, setEditing] = useState(false);
+
+  if (editing) {
+    const options = MOMENT_CATEGORIES.includes(value) ? MOMENT_CATEGORIES : [value, ...MOMENT_CATEGORIES];
+    return (
+      <select
+        className={styles.categorySelect}
+        aria-label="Moment category"
+        value={value}
+        autoFocus
+        onChange={(event) => {
+          setEditing(false);
+          if (event.target.value !== value) onCommit(event.target.value);
+        }}
+        onBlur={() => setEditing(false)}
+        onKeyDown={(event) => {
+          if (event.key === "Escape") setEditing(false);
+        }}
+      >
+        {options.map((category) => (
+          <option key={category} value={category}>
+            {category}
+          </option>
+        ))}
+      </select>
+    );
+  }
+
+  if (!editable) return <span className={styles.category}>{value}</span>;
+
+  return (
+    <button className={styles.category} type="button" title="Change category" onClick={() => setEditing(true)}>
+      {value}
+    </button>
+  );
+}
+
 function MomentRow({ entry }: { entry: Extract<TodayEntry, { type: "moment" }> }) {
   const data = entry.data;
-  const renameMoment = useRenameMoment();
+  const editMoment = useEditMoment();
 
   return (
     <>
@@ -142,10 +192,15 @@ function MomentRow({ entry }: { entry: Extract<TodayEntry, { type: "moment" }> }
           ariaLabel="Moment text"
           className={styles.momentText}
           editable={isSettled(entry.id)}
-          onCommit={(description) => renameMoment.mutate({ id: entry.id, description })}
+          onCommit={(description) => editMoment.mutate({ id: entry.id, patch: { description } })}
         />
       </div>
       <div className={styles.meta}>
+        <CategoryChip
+          value={data.category}
+          editable={isSettled(entry.id)}
+          onCommit={(category) => editMoment.mutate({ id: entry.id, patch: { category } })}
+        />
         <span>{formatClockTime(data.timestamp)}</span>
       </div>
     </>

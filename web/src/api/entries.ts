@@ -28,7 +28,9 @@ export function createMoment(payload: MomentCreate): Promise<Moment> {
   return apiFetch<Moment>("/moments/", { method: "POST", body: payload });
 }
 
-export function patchMoment(id: string, patch: { description: string }): Promise<Moment> {
+export type MomentPatch = Partial<Pick<Moment, "description" | "category">>;
+
+export function patchMoment(id: string, patch: MomentPatch): Promise<Moment> {
   return apiFetch<Moment>(`/moments/${id}/`, { method: "PATCH", body: patch });
 }
 
