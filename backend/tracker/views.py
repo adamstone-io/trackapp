@@ -5,7 +5,7 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 from django.conf import settings
 from django.utils import timezone
-from datetime import timedelta, timezone as dt_timezone
+from datetime import date, timedelta, timezone as dt_timezone
 from math import ceil
 from django.db.models import Case, Count, F, IntegerField, Q, Sum, Value, When
 from rest_framework.parsers import JSONParser, MultiPartParser, FormParser
@@ -16,6 +16,7 @@ from django.core.exceptions import ValidationError as DjangoValidationError
 from .emails import send_verification_email
 from .models import (
     ActiveTimer,
+    local_date,
     EmailVerification,
     Habit,
     Moment,
@@ -329,17 +330,70 @@ class HabitViewSet(UserOwnedViewSet):
 
         # Get user timezone from header
         user_timezone = request.headers.get('X-User-Timezone', 'UTC')
-        
-        # Log progress with timezone awareness
-        habit.log_progress(amount=amount, user_timezone=user_timezone)
-        habit.save(update_fields=[
-            "daily_count",
-            "weekly_count",
-            "monthly_count",
-            "streak_count",
-            "last_completed_date",
-            "last_logged_at",
-        ])
+
+        # An optional 'date' (YYYY-MM-DD, in the user's timezone) back-fills
+        # a past day instead of logging against today.
+        raw_date = request.data.get("date") if request.data else None
+        day = None
+        if raw_date is not None:
+            try:
+                day = date.fromisoformat(raw_date)
+            except (TypeError, ValueError):
+                return Response(
+                    {"detail": "date must be YYYY-MM-DD"},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+            today = local_date(timezone.now(), user_timezone)
+            if day > today:
+                return Response(
+                    {"detail": "date cannot be in the future"},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+            if day == today:
+                day = None  # today's date is just a normal log
+
+        if day is None:
+            habit.log_progress(amount=amount, user_timezone=user_timezone)
+        else:
+            habit.log_progress_on(day, amount=amount, user_timezone=user_timezone)
+        habit.save(update_fields=self.COUNTER_FIELDS)
+
+        serializer = self.get_serializer(habit)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
+    COUNTER_FIELDS = [
+        "daily_count",
+        "weekly_count",
+        "monthly_count",
+        "streak_count",
+        "last_completed_date",
+        "last_logged_at",
+    ]
+
+    @action(detail=True, methods=["post"])
+    def unlog(self, request, pk=None):
+        """Remove a mistaken log entry, reducing all three counters."""
+        habit = self.get_object()
+
+        raw_amount = request.data.get("amount", 1) if request.data else 1
+        try:
+            amount = int(raw_amount)
+        except (TypeError, ValueError):
+            return Response(
+                {"detail": "amount must be an integer"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        if amount <= 0:
+            return Response(
+                {"detail": "amount must be positive"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        user_timezone = request.headers.get('X-User-Timezone', 'UTC')
+
+        habit.unlog_progress(amount=amount, user_timezone=user_timezone)
+        habit.save(update_fields=self.COUNTER_FIELDS)
 
         serializer = self.get_serializer(habit)
         return Response(serializer.data, status=status.HTTP_200_OK)

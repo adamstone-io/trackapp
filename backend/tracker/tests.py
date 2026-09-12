@@ -1,5 +1,10 @@
+from datetime import timedelta
+
 from django.contrib.auth.models import User
 from django.test import TestCase
+from django.utils import timezone
+
+from .models import Habit
 
 
 class EmailLoginTests(TestCase):
@@ -84,3 +89,501 @@ class EmailLoginTests(TestCase):
             content_type="application/json",
         )
         self.assertEqual(response.status_code, 401)
+
+
+class HabitApiTestCase(TestCase):
+    """Habit endpoints as the habits page uses them (React rebuild ticket 04).
+
+    State that only time can produce (yesterday's log, an old streak) is
+    arranged directly on the model; every assertion goes through the HTTP API.
+    """
+
+    def setUp(self):
+        self.user = User.objects.create_user(
+            username="adam", email="adam@example.com", password="hunter2"
+        )
+        token = self.client.post(
+            "/api/auth/token/",
+            {"username": "adam", "password": "hunter2"},
+            content_type="application/json",
+        ).json()["access"]
+        self.headers = {"authorization": f"Bearer {token}"}
+
+    def get_habit(self, tz="Australia/Brisbane"):
+        response = self.client.get(
+            "/api/habits/", headers={**self.headers, "x-user-timezone": tz}
+        )
+        self.assertEqual(response.status_code, 200)
+        return response.json()["results"][0]
+
+    def post_action(self, habit, action, body=None, tz="Australia/Brisbane"):
+        return self.client.post(
+            f"/api/habits/{habit.id}/{action}/",
+            body or {},
+            content_type="application/json",
+            headers={**self.headers, "x-user-timezone": tz},
+        )
+
+    def today(self, tz="Australia/Brisbane"):
+        import zoneinfo
+
+        return timezone.now().astimezone(zoneinfo.ZoneInfo(tz)).date()
+
+
+class HabitCounterResetTests(HabitApiTestCase):
+    """R20: counters reset at day/week/month boundaries in the user's timezone."""
+
+    def test_daily_count_reads_zero_the_day_after_it_was_logged(self):
+        Habit.objects.create(
+            user=self.user,
+            name="Meditate",
+            daily_target=1,
+            daily_count=3,
+            weekly_count=3,
+            monthly_count=3,
+            last_logged_at=timezone.now() - timedelta(days=1),
+        )
+        self.assertEqual(self.get_habit()["daily_count"], 0)
+
+    def test_counts_keep_their_value_within_the_same_day(self):
+        Habit.objects.create(
+            user=self.user,
+            name="Meditate",
+            daily_count=2,
+            weekly_count=5,
+            monthly_count=9,
+            last_logged_at=timezone.now(),
+        )
+        habit = self.get_habit()
+        self.assertEqual(
+            (habit["daily_count"], habit["weekly_count"], habit["monthly_count"]),
+            (2, 5, 9),
+        )
+
+    def test_weekly_count_reads_zero_once_a_new_week_starts(self):
+        import zoneinfo
+        from datetime import datetime
+
+        tz = zoneinfo.ZoneInfo("Australia/Brisbane")
+        today = timezone.now().astimezone(tz).date()
+        # Noon on the Sunday before this week's Monday — always last week.
+        last_sunday = today - timedelta(days=today.weekday() + 1)
+        Habit.objects.create(
+            user=self.user,
+            name="Meditate",
+            weekly_count=5,
+            last_logged_at=datetime(
+                last_sunday.year, last_sunday.month, last_sunday.day, 12, tzinfo=tz
+            ),
+        )
+        self.assertEqual(self.get_habit()["weekly_count"], 0)
+
+    def test_monthly_count_reads_zero_once_a_new_month_starts(self):
+        import zoneinfo
+        from datetime import datetime
+
+        tz = zoneinfo.ZoneInfo("Australia/Brisbane")
+        today = timezone.now().astimezone(tz).date()
+        last_of_prev_month = today.replace(day=1) - timedelta(days=1)
+        Habit.objects.create(
+            user=self.user,
+            name="Meditate",
+            monthly_count=9,
+            last_logged_at=datetime(
+                last_of_prev_month.year,
+                last_of_prev_month.month,
+                last_of_prev_month.day,
+                12,
+                tzinfo=tz,
+            ),
+        )
+        self.assertEqual(self.get_habit()["monthly_count"], 0)
+
+    def test_day_boundary_follows_the_users_timezone_not_utc(self):
+        import zoneinfo
+        from datetime import datetime
+        from unittest import mock
+
+        utc = zoneinfo.ZoneInfo("UTC")
+        # 20:00 UTC Mar 9 is already 06:00 Mar 10 in Brisbane (UTC+10).
+        logged = datetime(2026, 3, 9, 20, 0, tzinfo=utc)
+        frozen_now = datetime(2026, 3, 10, 1, 0, tzinfo=utc)
+        Habit.objects.create(
+            user=self.user, name="Meditate", daily_count=2, last_logged_at=logged
+        )
+        with mock.patch("django.utils.timezone.now", return_value=frozen_now):
+            self.assertEqual(self.get_habit(tz="Australia/Brisbane")["daily_count"], 2)
+            self.assertEqual(self.get_habit(tz="UTC")["daily_count"], 0)
+
+
+class HabitStreakTests(HabitApiTestCase):
+    """R21: streak counts consecutive days the daily target was met."""
+
+    def test_streak_reads_zero_during_a_gap(self):
+        Habit.objects.create(
+            user=self.user,
+            name="Meditate",
+            daily_target=1,
+            streak_count=5,
+            last_completed_date=self.today() - timedelta(days=2),
+            last_logged_at=timezone.now() - timedelta(days=2),
+        )
+        self.assertEqual(self.get_habit()["streak_count"], 0)
+
+    def test_streak_still_reads_while_completed_yesterday(self):
+        Habit.objects.create(
+            user=self.user,
+            name="Meditate",
+            daily_target=1,
+            streak_count=5,
+            last_completed_date=self.today() - timedelta(days=1),
+            last_logged_at=timezone.now() - timedelta(days=1),
+        )
+        self.assertEqual(self.get_habit()["streak_count"], 5)
+
+    def test_completing_on_consecutive_days_extends_the_streak(self):
+        habit = Habit.objects.create(
+            user=self.user,
+            name="Meditate",
+            daily_target=1,
+            streak_count=4,
+            last_completed_date=self.today() - timedelta(days=1),
+            last_logged_at=timezone.now() - timedelta(days=1),
+        )
+        response = self.post_action(habit, "log")
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json()["streak_count"], 5)
+
+    def test_completing_after_a_gap_restarts_the_streak_at_one(self):
+        habit = Habit.objects.create(
+            user=self.user,
+            name="Meditate",
+            daily_target=1,
+            streak_count=4,
+            last_completed_date=self.today() - timedelta(days=3),
+            last_logged_at=timezone.now() - timedelta(days=3),
+        )
+        self.assertEqual(self.post_action(habit, "log").json()["streak_count"], 1)
+
+
+class HabitLogTests(HabitApiTestCase):
+    """R19: one log action updates all three counters at once."""
+
+    def test_log_increments_all_three_counters(self):
+        habit = Habit.objects.create(
+            user=self.user,
+            name="Meditate",
+            daily_count=1,
+            weekly_count=4,
+            monthly_count=8,
+            last_logged_at=timezone.now(),
+        )
+        data = self.post_action(habit, "log").json()
+        self.assertEqual(
+            (data["daily_count"], data["weekly_count"], data["monthly_count"]),
+            (2, 5, 9),
+        )
+
+
+class HabitInactiveTests(HabitApiTestCase):
+    """R22: logging against a paused/inactive habit has no effect."""
+
+    def test_logging_an_inactive_habit_changes_nothing(self):
+        habit = Habit.objects.create(
+            user=self.user,
+            name="Meditate",
+            is_active=False,
+            daily_target=1,
+            daily_count=2,
+            weekly_count=2,
+            monthly_count=2,
+            streak_count=3,
+            last_completed_date=self.today(),
+            last_logged_at=timezone.now(),
+        )
+        self.post_action(habit, "log")
+        data = self.get_habit()
+        self.assertEqual(
+            (data["daily_count"], data["weekly_count"], data["monthly_count"], data["streak_count"]),
+            (2, 2, 2, 3),
+        )
+
+
+class HabitUnlogTests(HabitApiTestCase):
+    """R23b: remove a mistaken log entry, reducing the counts accordingly."""
+
+    def test_unlog_decrements_all_three_counters(self):
+        habit = Habit.objects.create(
+            user=self.user,
+            name="Meditate",
+            daily_count=2,
+            weekly_count=5,
+            monthly_count=9,
+            last_logged_at=timezone.now(),
+        )
+        response = self.post_action(habit, "unlog")
+        self.assertEqual(response.status_code, 200)
+        data = response.json()
+        self.assertEqual(
+            (data["daily_count"], data["weekly_count"], data["monthly_count"]),
+            (1, 4, 8),
+        )
+
+    def test_unlog_never_drops_a_counter_below_zero(self):
+        habit = Habit.objects.create(
+            user=self.user,
+            name="Meditate",
+            daily_count=0,
+            weekly_count=1,
+            monthly_count=1,
+            last_logged_at=timezone.now(),
+        )
+        data = self.post_action(habit, "unlog").json()
+        self.assertEqual(
+            (data["daily_count"], data["weekly_count"], data["monthly_count"]),
+            (0, 0, 0),
+        )
+
+    def test_unlog_withdraws_a_streak_credit_earned_today(self):
+        # Day 3 of a streak was credited by today's log; removing that log
+        # leaves a 2-day streak that ended yesterday.
+        habit = Habit.objects.create(
+            user=self.user,
+            name="Meditate",
+            daily_target=1,
+            daily_count=1,
+            weekly_count=3,
+            monthly_count=3,
+            streak_count=3,
+            last_completed_date=self.today(),
+            last_logged_at=timezone.now(),
+        )
+        data = self.post_action(habit, "unlog").json()
+        self.assertEqual(data["daily_count"], 0)
+        self.assertEqual(data["streak_count"], 2)
+
+    def test_unlog_of_a_first_streak_day_clears_the_streak(self):
+        habit = Habit.objects.create(
+            user=self.user,
+            name="Meditate",
+            daily_target=1,
+            daily_count=1,
+            weekly_count=1,
+            monthly_count=1,
+            streak_count=1,
+            last_completed_date=self.today(),
+            last_logged_at=timezone.now(),
+        )
+        self.assertEqual(self.post_action(habit, "unlog").json()["streak_count"], 0)
+
+    def test_unlog_keeps_the_streak_while_still_at_target(self):
+        # Two logs against a target of one: removing one leaves the day met.
+        habit = Habit.objects.create(
+            user=self.user,
+            name="Meditate",
+            daily_target=1,
+            daily_count=2,
+            weekly_count=2,
+            monthly_count=2,
+            streak_count=4,
+            last_completed_date=self.today(),
+            last_logged_at=timezone.now(),
+        )
+        data = self.post_action(habit, "unlog").json()
+        self.assertEqual(data["daily_count"], 1)
+        self.assertEqual(data["streak_count"], 4)
+
+    def test_unlog_on_an_inactive_habit_changes_nothing(self):
+        habit = Habit.objects.create(
+            user=self.user,
+            name="Meditate",
+            is_active=False,
+            daily_count=2,
+            weekly_count=2,
+            monthly_count=2,
+            last_logged_at=timezone.now(),
+        )
+        self.post_action(habit, "unlog")
+        self.assertEqual(self.get_habit()["daily_count"], 2)
+
+
+class HabitBackfillTests(HabitApiTestCase):
+    """R23c: log a habit entry for a past date.
+
+    The clock is frozen at Wednesday 2026-03-11 12:00 UTC so week and month
+    boundaries around the back-filled dates are deterministic. Only current
+    counters exist (no per-day history), so a past log bumps the weekly and
+    monthly counters when the date falls inside the current week or month,
+    and never today's daily count.
+    """
+
+    FROZEN_NOW = None  # set in setUp
+
+    def setUp(self):
+        super().setUp()
+        import zoneinfo
+        from datetime import datetime
+
+        self.FROZEN_NOW = datetime(2026, 3, 11, 12, 0, tzinfo=zoneinfo.ZoneInfo("UTC"))
+
+    def frozen(self):
+        from unittest import mock
+
+        return mock.patch("django.utils.timezone.now", return_value=self.FROZEN_NOW)
+
+    def make_habit(self, **overrides):
+        fields = dict(
+            user=self.user,
+            name="Meditate",
+            daily_count=1,
+            weekly_count=3,
+            monthly_count=5,
+            last_logged_at=self.FROZEN_NOW,
+        )
+        fields.update(overrides)
+        return Habit.objects.create(**fields)
+
+    def backfill(self, habit, date, amount=1):
+        with self.frozen():
+            return self.post_action(habit, "log", {"date": date, "amount": amount}, tz="UTC")
+
+    def test_backfilling_yesterday_bumps_weekly_and_monthly_but_not_daily(self):
+        habit = self.make_habit()
+        response = self.backfill(habit, "2026-03-10")
+        self.assertEqual(response.status_code, 200)
+        data = response.json()
+        self.assertEqual(
+            (data["daily_count"], data["weekly_count"], data["monthly_count"]),
+            (1, 4, 6),
+        )
+
+    def test_backfilling_a_date_in_a_previous_week_only_bumps_monthly(self):
+        habit = self.make_habit()
+        data = self.backfill(habit, "2026-03-04").json()
+        self.assertEqual(
+            (data["daily_count"], data["weekly_count"], data["monthly_count"]),
+            (1, 3, 6),
+        )
+
+    def test_backfilling_a_date_in_a_previous_month_changes_no_counters(self):
+        habit = self.make_habit()
+        data = self.backfill(habit, "2026-02-10").json()
+        self.assertEqual(
+            (data["daily_count"], data["weekly_count"], data["monthly_count"]),
+            (1, 3, 5),
+        )
+
+    def test_backfilling_a_future_date_is_rejected(self):
+        habit = self.make_habit()
+        response = self.backfill(habit, "2026-03-12")
+        self.assertEqual(response.status_code, 400)
+        self.assertIn("future", response.json()["detail"])
+
+    def test_backfilling_a_malformed_date_is_rejected(self):
+        habit = self.make_habit()
+        self.assertEqual(self.backfill(habit, "next tuesday").status_code, 400)
+
+    def test_backfilling_todays_date_logs_normally(self):
+        habit = self.make_habit()
+        data = self.backfill(habit, "2026-03-11").json()
+        self.assertEqual(
+            (data["daily_count"], data["weekly_count"], data["monthly_count"]),
+            (2, 4, 6),
+        )
+
+    def test_backfill_meeting_the_target_fills_yesterdays_gap_in_the_streak(self):
+        # Today restarted the streak at 1 because yesterday was missed;
+        # back-filling yesterday to target makes it two consecutive days.
+        habit = self.make_habit(
+            daily_target=1,
+            streak_count=1,
+            last_completed_date=self.FROZEN_NOW.date(),  # today, 2026-03-11
+        )
+        with self.frozen():
+            data = self.backfill(habit, "2026-03-10").json()
+        self.assertEqual(data["streak_count"], 2)
+
+    def test_backfill_extends_a_streak_that_ended_yesterday(self):
+        habit = self.make_habit(
+            daily_target=1,
+            streak_count=2,
+            last_completed_date=self.FROZEN_NOW.date() - timedelta(days=2),  # 03-09
+        )
+        with self.frozen():
+            data = self.backfill(habit, "2026-03-10").json()
+        self.assertEqual(data["streak_count"], 3)
+
+    def test_backfill_below_the_daily_target_earns_no_streak_credit(self):
+        habit = self.make_habit(
+            daily_target=2,
+            streak_count=1,
+            last_completed_date=self.FROZEN_NOW.date(),
+        )
+        with self.frozen():
+            data = self.backfill(habit, "2026-03-10", amount=1).json()
+        self.assertEqual(data["streak_count"], 1)
+
+    def test_backfill_on_an_inactive_habit_changes_nothing(self):
+        habit = self.make_habit(is_active=False)
+        data = self.backfill(habit, "2026-03-10").json()
+        self.assertEqual(
+            (data["daily_count"], data["weekly_count"], data["monthly_count"]),
+            (1, 3, 5),
+        )
+
+
+class HabitCrudTests(HabitApiTestCase):
+    """R18/R23: create with three targets, edit, archive and restore."""
+
+    def test_create_habit_with_three_targets(self):
+        response = self.client.post(
+            "/api/habits/",
+            {"name": "Meditate", "daily_target": 1, "weekly_target": 5, "monthly_target": 20},
+            content_type="application/json",
+            headers=self.headers,
+        )
+        self.assertEqual(response.status_code, 201)
+        data = response.json()
+        self.assertEqual(data["name"], "Meditate")
+        self.assertEqual(
+            (data["daily_target"], data["weekly_target"], data["monthly_target"]),
+            (1, 5, 20),
+        )
+        self.assertEqual(data["daily_count"], 0)
+        self.assertTrue(data["is_active"])
+
+    def test_edit_name_and_targets(self):
+        habit = Habit.objects.create(user=self.user, name="Meditate", daily_target=1)
+        response = self.client.patch(
+            f"/api/habits/{habit.id}/",
+            {"name": "Meditate longer", "daily_target": 2},
+            content_type="application/json",
+            headers=self.headers,
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json()["name"], "Meditate longer")
+        self.assertEqual(response.json()["daily_target"], 2)
+
+    def test_archive_and_restore_preserve_history(self):
+        habit = Habit.objects.create(
+            user=self.user,
+            name="Meditate",
+            streak_count=7,
+            last_completed_date=self.today() - timedelta(days=1),
+            last_logged_at=timezone.now() - timedelta(days=1),
+        )
+        archived = self.client.patch(
+            f"/api/habits/{habit.id}/",
+            {"is_active": False},
+            content_type="application/json",
+            headers=self.headers,
+        ).json()
+        self.assertFalse(archived["is_active"])
+        restored = self.client.patch(
+            f"/api/habits/{habit.id}/",
+            {"is_active": True},
+            content_type="application/json",
+            headers=self.headers,
+        ).json()
+        self.assertTrue(restored["is_active"])
+        self.assertEqual(restored["streak_count"], 7)

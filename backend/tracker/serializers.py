@@ -7,6 +7,7 @@ from django.utils import timezone
 from .models import (
     ActiveTimer,
     Habit,
+    local_date,
     Moment,
     Project,
     StudyItem,
@@ -92,10 +93,23 @@ class HabitSerializer(serializers.ModelSerializer):
         read_only_fields = (
             "user",
             "created_at",
+            # Counters are server-managed: they change via the log/unlog
+            # actions and read as their effective (boundary-reset) values.
+            "daily_count",
+            "weekly_count",
+            "monthly_count",
             "streak_count",
             "last_completed_date",
             "last_logged_at",
         )
+
+    def to_representation(self, instance):
+        data = super().to_representation(instance)
+        request = self.context.get("request")
+        tzname = request.headers.get("x-user-timezone") if request else None
+        today = local_date(timezone.now(), tzname)
+        data.update(instance.state_as_of(today, tzname))
+        return data
 
 
 class StudyItemSerializer(serializers.ModelSerializer):

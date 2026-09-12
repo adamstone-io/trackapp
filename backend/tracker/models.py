@@ -5,6 +5,17 @@ from django.utils import timezone
 from datetime import timedelta
 from uuid import uuid4
 import os
+import zoneinfo
+
+
+def local_date(dt, user_timezone=None):
+    """Calendar date of dt in the given IANA timezone (UTC on any failure)."""
+    if user_timezone:
+        try:
+            return dt.astimezone(zoneinfo.ZoneInfo(user_timezone)).date()
+        except Exception:
+            pass
+    return dt.date()
 
 class EmailVerification(models.Model):
     """Tracks email verification state for a user account.
@@ -222,6 +233,34 @@ class Habit(models.Model):
     def _start_of_week(self, day):
         return day - timedelta(days=day.weekday())  
 
+    def state_as_of(self, today, user_timezone=None):
+        """Effective counter values as of `today`, without mutating anything.
+
+        Stored counts go stale between logs; a day/week/month boundary that
+        has passed since last_logged_at means the counter reads as zero.
+        """
+        daily, weekly, monthly = self.daily_count, self.weekly_count, self.monthly_count
+        if self.last_logged_at:
+            last = local_date(self.last_logged_at, user_timezone)
+            if last != today:
+                daily = 0
+            if self._start_of_week(last) != self._start_of_week(today):
+                weekly = 0
+            if (last.year, last.month) != (today.year, today.month):
+                monthly = 0
+        # A streak is alive only while the last completion was today or
+        # yesterday; during a longer gap it reads as zero (the next
+        # completion restarts it at 1).
+        streak = self.streak_count
+        if self.last_completed_date is None or self.last_completed_date < today - timedelta(days=1):
+            streak = 0
+        return {
+            "daily_count": daily,
+            "weekly_count": weekly,
+            "monthly_count": monthly,
+            "streak_count": streak,
+        }
+
     def _apply_resets(self, today, last_logged_date):
         if last_logged_date != today:
             self.daily_count = 0
@@ -289,6 +328,95 @@ class Habit(models.Model):
                     # Streak broken, restart
                     self.streak_count = 1
                 self.last_completed_date = today
+
+        return True
+
+    def log_progress_on(self, day, amount=1, now=None, user_timezone=None):
+        """Back-fill a log entry for a past local date.
+
+        Only current counters exist (there is no per-day history), so the
+        weekly and monthly counters absorb the amount when `day` falls in
+        the current week/month, and today's daily count is never touched.
+        The day earns a streak credit only when this single back-fill
+        meets the daily target on its own.
+        """
+        if amount <= 0:
+            return False
+
+        now = now or timezone.now()
+        today = local_date(now, user_timezone)
+
+        if self.last_logged_at:
+            self._apply_resets(today, local_date(self.last_logged_at, user_timezone))
+
+        if not self.is_active:
+            return False
+
+        if self._start_of_week(day) == self._start_of_week(today):
+            self.weekly_count += amount
+        if (day.year, day.month) == (today.year, today.month):
+            self.monthly_count += amount
+        self.last_logged_at = now
+
+        if self.daily_target > 0 and amount >= self.daily_target:
+            self._credit_completion(day)
+
+        return True
+
+    def _credit_completion(self, day):
+        """Fold a target-met `day` into the streak bookkeeping."""
+        if self.last_completed_date is None or day > self.last_completed_date + timedelta(days=1):
+            # First completion on record, or a non-adjacent more recent day —
+            # any older streak was already broken.
+            self.streak_count = 1
+            self.last_completed_date = day
+            return
+        if day == self.last_completed_date:
+            return
+        if day == self.last_completed_date + timedelta(days=1):
+            self.streak_count += 1
+            self.last_completed_date = day
+            return
+        streak_start = self.last_completed_date - timedelta(days=self.streak_count - 1)
+        if day == streak_start - timedelta(days=1):
+            # The day immediately before the streak began extends it backwards.
+            self.streak_count += 1
+
+    def unlog_progress(self, amount=1, now=None, user_timezone=None):
+        """Remove a mistaken log: the inverse of log_progress.
+
+        Decrements all three counters (never below zero) and withdraws a
+        streak credit earned today if the daily count falls back below the
+        target. Inactive habits stay frozen, same as log_progress.
+        """
+        if amount <= 0:
+            return False
+
+        now = now or timezone.now()
+        today = local_date(now, user_timezone)
+
+        if self.last_logged_at:
+            self._apply_resets(today, local_date(self.last_logged_at, user_timezone))
+
+        if not self.is_active:
+            return False
+
+        self.daily_count = max(0, self.daily_count - amount)
+        self.weekly_count = max(0, self.weekly_count - amount)
+        self.monthly_count = max(0, self.monthly_count - amount)
+        self.last_logged_at = now
+
+        if (
+            self.daily_target > 0
+            and self.last_completed_date == today
+            and self.daily_count < self.daily_target
+        ):
+            # Today's completion no longer stands. If a streak remains it
+            # ended yesterday; otherwise there is no completion on record.
+            self.streak_count = max(0, self.streak_count - 1)
+            self.last_completed_date = (
+                today - timedelta(days=1) if self.streak_count else None
+            )
 
         return True
 
