@@ -33,14 +33,12 @@ export function HabitList() {
 
   return (
     <>
+      {/* No heading — the highlighted nav link names the page. */}
       <section className={styles.section}>
-        <h2 id="habits-heading" className={styles.heading}>
-          Habits
-        </h2>
         {active.length === 0 ? (
-          <p className={styles.empty}>No habits yet.</p>
+          <p className={styles.empty}>Start tracking your first habit.</p>
         ) : (
-          <ul className={styles.list} aria-labelledby="habits-heading">
+          <ul className={styles.list} aria-label="Habits">
             {active.map((habit) => (
               <li key={habit.id} className={styles.item}>
                 <HabitRow habit={habit} />
