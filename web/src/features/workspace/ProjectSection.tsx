@@ -3,6 +3,7 @@ import type { Project } from "../../api/types";
 import type { ProjectCreate } from "../../api/projects";
 import { formatDuration } from "../../lib/time";
 import { useCreateProject, useDeleteProject, useEditProject, useProjectsQuery } from "./useWorkspace";
+import { isSettled } from "../../lib/optimistic";
 import styles from "./workspace.module.css";
 import formStyles from "./forms.module.css";
 
@@ -17,11 +18,6 @@ export const PROJECT_COLORS = [
   { name: "Magenta", value: "#c95f9f" },
   { name: "Slate", value: "#8a94a6" },
 ];
-
-/** A just-created optimistic row has no server id yet; let it settle first. */
-export function isSettled(id: string): boolean {
-  return !id.startsWith("optimistic-");
-}
 
 export function ProjectSection() {
   const { data: projects } = useProjectsQuery();

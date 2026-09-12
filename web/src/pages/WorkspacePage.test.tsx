@@ -317,4 +317,28 @@ describe("deleting a task", () => {
     expect(screen.queryByText("Write docs")).not.toBeInTheDocument();
     expect(deleted).toBe(true);
   });
+
+  it("refreshes the project totals the deleted task's entries counted toward", async () => {
+    const user = userEvent.setup();
+    let deleted = false;
+    server.use(
+      http.get(api("/projects/"), () =>
+        HttpResponse.json(page([project({ total_seconds: deleted ? 4500 : 6000 })])),
+      ),
+      http.get(api("/tasks/"), () => HttpResponse.json(page([task()]))),
+      http.delete(api("/tasks/task-1/"), () => {
+        deleted = true;
+        return new HttpResponse(null, { status: 204 });
+      }),
+    );
+
+    renderApp("/workspace");
+    expect(await screen.findByText("1h 40m")).toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: /more write docs/i }));
+    await user.click(screen.getByRole("button", { name: /^delete$/i }));
+    await user.click(screen.getByRole("button", { name: /confirm delete/i }));
+
+    expect(await screen.findByText("1h 15m")).toBeInTheDocument();
+  });
 });

@@ -10,6 +10,7 @@ import {
 import styles from "./HabitList.module.css";
 import formStyles from "./AddHabitForm.module.css";
 import { TargetField } from "./AddHabitForm";
+import { isSettled } from "../../lib/optimistic";
 
 /** Latest back-fillable date: yesterday, as a local "YYYY-MM-DD". */
 function yesterdayIso(): string {
@@ -17,11 +18,6 @@ function yesterdayIso(): string {
   day.setDate(day.getDate() - 1);
   const pad = (n: number) => String(n).padStart(2, "0");
   return `${day.getFullYear()}-${pad(day.getMonth() + 1)}-${pad(day.getDate())}`;
-}
-
-/** A just-created optimistic row has no server id yet; let it settle first. */
-function isSettled(id: string): boolean {
-  return !id.startsWith("optimistic-");
 }
 
 export function HabitList() {

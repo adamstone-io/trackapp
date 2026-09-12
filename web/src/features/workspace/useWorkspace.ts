@@ -21,6 +21,11 @@ import { useToast } from "../../components/toast/ToastProvider";
 export const PROJECTS_KEY = ["projects"];
 export const TASKS_KEY = ["tasks"];
 
+/** Shared keys for per-row mutations (edit/archive/delete) so a late response
+ * can tell whether newer mutations for the same row are still in flight. */
+const PROJECTS_MUTATION_KEY = [...PROJECTS_KEY, "mutate"];
+const TASKS_MUTATION_KEY = [...TASKS_KEY, "mutate"];
+
 type QueryClient = ReturnType<typeof useQueryClient>;
 
 export function useProjectsQuery() {
@@ -58,8 +63,30 @@ function rollback<T>(queryClient: QueryClient, key: string[], previous: T[] | un
   queryClient.setQueryData(key, previous ?? []);
 }
 
-function message(error: unknown, fallback: string): string {
+function errorMessage(error: unknown, fallback: string): string {
   return error instanceof Error ? error.message : fallback;
+}
+
+function rowIdOf(variables: unknown): string {
+  return typeof variables === "string" ? variables : (variables as { id: string }).id;
+}
+
+/** Sync the server's authoritative row — but only when this is the row's last
+ * in-flight mutation; an earlier response landing late would clobber state
+ * that newer optimistic updates already applied (same rule as useHabits). */
+function syncFromServer<T extends { id: string }>(
+  queryClient: QueryClient,
+  key: string[],
+  mutationKey: string[],
+  saved: T | undefined,
+  id: string,
+) {
+  if (!saved) return;
+  const inFlight = queryClient.isMutating({
+    mutationKey,
+    predicate: (mutation) => rowIdOf(mutation.state.variables) === id,
+  });
+  if (inFlight <= 1) replaceRow(queryClient, key, id, saved);
 }
 
 export function useCreateProject() {
@@ -81,7 +108,7 @@ export function useCreateProject() {
       replaceRow(queryClient, PROJECTS_KEY, context.tempId, saved),
     onError: (error, _draft, context) => {
       rollback(queryClient, PROJECTS_KEY, context?.previous);
-      showToast(message(error, "Could not save the project."));
+      showToast(errorMessage(error, "Could not save the project."));
     },
   });
 }
@@ -92,16 +119,18 @@ export function useEditProject() {
   const { showToast } = useToast();
 
   return useMutation({
+    mutationKey: PROJECTS_MUTATION_KEY,
     mutationFn: ({ id, patch }: { id: string; patch: ProjectPatch }) => patchProject(id, patch),
     onMutate: async ({ id, patch }) => ({
       previous: await snapshotAndApply<Project>(queryClient, PROJECTS_KEY, (current) =>
         current.map((item) => (item.id === id ? { ...item, ...patch } : item)),
       ),
     }),
-    onSuccess: (saved, { id }) => replaceRow(queryClient, PROJECTS_KEY, id, saved),
+    onSettled: (saved, _error, { id }) =>
+      syncFromServer(queryClient, PROJECTS_KEY, PROJECTS_MUTATION_KEY, saved, id),
     onError: (error, _variables, context) => {
       rollback(queryClient, PROJECTS_KEY, context?.previous);
-      showToast(message(error, "Could not update the project."));
+      showToast(errorMessage(error, "Could not update the project."));
     },
   });
 }
@@ -113,6 +142,7 @@ export function useDeleteProject() {
   const { showToast } = useToast();
 
   return useMutation({
+    mutationKey: PROJECTS_MUTATION_KEY,
     mutationFn: (id: string) => deleteProject(id),
     onMutate: async (id) => ({
       previousProjects: await snapshotAndApply<Project>(queryClient, PROJECTS_KEY, (current) =>
@@ -125,7 +155,7 @@ export function useDeleteProject() {
     onError: (error, _id, context) => {
       rollback(queryClient, PROJECTS_KEY, context?.previousProjects);
       rollback(queryClient, TASKS_KEY, context?.previousTasks);
-      showToast(message(error, "Could not delete the project."));
+      showToast(errorMessage(error, "Could not delete the project."));
     },
   });
 }
@@ -157,7 +187,7 @@ export function useCreateTask() {
     onSuccess: (saved, _draft, context) => replaceRow(queryClient, TASKS_KEY, context.tempId, saved),
     onError: (error, _draft, context) => {
       rollback(queryClient, TASKS_KEY, context?.previous);
-      showToast(message(error, "Could not save the task."));
+      showToast(errorMessage(error, "Could not save the task."));
     },
   });
 }
@@ -168,16 +198,23 @@ export function useEditTask() {
   const { showToast } = useToast();
 
   return useMutation({
+    mutationKey: TASKS_MUTATION_KEY,
     mutationFn: ({ id, patch }: { id: string; patch: TaskPatch }) => patchTask(id, patch),
     onMutate: async ({ id, patch }) => ({
       previous: await snapshotAndApply<Task>(queryClient, TASKS_KEY, (current) =>
         current.map((item) => (item.id === id ? { ...item, ...patch } : item)),
       ),
     }),
-    onSuccess: (saved, { id }) => replaceRow(queryClient, TASKS_KEY, id, saved),
+    onSettled: (saved, error, { id, patch }) => {
+      syncFromServer(queryClient, TASKS_KEY, TASKS_MUTATION_KEY, saved, id);
+      // Reassignment moves the task's tracked seconds between project totals.
+      if (!error && patch.project !== undefined) {
+        queryClient.invalidateQueries({ queryKey: PROJECTS_KEY });
+      }
+    },
     onError: (error, _variables, context) => {
       rollback(queryClient, TASKS_KEY, context?.previous);
-      showToast(message(error, "Could not update the task."));
+      showToast(errorMessage(error, "Could not update the task."));
     },
   });
 }
@@ -188,15 +225,18 @@ export function useDeleteTask() {
   const { showToast } = useToast();
 
   return useMutation({
+    mutationKey: TASKS_MUTATION_KEY,
     mutationFn: (id: string) => deleteTask(id),
     onMutate: async (id) => ({
       previous: await snapshotAndApply<Task>(queryClient, TASKS_KEY, (current) =>
         current.filter((item) => item.id !== id),
       ),
     }),
+    // The cascade removed the task's entries from its project's total.
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: PROJECTS_KEY }),
     onError: (error, _id, context) => {
       rollback(queryClient, TASKS_KEY, context?.previous);
-      showToast(message(error, "Could not delete the task."));
+      showToast(errorMessage(error, "Could not delete the task."));
     },
   });
 }

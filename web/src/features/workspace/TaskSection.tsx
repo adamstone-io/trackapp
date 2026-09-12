@@ -3,7 +3,8 @@ import type { Project, Task } from "../../api/types";
 import type { TaskCreate } from "../../api/tasks";
 import { formatDuration } from "../../lib/time";
 import { useCreateTask, useDeleteTask, useEditTask, useProjectsQuery, useTasksQuery } from "./useWorkspace";
-import { ColorDot, isSettled } from "./ProjectSection";
+import { ColorDot } from "./ProjectSection";
+import { isSettled } from "../../lib/optimistic";
 import styles from "./workspace.module.css";
 import formStyles from "./forms.module.css";
 
