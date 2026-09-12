@@ -5,6 +5,7 @@ import {
   loadDurationFavorites,
   removeDurationFavorite,
 } from "../../lib/durationFavorites";
+import { playTimerFinishedSound } from "../../lib/sounds";
 import { formatTimerReadout } from "../../lib/time";
 import {
   useActiveTimerQuery,
@@ -167,6 +168,7 @@ function RunningTimer({ timer }: { timer: ActiveTimer }) {
   useEffect(() => {
     if (!expired || autoStopFired.current) return;
     autoStopFired.current = true;
+    playTimerFinishedSound();
     stopTimer.mutate(buildStopRequest(timer));
   }, [expired]); // eslint-disable-line react-hooks/exhaustive-deps
 

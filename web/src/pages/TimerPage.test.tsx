@@ -2,6 +2,9 @@ import { act, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { renderApp, seedSession } from "../test/render";
 import { server, http, HttpResponse, api } from "../test/server";
+import { playTimerFinishedSound } from "../lib/sounds";
+
+vi.mock("../lib/sounds", () => ({ playTimerFinishedSound: vi.fn() }));
 
 beforeEach(() => {
   seedSession();
@@ -459,6 +462,34 @@ describe("countdown mode", () => {
 
       const log = await screen.findByRole("list", { name: /today/i });
       expect(within(log).getByText("Deep work")).toBeInTheDocument();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("plays the completion sound when the countdown reaches zero", async () => {
+    vi.mocked(playTimerFinishedSound).mockClear();
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    try {
+      stopHandlers({
+        timer: runningTimer({
+          mode: "countdown",
+          target_duration: 600,
+          started_at: new Date(Date.now() - 590_000).toISOString(),
+          created_at: new Date(Date.now() - 590_000).toISOString(),
+        }),
+        tasks: [{ id: "task-9", title: "Deep work", category: "other", project: null }],
+      });
+
+      renderApp("/timer");
+      await screen.findByRole("timer");
+      expect(playTimerFinishedSound).not.toHaveBeenCalled();
+
+      await act(async () => {
+        vi.advanceTimersByTime(12_000);
+      });
+
+      await waitFor(() => expect(playTimerFinishedSound).toHaveBeenCalledTimes(1));
     } finally {
       vi.useRealTimers();
     }
