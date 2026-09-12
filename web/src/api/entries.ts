@@ -1,5 +1,5 @@
 import { apiFetch } from "./client";
-import type { TimeEntry, TodayEntry } from "./types";
+import type { Moment, TimeEntry, TodayEntry } from "./types";
 
 export function getTodayEntries(): Promise<TodayEntry[]> {
   return apiFetch<TodayEntry[]>("/today-entries/");
@@ -17,4 +17,13 @@ export interface TimeEntryCreate {
 
 export function createTimeEntry(payload: TimeEntryCreate): Promise<TimeEntry> {
   return apiFetch<TimeEntry>("/time-entries/", { method: "POST", body: payload });
+}
+
+export interface MomentCreate {
+  description: string;
+  timestamp: string;
+}
+
+export function createMoment(payload: MomentCreate): Promise<Moment> {
+  return apiFetch<Moment>("/moments/", { method: "POST", body: payload });
 }

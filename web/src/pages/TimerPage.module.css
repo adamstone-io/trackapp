@@ -1,0 +1,9 @@
+/* "Add entry" and "Add moment" sit side by side below the timer controls;
+   the expanded manual-entry form wraps onto its own full-width line. */
+.quickActions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: var(--space-3);
+  margin-top: var(--space-5);
+}

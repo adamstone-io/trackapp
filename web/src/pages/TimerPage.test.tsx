@@ -528,6 +528,47 @@ describe("manual time entry", () => {
   });
 });
 
+describe("add moment", () => {
+  it("creates a moment from the task title text and shows it in the log immediately", async () => {
+    const user = userEvent.setup();
+    let posted: Record<string, unknown> | null = null;
+    server.use(
+      http.post(api("/moments/"), async ({ request }) => {
+        posted = (await request.json()) as Record<string, unknown>;
+        return HttpResponse.json(
+          { id: "m-9", category: "general", task: null, task_title: "", is_milestone: false, ...posted },
+          { status: 201 },
+        );
+      }),
+    );
+
+    renderApp("/timer");
+
+    const taskInput = await screen.findByLabelText(/task/i);
+    await user.type(taskInput, "Had an idea");
+    await user.click(screen.getByRole("button", { name: /add moment/i }));
+
+    // Optimistic: the moment is in the log right away, and no time entry is created
+    // (an accidental POST /time-entries/ would fail the unhandled-request check).
+    const log = await screen.findByRole("list", { name: /today/i });
+    expect(within(log).getByText("Had an idea")).toBeInTheDocument();
+
+    await waitFor(() => expect(posted).not.toBeNull());
+    expect(posted).toMatchObject({ description: "Had an idea" });
+    expect(typeof posted!.timestamp).toBe("string");
+
+    // The text was consumed by the moment.
+    expect(taskInput).toHaveValue("");
+  });
+
+  it("is disabled while the task title is empty", async () => {
+    renderApp("/timer");
+
+    await screen.findByLabelText(/task/i);
+    expect(screen.getByRole("button", { name: /add moment/i })).toBeDisabled();
+  });
+});
+
 describe("today's log", () => {
   it("shows time entries and moments combined, in the order the API returns", async () => {
     server.use(

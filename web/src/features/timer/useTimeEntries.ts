@@ -1,5 +1,5 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { createTimeEntry } from "../../api/entries";
+import { createMoment, createTimeEntry, type MomentCreate } from "../../api/entries";
 import { ensureTaskId } from "../../api/tasks";
 import { deleteActiveTimer } from "../../api/timer";
 import type { ActiveTimer, TimeEntry, TodayEntry } from "../../api/types";
@@ -88,6 +88,52 @@ export function useAddManualEntry() {
     onError: (error, _draft, context) => {
       rollbackOptimisticEntry(queryClient, context?.previousEntries);
       showToast(errorMessage(error));
+    },
+  });
+}
+
+export function useAddMoment() {
+  const queryClient = useQueryClient();
+  const { showToast } = useToast();
+
+  return useMutation({
+    mutationFn: (draft: MomentCreate) => createMoment(draft),
+    onMutate: async (draft) => {
+      await queryClient.cancelQueries({ queryKey: TODAY_ENTRIES_KEY });
+      const previousEntries = queryClient.getQueryData<TodayEntry[]>(TODAY_ENTRIES_KEY);
+      const tempId = `optimistic-moment-${draft.timestamp}`;
+      const optimistic: TodayEntry = {
+        type: "moment",
+        id: tempId,
+        sort_time: draft.timestamp,
+        data: {
+          id: tempId,
+          description: draft.description,
+          category: "general",
+          timestamp: draft.timestamp,
+          task: null,
+          task_title: "",
+          is_milestone: false,
+        },
+      };
+      queryClient.setQueryData<TodayEntry[]>(TODAY_ENTRIES_KEY, (current) => [
+        optimistic,
+        ...(current ?? []),
+      ]);
+      return { previousEntries, tempId };
+    },
+    onSuccess: (saved, _draft, context) => {
+      queryClient.setQueryData<TodayEntry[]>(TODAY_ENTRIES_KEY, (current) =>
+        current?.map((entry) =>
+          entry.type === "moment" && entry.id === context.tempId
+            ? { type: "moment", id: saved.id, sort_time: saved.timestamp, data: saved }
+            : entry,
+        ),
+      );
+    },
+    onError: (error, _draft, context) => {
+      rollbackOptimisticEntry(queryClient, context?.previousEntries);
+      showToast(error instanceof Error ? error.message : "Could not save the moment.");
     },
   });
 }

@@ -11,15 +11,24 @@ import {
 import { buildStopRequest, useStopTimer } from "./useTimeEntries";
 import styles from "./TimerControls.module.css";
 
-export function TimerControls() {
+interface TimerControlsProps {
+  /** The task title field is owned by the page so "Add moment" can read it too. */
+  taskTitle: string;
+  onTaskTitleChange: (value: string) => void;
+}
+
+export function TimerControls({ taskTitle, onTaskTitleChange }: TimerControlsProps) {
   const { data: timer } = useActiveTimerQuery();
 
   if (timer === undefined) return null;
-  return timer ? <RunningTimer timer={timer} /> : <StartTimerForm />;
+  return timer ? (
+    <RunningTimer timer={timer} />
+  ) : (
+    <StartTimerForm title={taskTitle} onTitleChange={onTaskTitleChange} />
+  );
 }
 
-function StartTimerForm() {
-  const [title, setTitle] = useState("");
+function StartTimerForm({ title, onTitleChange }: { title: string; onTitleChange: (value: string) => void }) {
   const [mode, setMode] = useState<TimerMode>("stopwatch");
   const [durationMinutes, setDurationMinutes] = useState("");
   const start = useStartTimer();
@@ -29,15 +38,18 @@ function StartTimerForm() {
   function handleSubmit(event: FormEvent) {
     event.preventDefault();
     if (mode === "countdown" && targetSeconds <= 0) return;
-    start.mutate({
-      task_title: title.trim() || "Untitled",
-      task: null,
-      started_at: new Date().toISOString(),
-      elapsed_seconds: 0,
-      is_paused: false,
-      mode,
-      target_duration: mode === "countdown" ? targetSeconds : null,
-    });
+    start.mutate(
+      {
+        task_title: title.trim() || "Untitled",
+        task: null,
+        started_at: new Date().toISOString(),
+        elapsed_seconds: 0,
+        is_paused: false,
+        mode,
+        target_duration: mode === "countdown" ? targetSeconds : null,
+      },
+      { onSuccess: () => onTitleChange("") },
+    );
   }
 
   return (
@@ -51,49 +63,51 @@ function StartTimerForm() {
           className={styles.input}
           type="text"
           value={title}
-          onChange={(event) => setTitle(event.target.value)}
+          onChange={(event) => onTitleChange(event.target.value)}
           placeholder="What are you working on?"
           autoComplete="off"
         />
       </div>
-      <div className={styles.modeToggle} role="group" aria-label="Timer mode">
-        <button
-          className={mode === "stopwatch" ? styles.modeButtonActive : styles.modeButton}
-          type="button"
-          aria-pressed={mode === "stopwatch"}
-          onClick={() => setMode("stopwatch")}
-        >
-          Stopwatch
-        </button>
-        <button
-          className={mode === "countdown" ? styles.modeButtonActive : styles.modeButton}
-          type="button"
-          aria-pressed={mode === "countdown"}
-          onClick={() => setMode("countdown")}
-        >
-          Countdown
+      <div className={styles.controlsRow}>
+        <div className={styles.modeToggle} role="group" aria-label="Timer mode">
+          <button
+            className={mode === "stopwatch" ? styles.modeButtonActive : styles.modeButton}
+            type="button"
+            aria-pressed={mode === "stopwatch"}
+            onClick={() => setMode("stopwatch")}
+          >
+            Stopwatch
+          </button>
+          <button
+            className={mode === "countdown" ? styles.modeButtonActive : styles.modeButton}
+            type="button"
+            aria-pressed={mode === "countdown"}
+            onClick={() => setMode("countdown")}
+          >
+            Countdown
+          </button>
+        </div>
+        {mode === "countdown" && (
+          <div className={styles.field}>
+            <label className={styles.label} htmlFor="timer-duration">
+              Minutes
+            </label>
+            <input
+              id="timer-duration"
+              className={styles.durationInput}
+              type="text"
+              inputMode="numeric"
+              value={durationMinutes}
+              onChange={(event) => setDurationMinutes(event.target.value.replace(/\D/g, ""))}
+              placeholder="25"
+              autoComplete="off"
+            />
+          </div>
+        )}
+        <button className={styles.startButton} type="submit">
+          Start
         </button>
       </div>
-      {mode === "countdown" && (
-        <div className={styles.field}>
-          <label className={styles.label} htmlFor="timer-duration">
-            Minutes
-          </label>
-          <input
-            id="timer-duration"
-            className={styles.durationInput}
-            type="text"
-            inputMode="numeric"
-            value={durationMinutes}
-            onChange={(event) => setDurationMinutes(event.target.value.replace(/\D/g, ""))}
-            placeholder="25"
-            autoComplete="off"
-          />
-        </div>
-      )}
-      <button className={styles.startButton} type="submit">
-        Start
-      </button>
     </form>
   );
 }

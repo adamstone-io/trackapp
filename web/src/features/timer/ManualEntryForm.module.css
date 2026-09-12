@@ -1,11 +1,11 @@
 .openButton {
   composes: secondaryButton from "./controls.module.css";
-  margin-top: var(--space-5);
   font-size: var(--text-xs);
 }
 
 .form {
-  margin-top: var(--space-5);
+  /* Fills its own line inside the page's quick-actions row. */
+  flex-basis: 100%;
   padding: var(--space-4);
   background: var(--color-bg-raised);
   border: var(--border-hairline) solid var(--color-border);
