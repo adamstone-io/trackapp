@@ -52,8 +52,10 @@ describe("navigation", () => {
 
     for (const [label, path] of PAGES) {
       const { unmount } = renderApp(path);
+      // The timer page has no h1 (the active nav link names it); its log heading stands in.
+      const heading = label === "Timer" ? "Today" : label;
       expect(
-        await screen.findByRole("heading", { name: label }),
+        await screen.findByRole("heading", { name: heading }),
       ).toBeInTheDocument();
       unmount();
     }

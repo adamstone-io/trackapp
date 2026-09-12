@@ -11,7 +11,7 @@ export function TimerPage() {
   const [taskTitle, setTaskTitle] = useState("");
 
   return (
-    <PageShell title="Timer">
+    <PageShell>
       <TimerControls taskTitle={taskTitle} onTaskTitleChange={setTaskTitle} />
       <div className={styles.quickActions}>
         <ManualEntryForm />

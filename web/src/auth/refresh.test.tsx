@@ -28,7 +28,7 @@ describe("token refresh", () => {
     renderApp("/timer");
 
     expect(
-      await screen.findByRole("heading", { name: "Timer" }),
+      await screen.findByRole("heading", { name: "Today" }),
     ).toBeInTheDocument();
     expect(refreshedWith).toEqual({ refresh: getRefreshToken() });
     expect(authHeaders).toHaveLength(2);

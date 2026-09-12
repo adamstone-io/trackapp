@@ -9,7 +9,7 @@ describe("auth guard", () => {
     expect(
       await screen.findByRole("heading", { name: /sign in/i }),
     ).toBeInTheDocument();
-    expect(screen.queryByRole("heading", { name: "Timer" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("heading", { name: "Today" })).not.toBeInTheDocument();
   });
 
   it("renders the requested page for an authenticated user with access", async () => {
@@ -17,7 +17,7 @@ describe("auth guard", () => {
     renderApp("/timer");
 
     expect(
-      await screen.findByRole("heading", { name: "Timer" }),
+      await screen.findByRole("heading", { name: "Today" }),
     ).toBeInTheDocument();
     expect(screen.getByRole("navigation", { name: /main/i })).toBeInTheDocument();
   });
