@@ -31,6 +31,31 @@ describe("persistent timer bar", () => {
     expect(bar).toHaveTextContent(/00:00:3\d/);
   });
 
+  it("stays hidden on the timer page itself, where the full readout already shows", async () => {
+    server.use(
+      http.get(api("/active-timer/"), () =>
+        HttpResponse.json({
+          id: 1,
+          task_title: "Deep work",
+          task: null,
+          started_at: new Date(Date.now() - 30_000).toISOString(),
+          elapsed_seconds: 0,
+          is_paused: false,
+          mode: "stopwatch",
+          target_duration: null,
+          created_at: new Date(Date.now() - 30_000).toISOString(),
+        }),
+      ),
+    );
+
+    renderApp("/timer");
+
+    // The page's own running view renders...
+    await screen.findByRole("timer");
+    // ...but the nav bar readout does not.
+    expect(screen.queryByRole("link", { name: /active timer/i })).not.toBeInTheDocument();
+  });
+
   it("is absent when no timer is running", async () => {
     renderApp("/");
 

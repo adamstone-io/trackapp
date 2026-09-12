@@ -1,14 +1,18 @@
-import { NavLink } from "react-router-dom";
+import { NavLink, useLocation } from "react-router-dom";
 import { formatTimerReadout } from "../../lib/time";
 import { useActiveTimerQuery, useElapsedSeconds } from "./useActiveTimer";
 import styles from "./TimerBar.module.css";
 
-/** Compact live readout shown in the nav on every page while a timer runs. */
+/**
+ * Compact live readout shown in the nav while a timer runs — except on the
+ * timer page itself, where the full readout already shows.
+ */
 export function TimerBar() {
   const { data: timer } = useActiveTimerQuery();
   const elapsed = useElapsedSeconds(timer);
+  const { pathname } = useLocation();
 
-  if (!timer) return null;
+  if (!timer || pathname === "/timer") return null;
 
   const remaining =
     timer.mode === "countdown" && timer.target_duration
