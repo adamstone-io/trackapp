@@ -79,6 +79,73 @@
   max-width: 6rem;
 }
 
+/* Minutes input, save-favorite star, and favorite chips share one wrapping row. */
+.durationRow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: var(--space-3);
+}
+
+.saveFavorite {
+  composes: secondaryButton from "./controls.module.css";
+  padding: 0 var(--space-3);
+  font-size: var(--text-md);
+}
+
+.saveFavorite:disabled {
+  opacity: var(--opacity-disabled);
+  cursor: default;
+}
+
+.favorites {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.favorite {
+  display: inline-flex;
+  align-items: stretch;
+  border: var(--border-hairline) solid var(--color-border-strong);
+  border-radius: var(--radius-full);
+  overflow: hidden;
+}
+
+.favoriteApply {
+  min-height: var(--touch-target);
+  padding: 0 var(--space-3);
+  background: transparent;
+  border: none;
+  color: var(--color-text-secondary);
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  cursor: pointer;
+  transition: color var(--transition-fast);
+}
+
+.favoriteApply:hover {
+  color: var(--color-text);
+}
+
+.favoriteRemove {
+  min-height: var(--touch-target);
+  padding: 0 var(--space-2);
+  background: transparent;
+  border: none;
+  border-left: var(--border-hairline) solid var(--color-border);
+  color: var(--color-text-muted);
+  font-family: var(--font-mono);
+  font-size: var(--text-sm);
+  cursor: pointer;
+  transition: color var(--transition-fast);
+}
+
+.favoriteRemove:hover {
+  color: var(--color-danger);
+}
+
 .percentUsed {
   font-family: var(--font-mono);
   font-size: var(--text-sm);

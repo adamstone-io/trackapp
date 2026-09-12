@@ -465,6 +465,83 @@ describe("countdown mode", () => {
   });
 });
 
+describe("duration favorites", () => {
+  const FAVORITES_KEY = "tempotrack_favorites_duration";
+
+  function storedSeconds(): number[] {
+    const raw = localStorage.getItem(FAVORITES_KEY);
+    return raw ? JSON.parse(raw).map((f: { data: { seconds: number } }) => f.data.seconds) : [];
+  }
+
+  it("shows stored favorites in countdown mode and clicking one fills the minutes input", async () => {
+    localStorage.setItem(
+      FAVORITES_KEY,
+      JSON.stringify([
+        { id: 1, type: "duration", label: "Pomodoro", data: { seconds: 1500 }, order: 0 },
+        { id: 2, type: "duration", label: "50 min", data: { seconds: 3000 }, order: 1 },
+      ]),
+    );
+    const user = userEvent.setup();
+
+    renderApp("/timer");
+    await screen.findByLabelText(/task/i);
+
+    // Not visible in stopwatch mode.
+    expect(screen.queryByRole("button", { name: "Pomodoro" })).not.toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: /countdown/i }));
+    await user.click(screen.getByRole("button", { name: "Pomodoro" }));
+
+    expect(screen.getByLabelText(/minutes/i)).toHaveValue("25");
+  });
+
+  it("seeds starter favorites when none are stored", async () => {
+    const user = userEvent.setup();
+
+    renderApp("/timer");
+    await screen.findByLabelText(/task/i);
+    await user.click(screen.getByRole("button", { name: /countdown/i }));
+
+    expect(screen.getByRole("button", { name: "20 min" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "50 min" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "1 min" })).toBeInTheDocument();
+  });
+
+  it("saves the current minutes as a favorite", async () => {
+    const user = userEvent.setup();
+
+    renderApp("/timer");
+    await screen.findByLabelText(/task/i);
+    await user.click(screen.getByRole("button", { name: /countdown/i }));
+
+    await user.type(screen.getByLabelText(/minutes/i), "35");
+    await user.click(screen.getByRole("button", { name: /save favorite/i }));
+
+    expect(screen.getByRole("button", { name: "35 min" })).toBeInTheDocument();
+    expect(storedSeconds()).toContain(35 * 60);
+  });
+
+  it("deletes a favorite", async () => {
+    localStorage.setItem(
+      FAVORITES_KEY,
+      JSON.stringify([
+        { id: 1, type: "duration", label: "20 min", data: { seconds: 1200 }, order: 0 },
+        { id: 2, type: "duration", label: "50 min", data: { seconds: 3000 }, order: 1 },
+      ]),
+    );
+    const user = userEvent.setup();
+
+    renderApp("/timer");
+    await screen.findByLabelText(/task/i);
+    await user.click(screen.getByRole("button", { name: /countdown/i }));
+
+    await user.click(screen.getByRole("button", { name: "Remove 20 min" }));
+
+    expect(screen.queryByRole("button", { name: "20 min" })).not.toBeInTheDocument();
+    expect(storedSeconds()).toEqual([3000]);
+  });
+});
+
 describe("manual time entry", () => {
   it("defaults start to the end of the last entry and end to now, then records the entry", async () => {
     vi.useFakeTimers({ shouldAdvanceTime: true });

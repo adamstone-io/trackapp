@@ -1,5 +1,10 @@
 import { useEffect, useRef, useState, type FormEvent } from "react";
 import type { ActiveTimer, TimerMode } from "../../api/types";
+import {
+  addDurationFavorite,
+  loadDurationFavorites,
+  removeDurationFavorite,
+} from "../../lib/durationFavorites";
 import { formatTimerReadout } from "../../lib/time";
 import {
   useActiveTimerQuery,
@@ -31,6 +36,7 @@ export function TimerControls({ taskTitle, onTaskTitleChange }: TimerControlsPro
 function StartTimerForm({ title, onTitleChange }: { title: string; onTitleChange: (value: string) => void }) {
   const [mode, setMode] = useState<TimerMode>("stopwatch");
   const [durationMinutes, setDurationMinutes] = useState("");
+  const [favorites, setFavorites] = useState(loadDurationFavorites);
   const start = useStartTimer();
 
   const targetSeconds = durationMinutes ? Number(durationMinutes) * 60 : 0;
@@ -92,20 +98,53 @@ function StartTimerForm({ title, onTitleChange }: { title: string; onTitleChange
         </button>
       </div>
       {mode === "countdown" && (
-        <div className={styles.field}>
-          <label className={styles.label} htmlFor="timer-duration">
-            Minutes
-          </label>
-          <input
-            id="timer-duration"
-            className={styles.durationInput}
-            type="text"
-            inputMode="numeric"
-            value={durationMinutes}
-            onChange={(event) => setDurationMinutes(event.target.value.replace(/\D/g, ""))}
-            placeholder="25"
-            autoComplete="off"
-          />
+        <div className={styles.durationRow}>
+          <div className={styles.field}>
+            <label className={styles.label} htmlFor="timer-duration">
+              Minutes
+            </label>
+            <input
+              id="timer-duration"
+              className={styles.durationInput}
+              type="text"
+              inputMode="numeric"
+              value={durationMinutes}
+              onChange={(event) => setDurationMinutes(event.target.value.replace(/\D/g, ""))}
+              placeholder="25"
+              autoComplete="off"
+            />
+          </div>
+          <button
+            className={styles.saveFavorite}
+            type="button"
+            aria-label="Save favorite"
+            title="Save favorite"
+            disabled={targetSeconds <= 0}
+            onClick={() => setFavorites(addDurationFavorite(Number(durationMinutes)))}
+          >
+            ☆
+          </button>
+          <div className={styles.favorites} role="group" aria-label="Favorite durations">
+            {favorites.map((favorite) => (
+              <span key={favorite.id} className={styles.favorite}>
+                <button
+                  className={styles.favoriteApply}
+                  type="button"
+                  onClick={() => setDurationMinutes(String(Math.round(favorite.data.seconds / 60)))}
+                >
+                  {favorite.label}
+                </button>
+                <button
+                  className={styles.favoriteRemove}
+                  type="button"
+                  aria-label={`Remove ${favorite.label}`}
+                  onClick={() => setFavorites(removeDurationFavorite(favorite.id))}
+                >
+                  ×
+                </button>
+              </span>
+            ))}
+          </div>
         </div>
       )}
     </form>
