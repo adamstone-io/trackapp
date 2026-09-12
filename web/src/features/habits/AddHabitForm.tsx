@@ -69,7 +69,8 @@ export function AddHabitForm() {
   );
 }
 
-function TargetField({
+/** Labeled number input for one of the three targets; shared with the edit form. */
+export function TargetField({
   id,
   label,
   value,

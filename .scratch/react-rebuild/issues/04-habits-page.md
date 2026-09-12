@@ -11,7 +11,7 @@
 - [x] Log progress: one button, calls POST /api/habits/{id}/log/, all counters update
 - [x] Optimistic UI on log: counters increment immediately, rollback on error — server response then carries the authoritative streak
 - [x] Remove mistaken log entry (decrement count) — new POST /api/habits/{id}/unlog/: decrements all three counters (floor 0) and withdraws a streak credit earned today if the day falls back below target
-- [x] Back-fill: log a habit entry for a past date — POST log/ with `date` (+`amount`); no per-day history exists, so it bumps weekly/monthly when the date is in the current week/month (never today's daily count) and credits the streak only when the single back-fill meets the daily target on its own
+- [x] Back-fill: log a habit entry for a past date — POST log/ with `date` (+`amount`); no per-day history exists, so it bumps weekly/monthly when the date is in the current week/month (never today's daily count) and credits the streak only when the single back-fill meets the daily target on its own (the form's count field lets one back-fill carry the whole day). Known gap: a mistaken back-fill is not cleanly reversible — see ticket 04.1
 - [x] Streak display: consecutive days daily target met, resets to 1 after a gap — during a gap the streak *reads* 0 (broken); the next completion restarts it at 1
 - [x] Counters reset automatically at day/week/month boundaries (timezone-aware, handled by backend) — reset-on-read: GET /habits/ reports effective counters per X-User-Timezone; counters are now read-only in the serializer (legacy frontend's reset PATCHes become harmless no-ops)
 - [x] Archive habit (soft delete, history preserved) — PATCH is_active=false (Habit predates the `archived` field convention)

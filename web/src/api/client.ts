@@ -113,6 +113,21 @@ function doFetch(path: string, options: ApiFetchOptions, accessToken: string | n
   });
 }
 
+interface PaginatedPage<T> {
+  next: string | null;
+  results: T[];
+}
+
+/** Walk a DRF-paginated list endpoint (default page size 20) to completion. */
+export async function fetchAllPages<T>(path: string): Promise<T[]> {
+  const items: T[] = [];
+  for (let page = 1; ; page++) {
+    const data = await apiFetch<PaginatedPage<T>>(`${path}?page=${page}`);
+    items.push(...data.results);
+    if (!data.next) return items;
+  }
+}
+
 /** Pull a human-readable message out of a DRF error body. */
 export function detailFromBody(data: unknown): string {
   if (data && typeof data === "object") {

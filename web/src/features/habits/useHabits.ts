@@ -14,6 +14,10 @@ import { useToast } from "../../components/toast/ToastProvider";
 
 export const HABITS_KEY = ["habits"];
 
+/** Shared key for the per-habit mutations (log/unlog/back-fill/edit) so a
+ * late response can tell whether newer mutations are still in flight. */
+const HABITS_MUTATION_KEY = [...HABITS_KEY, "mutate"];
+
 type QueryClient = ReturnType<typeof useQueryClient>;
 
 export function useHabitsQuery() {
@@ -76,11 +80,29 @@ function patchInList(current: Habit[], id: string, patch: (habit: Habit) => Part
   return current.map((habit) => (habit.id === id ? { ...habit, ...patch(habit) } : habit));
 }
 
+function habitIdOf(variables: unknown): string {
+  return typeof variables === "string" ? variables : (variables as { id: string }).id;
+}
+
+/** Sync the server's authoritative row (it carries the streak) — but only
+ * when this is the habit's last in-flight mutation. An earlier response
+ * landing late would visibly rewind counters that newer optimistic
+ * updates already advanced; the newest response supersedes it anyway. */
+function syncFromServer(queryClient: QueryClient, saved: Habit | undefined, id: string) {
+  if (!saved) return;
+  const inFlight = queryClient.isMutating({
+    mutationKey: HABITS_MUTATION_KEY,
+    predicate: (mutation) => habitIdOf(mutation.state.variables) === id,
+  });
+  if (inFlight <= 1) replaceHabit(queryClient, saved.id, saved);
+}
+
 export function useLogHabit() {
   const queryClient = useQueryClient();
   const { showToast } = useToast();
 
   return useMutation({
+    mutationKey: HABITS_MUTATION_KEY,
     mutationFn: (id: string) => logHabit(id),
     onMutate: (id) =>
       snapshotAndApply(queryClient, (current) =>
@@ -90,8 +112,7 @@ export function useLogHabit() {
           monthly_count: habit.monthly_count + 1,
         })),
       ),
-    // The server's answer carries the authoritative streak.
-    onSuccess: (saved) => replaceHabit(queryClient, saved.id, saved),
+    onSettled: (saved, _error, id) => syncFromServer(queryClient, saved, id),
     onError: (error, _id, context) => {
       rollback(queryClient, context?.previous);
       showToast(error instanceof Error ? error.message : "Could not log the habit.");
@@ -104,6 +125,7 @@ export function useUnlogHabit() {
   const { showToast } = useToast();
 
   return useMutation({
+    mutationKey: HABITS_MUTATION_KEY,
     mutationFn: (id: string) => unlogHabit(id),
     onMutate: (id) =>
       snapshotAndApply(queryClient, (current) =>
@@ -113,7 +135,7 @@ export function useUnlogHabit() {
           monthly_count: Math.max(0, habit.monthly_count - 1),
         })),
       ),
-    onSuccess: (saved) => replaceHabit(queryClient, saved.id, saved),
+    onSettled: (saved, _error, id) => syncFromServer(queryClient, saved, id),
     onError: (error, _id, context) => {
       rollback(queryClient, context?.previous);
       showToast(error instanceof Error ? error.message : "Could not undo the log.");
@@ -131,16 +153,16 @@ function startOfWeekMs(day: Date): number {
 
 /** The optimistic counterpart of a back-fill: only the counters whose
  * period contains the past date move; today's daily count never does. */
-function backfillPatch(habit: Habit, isoDate: string): Partial<Habit> {
+function backfillPatch(habit: Habit, isoDate: string, amount: number): Partial<Habit> {
   const [year, month, dayOfMonth] = isoDate.split("-").map(Number);
   const day = new Date(year, month - 1, dayOfMonth);
   const now = new Date();
   const patch: Partial<Habit> = {};
   if (startOfWeekMs(day) === startOfWeekMs(now)) {
-    patch.weekly_count = habit.weekly_count + 1;
+    patch.weekly_count = habit.weekly_count + amount;
   }
   if (day.getFullYear() === now.getFullYear() && day.getMonth() === now.getMonth()) {
-    patch.monthly_count = habit.monthly_count + 1;
+    patch.monthly_count = habit.monthly_count + amount;
   }
   return patch;
 }
@@ -150,12 +172,14 @@ export function useBackfillHabit() {
   const { showToast } = useToast();
 
   return useMutation({
-    mutationFn: ({ id, date }: { id: string; date: string }) => backfillHabit(id, date),
-    onMutate: ({ id, date }) =>
+    mutationKey: HABITS_MUTATION_KEY,
+    mutationFn: ({ id, date, amount }: { id: string; date: string; amount: number }) =>
+      backfillHabit(id, date, amount),
+    onMutate: ({ id, date, amount }) =>
       snapshotAndApply(queryClient, (current) =>
-        patchInList(current, id, (habit) => backfillPatch(habit, date)),
+        patchInList(current, id, (habit) => backfillPatch(habit, date, amount)),
       ),
-    onSuccess: (saved) => replaceHabit(queryClient, saved.id, saved),
+    onSettled: (saved, _error, { id }) => syncFromServer(queryClient, saved, id),
     onError: (error, _variables, context) => {
       rollback(queryClient, context?.previous);
       showToast(error instanceof Error ? error.message : "Could not log the past day.");
@@ -169,10 +193,11 @@ export function useEditHabit() {
   const { showToast } = useToast();
 
   return useMutation({
+    mutationKey: HABITS_MUTATION_KEY,
     mutationFn: ({ id, patch }: { id: string; patch: HabitPatch }) => patchHabit(id, patch),
     onMutate: ({ id, patch }) =>
       snapshotAndApply(queryClient, (current) => patchInList(current, id, () => patch)),
-    onSuccess: (saved) => replaceHabit(queryClient, saved.id, saved),
+    onSettled: (saved, _error, { id }) => syncFromServer(queryClient, saved, id),
     onError: (error, _variables, context) => {
       rollback(queryClient, context?.previous);
       showToast(error instanceof Error ? error.message : "Could not update the habit.");

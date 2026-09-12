@@ -1,18 +1,8 @@
-import { apiFetch } from "./client";
+import { apiFetch, fetchAllPages } from "./client";
 import type { Task } from "./types";
 
-interface TaskPage {
-  next: string | null;
-  results: Task[];
-}
-
-async function listAllTasks(): Promise<Task[]> {
-  const tasks: Task[] = [];
-  for (let page = 1; ; page++) {
-    const data = await apiFetch<TaskPage>(`/tasks/?page=${page}`);
-    tasks.push(...data.results);
-    if (!data.next) return tasks;
-  }
+function listAllTasks(): Promise<Task[]> {
+  return fetchAllPages<Task>("/tasks/");
 }
 
 function createTask(title: string): Promise<Task> {

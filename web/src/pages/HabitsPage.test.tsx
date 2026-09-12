@@ -124,6 +124,42 @@ describe("logging progress", () => {
     expect(await within(meditate).findByText(/5 day/)).toBeInTheDocument();
   });
 
+  it("keeps rapid taps' optimistic counts when an earlier response lands late", async () => {
+    const user = userEvent.setup();
+    const releases: (() => void)[] = [];
+    let call = 0;
+    server.use(
+      http.get(api("/habits/"), () => HttpResponse.json(habitsPage([habit()]))),
+      http.post(api("/habits/habit-1/log/"), async () => {
+        const index = call++;
+        await new Promise<void>((resolve) => (releases[index] = resolve));
+        return HttpResponse.json(
+          index === 0
+            ? habit({ daily_count: 3, weekly_count: 6, monthly_count: 21, streak_count: 5 })
+            : habit({ daily_count: 4, weekly_count: 7, monthly_count: 22, streak_count: 5 }),
+        );
+      }),
+    );
+
+    renderApp("/habits");
+    const logButton = await screen.findByRole("button", { name: /log meditate/i });
+    await user.click(logButton);
+    await user.click(logButton);
+
+    const meditate = card("Meditate");
+    expect(within(meditate).getByText("4/3")).toBeInTheDocument();
+
+    // The first response is stale while the second log is still pending;
+    // applying it would visibly rewind the counter to 3/3.
+    releases[0]();
+    await expect(within(meditate).findByText("3/3", {}, { timeout: 250 })).rejects.toThrow();
+    expect(within(meditate).getByText("4/3")).toBeInTheDocument();
+
+    releases[1]();
+    expect(await within(meditate).findByText(/5 day/)).toBeInTheDocument();
+    expect(within(meditate).getByText("4/3")).toBeInTheDocument();
+  });
+
   it("rolls the counters back and shows a toast when the server rejects the log", async () => {
     const user = userEvent.setup();
     server.use(
@@ -183,12 +219,16 @@ describe("back-filling a past date", () => {
     await user.click(await screen.findByRole("button", { name: /more meditate/i }));
     await user.click(screen.getByRole("button", { name: /log a past day/i }));
     await user.type(screen.getByLabelText(/date/i), "2026-09-10");
+    // The count lets a single back-fill meet a daily target greater than one.
+    const countInput = screen.getByLabelText(/count/i);
+    await user.clear(countInput);
+    await user.type(countInput, "3");
     await user.click(screen.getByRole("button", { name: /^log$/i }));
 
     const meditate = card("Meditate");
     expect(await within(meditate).findByText("6/10")).toBeInTheDocument();
     expect(within(meditate).getByText("21/40")).toBeInTheDocument();
-    expect(posted).toMatchObject({ date: "2026-09-10", amount: 1 });
+    expect(posted).toMatchObject({ date: "2026-09-10", amount: 3 });
   });
 });
 

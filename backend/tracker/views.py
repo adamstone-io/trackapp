@@ -298,68 +298,13 @@ class MomentViewSet(UserOwnedViewSet):
     serializer_class = MomentSerializer
 
 
+def _bad_request(detail):
+    return Response({"detail": detail}, status=status.HTTP_400_BAD_REQUEST)
+
+
 class HabitViewSet(UserOwnedViewSet):
     queryset = Habit.objects.all()
     serializer_class = HabitSerializer
-
-    @action(detail=True, methods=["post"])
-    def log(self, request, pk=None):
-        """
-        Log progress for a habit.
-        
-        Accepts optional 'X-User-Timezone' header with IANA timezone 
-        (e.g., 'Australia/Brisbane') to calculate streaks in user's local time.
-        """
-        habit = self.get_object()
-
-        # Parse amount
-        raw_amount = request.data.get("amount", 1) if request.data else 1
-        try:
-            amount = int(raw_amount)
-        except (TypeError, ValueError):
-            return Response(
-                {"detail": "amount must be an integer"},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
-
-        if amount <= 0:
-            return Response(
-                {"detail": "amount must be positive"},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
-
-        # Get user timezone from header
-        user_timezone = request.headers.get('X-User-Timezone', 'UTC')
-
-        # An optional 'date' (YYYY-MM-DD, in the user's timezone) back-fills
-        # a past day instead of logging against today.
-        raw_date = request.data.get("date") if request.data else None
-        day = None
-        if raw_date is not None:
-            try:
-                day = date.fromisoformat(raw_date)
-            except (TypeError, ValueError):
-                return Response(
-                    {"detail": "date must be YYYY-MM-DD"},
-                    status=status.HTTP_400_BAD_REQUEST,
-                )
-            today = local_date(timezone.now(), user_timezone)
-            if day > today:
-                return Response(
-                    {"detail": "date cannot be in the future"},
-                    status=status.HTTP_400_BAD_REQUEST,
-                )
-            if day == today:
-                day = None  # today's date is just a normal log
-
-        if day is None:
-            habit.log_progress(amount=amount, user_timezone=user_timezone)
-        else:
-            habit.log_progress_on(day, amount=amount, user_timezone=user_timezone)
-        habit.save(update_fields=self.COUNTER_FIELDS)
-
-        serializer = self.get_serializer(habit)
-        return Response(serializer.data, status=status.HTTP_200_OK)
 
     COUNTER_FIELDS = [
         "daily_count",
@@ -370,33 +315,71 @@ class HabitViewSet(UserOwnedViewSet):
         "last_logged_at",
     ]
 
+    @staticmethod
+    def _parse_amount(request):
+        """Returns (amount, error_response); exactly one is None."""
+        raw_amount = request.data.get("amount", 1) if request.data else 1
+        try:
+            amount = int(raw_amount)
+        except (TypeError, ValueError):
+            return None, _bad_request("amount must be an integer")
+        if amount <= 0:
+            return None, _bad_request("amount must be positive")
+        return amount, None
+
+    def _save_and_respond(self, habit):
+        habit.save(update_fields=self.COUNTER_FIELDS)
+        return Response(self.get_serializer(habit).data, status=status.HTTP_200_OK)
+
+    @action(detail=True, methods=["post"])
+    def log(self, request, pk=None):
+        """
+        Log progress for a habit.
+
+        Accepts optional 'X-User-Timezone' header with IANA timezone
+        (e.g., 'Australia/Brisbane') to calculate streaks in user's local time.
+        """
+        habit = self.get_object()
+
+        amount, error = self._parse_amount(request)
+        if error:
+            return error
+
+        user_timezone = request.headers.get('X-User-Timezone', 'UTC')
+
+        # An optional 'date' (YYYY-MM-DD, in the user's timezone) back-fills
+        # a past day instead of logging against today.
+        raw_date = request.data.get("date") if request.data else None
+        day = None
+        if raw_date is not None:
+            try:
+                day = date.fromisoformat(raw_date)
+            except (TypeError, ValueError):
+                return _bad_request("date must be YYYY-MM-DD")
+            today = local_date(timezone.now(), user_timezone)
+            if day > today:
+                return _bad_request("date cannot be in the future")
+            if day == today:
+                day = None  # today's date is just a normal log
+
+        if day is None:
+            habit.log_progress(amount=amount, user_timezone=user_timezone)
+        else:
+            habit.log_progress_on(day, amount=amount, user_timezone=user_timezone)
+        return self._save_and_respond(habit)
+
     @action(detail=True, methods=["post"])
     def unlog(self, request, pk=None):
         """Remove a mistaken log entry, reducing all three counters."""
         habit = self.get_object()
 
-        raw_amount = request.data.get("amount", 1) if request.data else 1
-        try:
-            amount = int(raw_amount)
-        except (TypeError, ValueError):
-            return Response(
-                {"detail": "amount must be an integer"},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
-
-        if amount <= 0:
-            return Response(
-                {"detail": "amount must be positive"},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
+        amount, error = self._parse_amount(request)
+        if error:
+            return error
 
         user_timezone = request.headers.get('X-User-Timezone', 'UTC')
-
         habit.unlog_progress(amount=amount, user_timezone=user_timezone)
-        habit.save(update_fields=self.COUNTER_FIELDS)
-
-        serializer = self.get_serializer(habit)
-        return Response(serializer.data, status=status.HTTP_200_OK)
+        return self._save_and_respond(habit)
 
 
 class StudyItemViewSet(UserOwnedViewSet):

@@ -186,3 +186,8 @@
   font-family: var(--font-mono);
   font-size: var(--text-sm);
 }
+
+.backfillCount {
+  composes: backfillDate;
+  width: 4.5rem;
+}

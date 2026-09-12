@@ -231,7 +231,15 @@ class Habit(models.Model):
 
   
     def _start_of_week(self, day):
-        return day - timedelta(days=day.weekday())  
+        return day - timedelta(days=day.weekday())
+
+    def _boundaries_crossed(self, last, today):
+        """(new_day, new_week, new_month) between two local dates."""
+        return (
+            last != today,
+            self._start_of_week(last) != self._start_of_week(today),
+            (last.year, last.month) != (today.year, today.month),
+        )
 
     def state_as_of(self, today, user_timezone=None):
         """Effective counter values as of `today`, without mutating anything.
@@ -242,11 +250,12 @@ class Habit(models.Model):
         daily, weekly, monthly = self.daily_count, self.weekly_count, self.monthly_count
         if self.last_logged_at:
             last = local_date(self.last_logged_at, user_timezone)
-            if last != today:
+            new_day, new_week, new_month = self._boundaries_crossed(last, today)
+            if new_day:
                 daily = 0
-            if self._start_of_week(last) != self._start_of_week(today):
+            if new_week:
                 weekly = 0
-            if (last.year, last.month) != (today.year, today.month):
+            if new_month:
                 monthly = 0
         # A streak is alive only while the last completion was today or
         # yesterday; during a longer gap it reads as zero (the next
@@ -262,11 +271,12 @@ class Habit(models.Model):
         }
 
     def _apply_resets(self, today, last_logged_date):
-        if last_logged_date != today:
+        new_day, new_week, new_month = self._boundaries_crossed(last_logged_date, today)
+        if new_day:
             self.daily_count = 0
-        if self._start_of_week(last_logged_date) != self._start_of_week(today):
+        if new_week:
             self.weekly_count = 0
-        if (last_logged_date.year, last_logged_date.month) != (today.year, today.month):
+        if new_month:
             self.monthly_count = 0
 
     def log_progress(self, amount=1, now=None, user_timezone=None):
@@ -352,9 +362,10 @@ class Habit(models.Model):
         if not self.is_active:
             return False
 
-        if self._start_of_week(day) == self._start_of_week(today):
+        _, other_week, other_month = self._boundaries_crossed(day, today)
+        if not other_week:
             self.weekly_count += amount
-        if (day.year, day.month) == (today.year, today.month):
+        if not other_month:
             self.monthly_count += amount
         self.last_logged_at = now
 

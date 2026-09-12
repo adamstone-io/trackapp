@@ -9,6 +9,7 @@ import {
 } from "./useHabits";
 import styles from "./HabitList.module.css";
 import formStyles from "./AddHabitForm.module.css";
+import { TargetField } from "./AddHabitForm";
 
 /** Latest back-fillable date: yesterday, as a local "YYYY-MM-DD". */
 function yesterdayIso(): string {
@@ -196,9 +197,9 @@ function EditHabitForm({ habit, onDone }: { habit: Habit; onDone: () => void }) 
           required
         />
       </div>
-      <EditTargetField id={`edit-daily-${habit.id}`} label="Daily target" value={daily} onChange={setDaily} />
-      <EditTargetField id={`edit-weekly-${habit.id}`} label="Weekly target" value={weekly} onChange={setWeekly} />
-      <EditTargetField id={`edit-monthly-${habit.id}`} label="Monthly target" value={monthly} onChange={setMonthly} />
+      <TargetField id={`edit-daily-${habit.id}`} label="Daily target" value={daily} onChange={setDaily} />
+      <TargetField id={`edit-weekly-${habit.id}`} label="Weekly target" value={weekly} onChange={setWeekly} />
+      <TargetField id={`edit-monthly-${habit.id}`} label="Monthly target" value={monthly} onChange={setMonthly} />
       <button className={formStyles.saveButton} type="submit">
         Save
       </button>
@@ -209,46 +210,21 @@ function EditHabitForm({ habit, onDone }: { habit: Habit; onDone: () => void }) 
   );
 }
 
-function EditTargetField({
-  id,
-  label,
-  value,
-  onChange,
-}: {
-  id: string;
-  label: string;
-  value: string;
-  onChange: (next: string) => void;
-}) {
-  return (
-    <div className={formStyles.field}>
-      <label className={formStyles.label} htmlFor={id}>
-        {label}
-      </label>
-      <input
-        id={id}
-        className={formStyles.targetInput}
-        type="number"
-        min="0"
-        value={value}
-        onChange={(event) => onChange(event.target.value)}
-      />
-    </div>
-  );
-}
-
 /** "Log a past day" toggle plus the date form it reveals. */
 function BackfillForm({ habit }: { habit: Habit }) {
   const [open, setOpen] = useState(false);
   const [date, setDate] = useState("");
+  const [count, setCount] = useState("1");
   const backfillMutation = useBackfillHabit();
 
   function handleSubmit(event: FormEvent) {
     event.preventDefault();
-    if (!date) return;
-    backfillMutation.mutate({ id: habit.id, date });
+    const amount = parseInt(count, 10) || 0;
+    if (!date || amount <= 0) return;
+    backfillMutation.mutate({ id: habit.id, date, amount });
     setOpen(false);
     setDate("");
+    setCount("1");
   }
 
   if (!open) {
@@ -272,6 +248,18 @@ function BackfillForm({ habit }: { habit: Habit }) {
         max={yesterdayIso()}
         onChange={(event) => setDate(event.target.value)}
         autoFocus
+        required
+      />
+      <label className={styles.backfillLabel} htmlFor={`backfill-count-${habit.id}`}>
+        Count
+      </label>
+      <input
+        id={`backfill-count-${habit.id}`}
+        className={styles.backfillCount}
+        type="number"
+        min="1"
+        value={count}
+        onChange={(event) => setCount(event.target.value)}
         required
       />
       <button className={styles.moreAction} type="submit">

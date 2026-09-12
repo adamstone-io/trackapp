@@ -1,18 +1,8 @@
-import { apiFetch } from "./client";
+import { apiFetch, fetchAllPages } from "./client";
 import type { Habit } from "./types";
 
-interface HabitPage {
-  next: string | null;
-  results: Habit[];
-}
-
-export async function listAllHabits(): Promise<Habit[]> {
-  const habits: Habit[] = [];
-  for (let page = 1; ; page++) {
-    const data = await apiFetch<HabitPage>(`/habits/?page=${page}`);
-    habits.push(...data.results);
-    if (!data.next) return habits;
-  }
+export function listAllHabits(): Promise<Habit[]> {
+  return fetchAllPages<Habit>("/habits/");
 }
 
 export interface HabitCreate {
@@ -36,9 +26,11 @@ export function unlogHabit(id: string): Promise<Habit> {
   return apiFetch<Habit>(`/habits/${id}/unlog/`, { method: "POST", body: {} });
 }
 
-/** Back-fill a log for a past date ("YYYY-MM-DD" in the user's timezone). */
-export function backfillHabit(id: string, date: string): Promise<Habit> {
-  return apiFetch<Habit>(`/habits/${id}/log/`, { method: "POST", body: { date, amount: 1 } });
+/** Back-fill a log for a past date ("YYYY-MM-DD" in the user's timezone).
+ * The amount is the whole day's count — it must reach the daily target on
+ * its own for the day to earn a streak credit. */
+export function backfillHabit(id: string, date: string, amount: number): Promise<Habit> {
+  return apiFetch<Habit>(`/habits/${id}/log/`, { method: "POST", body: { date, amount } });
 }
 
 export type HabitPatch = Partial<
