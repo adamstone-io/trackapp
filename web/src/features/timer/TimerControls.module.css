@@ -1,0 +1,118 @@
+.startForm {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.field {
+  composes: field from "./controls.module.css";
+}
+
+.label {
+  composes: label from "./controls.module.css";
+}
+
+.input {
+  composes: input from "./controls.module.css";
+}
+
+.startButton {
+  composes: primaryButton from "./controls.module.css";
+}
+
+.secondaryButton {
+  composes: secondaryButton from "./controls.module.css";
+  color: var(--color-text);
+}
+
+.stopButton {
+  composes: secondaryButton from "./controls.module.css";
+  border-color: var(--color-danger);
+  color: var(--color-danger);
+}
+
+.stopButton:hover {
+  border-color: var(--color-danger);
+  color: var(--color-danger);
+  background: var(--color-danger-muted);
+}
+
+.modeToggle {
+  display: flex;
+  border: var(--border-hairline) solid var(--color-border-strong);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  align-self: flex-start;
+}
+
+.modeButton {
+  min-height: var(--touch-target);
+  padding: 0 var(--space-4);
+  background: transparent;
+  border: none;
+  color: var(--color-text-secondary);
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  letter-spacing: var(--letter-spacing-wide);
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: color var(--transition-fast), background var(--transition-fast);
+}
+
+.modeButtonActive {
+  composes: modeButton;
+  background: var(--color-bg-overlay);
+  color: var(--color-text);
+}
+
+.durationInput {
+  composes: input from "./controls.module.css";
+  font-family: var(--font-mono);
+  max-width: 6rem;
+}
+
+.percentUsed {
+  font-family: var(--font-mono);
+  font-size: var(--text-sm);
+  color: var(--color-text-secondary);
+}
+
+.running {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-5) 0;
+}
+
+.readout {
+  font-family: var(--font-mono);
+  font-size: var(--text-timer);
+  font-weight: var(--font-weight-medium);
+  color: var(--color-text);
+  font-variant-numeric: tabular-nums;
+}
+
+.runningTitle {
+  font-size: var(--text-md);
+  color: var(--color-text-secondary);
+  overflow-wrap: anywhere;
+  text-align: center;
+}
+
+.actions {
+  display: flex;
+  gap: var(--space-3);
+  margin-top: var(--space-3);
+}
+
+@media (min-width: 768px) {
+  .startForm {
+    flex-direction: row;
+    align-items: flex-end;
+  }
+
+  .field {
+    flex: 1;
+  }
+}

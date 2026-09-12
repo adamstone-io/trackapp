@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Navigate, Route, Routes } from "react-router-dom";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { AppLayout } from "./components/AppLayout";
+import { ToastProvider } from "./components/toast/ToastProvider";
 import { RequireAuth } from "./auth/RequireAuth";
 import { DashboardPage } from "./pages/DashboardPage";
 import { TimerPage } from "./pages/TimerPage";
@@ -36,7 +37,8 @@ export function App({ queryClient }: AppProps) {
 
   return (
     <QueryClientProvider client={client}>
-      <Routes>
+      <ToastProvider>
+        <Routes>
         <Route path="/login" element={<LoginPage />} />
         <Route path="/verify-email" element={<VerifyEmailPage />} />
         <Route path="/trial-expired" element={<TrialExpiredPage />} />
@@ -56,8 +58,9 @@ export function App({ queryClient }: AppProps) {
           <Route path="/stats" element={<StatsPage />} />
           <Route path="/settings" element={<SettingsPage />} />
         </Route>
-        <Route path="*" element={<Navigate to="/" replace />} />
-      </Routes>
+          <Route path="*" element={<Navigate to="/" replace />} />
+        </Routes>
+      </ToastProvider>
     </QueryClientProvider>
   );
 }

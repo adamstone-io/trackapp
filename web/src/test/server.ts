@@ -20,6 +20,8 @@ export const activeUser = {
 
 export const defaultHandlers = [
   http.get(api("/auth/user/"), () => HttpResponse.json(activeUser)),
+  http.get(api("/today-entries/"), () => HttpResponse.json([])),
+  http.get(api("/active-timer/"), () => HttpResponse.json(null)),
 ];
 
 export const server = setupServer(...defaultHandlers);

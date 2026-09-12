@@ -67,13 +67,16 @@
   /* ---- Borders & lines ---- */
   --border-hairline: 1px;
   --underline-width: 2px;
+  --stripe-width: 3px;
   --focus-ring-width: 2px;
+  --focus-ring-offset: 1px;
 
   /* ---- Opacity ---- */
   --opacity-disabled: 0.6;
 
   /* ---- Layers ---- */
   --z-nav: 100;
+  --z-toast: 200;
 
   /* ---- Radius ---- */
   --radius-sm: 4px;

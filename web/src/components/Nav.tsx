@@ -1,4 +1,5 @@
 import { NavLink } from "react-router-dom";
+import { TimerBar } from "../features/timer/TimerBar";
 import styles from "./Nav.module.css";
 
 const LINKS = [
@@ -28,6 +29,7 @@ export function Nav() {
             {label}
           </NavLink>
         ))}
+        <TimerBar />
       </div>
     </nav>
   );
