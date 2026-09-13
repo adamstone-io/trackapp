@@ -622,7 +622,7 @@ describe("renaming a time entry", () => {
 });
 
 describe("deleting a time entry", () => {
-  it("deletes from the row's ⋮ menu after confirmation", async () => {
+  it("deletes from the row's ⋮ menu in one press", async () => {
     const user = userEvent.setup();
     let deleted = false;
     const entryData = {
@@ -650,12 +650,10 @@ describe("deleting a time entry", () => {
     const log = await screen.findByRole("list", { name: /today/i });
     await user.click(within(log).getByRole("button", { name: "More Write spec" }));
     await user.click(within(log).getByRole("button", { name: /^delete$/i }));
-    // Nothing happens until the confirmation click.
-    expect(deleted).toBe(false);
-    await user.click(within(log).getByRole("button", { name: /confirm delete/i }));
 
+    // No confirm step: the press deletes.
     expect(within(log).queryByText("Write spec")).not.toBeInTheDocument();
-    expect(deleted).toBe(true);
+    await waitFor(() => expect(deleted).toBe(true));
   });
 });
 

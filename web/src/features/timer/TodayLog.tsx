@@ -156,12 +156,8 @@ function TimeEntryRow({ entry }: { entry: Extract<TodayEntry, { type: "time_entr
         items={[
           { label: "Edit", onSelect: () => setEditing(true) },
           { label: "Project", onSelect: () => setMovingProject(true) },
-          {
-            label: "Delete",
-            danger: true,
-            confirm: "Confirm delete",
-            onSelect: () => deleteEntry.mutate(entry.id),
-          },
+          // One press, no confirm step — the owner's call for the day log.
+          { label: "Delete", danger: true, onSelect: () => deleteEntry.mutate(entry.id) },
         ]}
       />
       {movingProject && (

@@ -39,6 +39,7 @@ original ticket was scoped too small, not something to restructure away.
 | 11 TTS generation + Play-all | ready | R24f, R24g |
 | 12 Voice moments | ready | R17c |
 | 13 Archive/delete TimeEntry + Moment | ready | R9h, R17 (removal half) |
+| 13.1 Time entry delete takes one press | done | — (UI) |
 | 14 Settings page (export/import) | ready | R38, R39, R40 |
 | 15 Midnight rollover | ready | R33e |
 | 16 Edit times on logged items | ready | R9f, R17b |
