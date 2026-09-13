@@ -457,7 +457,23 @@ class StudyItemViewSet(UserOwnedViewSet):
     @action(detail=True, methods=['post'])
     def log_interaction(self, request, pk=None):
         item = self.get_object()
-        item.log_interaction()
+
+        # Explicit type from the React app; absent for the legacy
+        # frontend, which logs by the item's current mode.
+        kind = request.data.get('interaction')
+        if kind is not None:
+            if kind not in ('prime', 'study'):
+                return Response(
+                    {'detail': 'Unknown interaction type. Expected "prime" or "study".'},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+            if kind == 'study' and not item.notes.strip():
+                return Response(
+                    {'detail': 'A study interaction requires the item to have notes.'},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+
+        item.log_interaction(kind)
         item.save(update_fields=[
             'prime_count', 'study_count', 'review_count',
             'prime_timestamps', 'study_timestamps', 'review_timestamps',

@@ -4,7 +4,7 @@ from django.contrib.auth.models import User
 from django.test import TestCase
 from django.utils import timezone
 
-from .models import Habit, Project, Task, TimeEntry
+from .models import Habit, Project, StudyItem, Task, TimeEntry
 
 
 class EmailLoginTests(TestCase):
@@ -657,3 +657,113 @@ class ProjectDeleteTests(WorkspaceApiTestCase):
         task.refresh_from_db()
         self.assertIsNone(task.project)
         self.assertEqual(task.time_entries.count(), 1)
+
+
+class StudyItemApiTestCase(TestCase):
+    """Study item endpoints as the study page uses them (React rebuild ticket 06)."""
+
+    def setUp(self):
+        self.user = User.objects.create_user(
+            username="adam", email="adam@example.com", password="hunter2"
+        )
+        token = self.client.post(
+            "/api/auth/token/",
+            {"username": "adam", "password": "hunter2"},
+            content_type="application/json",
+        ).json()["access"]
+        self.headers = {"authorization": f"Bearer {token}"}
+
+    def log(self, item, body=None):
+        return self.client.post(
+            f"/api/study-items/{item.id}/log_interaction/",
+            body if body is not None else {},
+            content_type="application/json",
+            headers=self.headers,
+        )
+
+
+class StudyInteractionTests(StudyItemApiTestCase):
+    """R43-R45: prime and study are independent interaction types on every
+    item; each records first-ever and most-recent dates and its own count."""
+
+    def test_logging_a_prime_records_count_and_first_and_last_dates(self):
+        item = StudyItem.objects.create(user=self.user, prompt="Kanji: 水")
+
+        response = self.log(item, {"interaction": "prime"})
+        self.assertEqual(response.status_code, 200)
+
+        data = response.json()
+        self.assertEqual(data["prime_count"], 1)
+        self.assertIsNotNone(data["first_primed_at"])
+        self.assertIsNotNone(data["last_primed_at"])
+        self.assertEqual(data["study_count"], 0)
+
+    def test_second_prime_moves_last_but_keeps_first(self):
+        item = StudyItem.objects.create(user=self.user, prompt="Kanji: 水")
+        first = self.log(item, {"interaction": "prime"}).json()
+        second = self.log(item, {"interaction": "prime"}).json()
+
+        self.assertEqual(second["prime_count"], 2)
+        self.assertEqual(second["first_primed_at"], first["first_primed_at"])
+        self.assertGreaterEqual(second["last_primed_at"], first["last_primed_at"])
+
+    def test_logging_a_study_records_its_own_dates_and_count(self):
+        item = StudyItem.objects.create(
+            user=self.user, prompt="Kanji: 水", notes="water; radical in 泳"
+        )
+
+        data = self.log(item, {"interaction": "study"}).json()
+        self.assertEqual(data["study_count"], 1)
+        self.assertIsNotNone(data["first_studied_at"])
+        self.assertIsNotNone(data["last_studied_at"])
+        self.assertEqual(data["prime_count"], 0)
+
+    def test_study_interaction_requires_notes(self):
+        item = StudyItem.objects.create(user=self.user, prompt="Kanji: 水")
+
+        response = self.log(item, {"interaction": "study"})
+        self.assertEqual(response.status_code, 400)
+        self.assertIn("notes", response.json()["detail"].lower())
+        item.refresh_from_db()
+        self.assertEqual(item.study_count, 0)
+
+    def test_unknown_interaction_type_is_rejected(self):
+        item = StudyItem.objects.create(user=self.user, prompt="Kanji: 水")
+
+        response = self.log(item, {"interaction": "cram"})
+        self.assertEqual(response.status_code, 400)
+        self.assertIn("detail", response.json())
+
+    def test_explicit_type_ignores_the_items_legacy_mode(self):
+        # A legacy item mid-flow in "studying" mode still logs a prime
+        # when the new UI asks for one explicitly.
+        item = StudyItem.objects.create(
+            user=self.user,
+            prompt="Kanji: 水",
+            is_priming=False,
+            is_studying=True,
+        )
+
+        data = self.log(item, {"interaction": "prime"}).json()
+        self.assertEqual(data["prime_count"], 1)
+        self.assertEqual(data["study_count"], 0)
+
+    def test_legacy_call_without_a_type_still_logs_by_mode(self):
+        item = StudyItem.objects.create(
+            user=self.user,
+            prompt="Kanji: 水",
+            is_priming=False,
+            is_studying=True,
+        )
+
+        data = self.log(item).json()
+        self.assertEqual(data["study_count"], 1)
+        self.assertEqual(data["prime_count"], 0)
+
+    def test_prime_timestamps_history_grows(self):
+        item = StudyItem.objects.create(user=self.user, prompt="Kanji: 水")
+        self.log(item, {"interaction": "prime"})
+        self.log(item, {"interaction": "prime"})
+
+        item.refresh_from_db()
+        self.assertEqual(len(item.prime_timestamps), 2)

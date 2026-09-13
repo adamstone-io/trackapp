@@ -578,28 +578,38 @@ class StudyItem(models.Model):
         if field and os.path.exists(field.path):
             os.remove(field.path)
 
-    def log_interaction(self):
-        timestamp_ms = int(timezone.now().timestamp() * 1000)
+    def log_interaction(self, kind=None):
+        """Record one interaction. `kind` is 'prime', 'study', or 'review';
+        when omitted, it falls back to the item's legacy mode flags."""
+        if kind is None:
+            kind = {
+                'priming': 'prime',
+                'studying': 'study',
+                'reviewing': 'review',
+            }.get(self.get_current_mode())
 
-        if self.is_priming:
+        now = timezone.now()
+        timestamp_ms = int(now.timestamp() * 1000)
+
+        if kind == 'prime':
             self.prime_count += 1
             self.prime_timestamps = [*self.prime_timestamps, timestamp_ms]
-            self.last_primed_at = timezone.now()
+            self.last_primed_at = now
             if self.first_primed_at is None:
-                self.first_primed_at = timezone.now()
+                self.first_primed_at = now
 
-        elif self.is_studying:
+        elif kind == 'study':
             self.study_count += 1
             self.study_timestamps = [*self.study_timestamps, timestamp_ms]
-            self.last_studied_at = timezone.now()
+            self.last_studied_at = now
             if self.first_studied_at is None:
-                self.first_studied_at = timezone.now()
+                self.first_studied_at = now
 
-        elif self.is_reviewing:
+        elif kind == 'review':
             self.review_count += 1
             self.review_timestamps = [*self.review_timestamps, timestamp_ms]
-            self.last_reviewed_at = timezone.now()
+            self.last_reviewed_at = now
             if self.first_reviewed_at is None:
-                self.first_reviewed_at = timezone.now()
+                self.first_reviewed_at = now
 
         return timestamp_ms
