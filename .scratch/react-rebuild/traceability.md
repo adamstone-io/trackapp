@@ -35,7 +35,7 @@ original ticket was scoped too small, not something to restructure away.
 | 06.7 Prime/Study confirmation sound | done | R27a (legacy parity) |
 | 06.8 Add study item above the list | done | — (UI) |
 | 07 Dashboard (period selector; no separate /stats) | ready | R31, R32, R33, R33a |
-| 08 Scheduled tasks in the workspace | ready | R33b, R60 (scheduled-tasks half), R62, R62a, R63, R63a (reworded), R64, R64a, R64b |
+| 08 Scheduled tasks in the workspace | ready | R33b, R60 (scheduled-tasks half), R62, R62a, R63, R63a, R64, R64a, R64b |
 | 09 Spaced repetition | ready | R31t, R31u, R31v |
 | 10 Audio recording for study items | ready | R24a, R24b, R24c, R24d, R24e |
 | 11 TTS generation + Play-all | ready | R24f, R24g |
@@ -68,13 +68,11 @@ The app's surface is: Dashboard, Timer (with moments in the day log), Workspace
 
 - **The daily calendar page** — dropped, but scheduled tasks are *not*: they came
   back on 2026-09-13 as a daily scheduler inside the workspace (ticket 08), which
-  is a list, not a grid. R63a still says today's tasks appear on "a dedicated
-  daily calendar page" and needs rewording in the Obsidian requirements doc.
+  is a list, not a grid. R63a was reworded to match (a day's tasks as a
+  time-ordered list in the workspace, no calendar view), so no requirement asks
+  for a calendar any more.
 - **Separate /stats page** — folded into the dashboard (ticket 07). R31/R32/R33
   are still met there via the period selector; only the extra page is gone.
-- **R60 wording** — "the workspace is where projects and scheduled tasks are
-  created" no longer matches: the page is /projects and holds projects only.
-  Needs rewording in the Obsidian requirements doc.
 
 ## Not applicable to the web rebuild
 

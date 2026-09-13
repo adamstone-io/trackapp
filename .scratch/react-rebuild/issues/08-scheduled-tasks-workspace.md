@@ -34,6 +34,6 @@ filter on /api/tasks/ is likely needed (the endpoint has no filtering).
 - [ ] Edit, archive and delete a scheduled task through the ⋮ RowMenu
 - [ ] Optimistic UI with rollback + error toast
 
-**Requirements note:** R63a says today's scheduled tasks appear on "a dedicated
-daily calendar page". There is no calendar page — they appear in the workspace.
-R63a needs rewording in the Obsidian requirements doc.
+**Requirements note:** R63a was reworded on 2026-09-13 to match — a day's
+scheduled tasks are a list in the workspace, ordered by time, with no calendar
+view. Nothing in the requirements asks for a calendar any more.
