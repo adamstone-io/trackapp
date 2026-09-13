@@ -101,6 +101,12 @@
   white-space: nowrap;
 }
 
+/* The category rides the dates line, pushed to its right-hand end. */
+.categoryChip {
+  composes: chip;
+  margin-left: auto;
+}
+
 .notes {
   font-size: var(--text-sm);
   color: var(--color-text-secondary);

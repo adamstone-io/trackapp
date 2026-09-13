@@ -166,10 +166,9 @@ function StudyItemRow({ item }: { item: StudyItem }) {
   return (
     <>
       <div className={styles.main}>
-        {(item.prompt || item.category) && (
+        {item.prompt && (
           <div className={styles.titleLine}>
-            {item.prompt && <h3 className={styles.name}>{item.prompt}</h3>}
-            {item.category && <span className={styles.chip}>{item.category}</span>}
+            <h3 className={styles.name}>{item.prompt}</h3>
           </div>
         )}
         {item.image_url && (
@@ -205,6 +204,8 @@ function StudyItemRow({ item }: { item: StudyItem }) {
             first={item.first_studied_at}
             last={item.last_studied_at}
           />
+          {/* Same line as the dates, pushed to the far end of it. */}
+          {item.category && <span className={styles.categoryChip}>{item.category}</span>}
         </div>
       </div>
       <div className={styles.actions}>
