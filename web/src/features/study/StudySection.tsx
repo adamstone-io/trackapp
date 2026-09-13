@@ -185,6 +185,9 @@ function StudyItemRow({ item }: { item: StudyItem }) {
           />
         )}
         <div className={styles.stats}>
+          {/* Leads the metadata line, so categories stack in a column the eye
+              can run down — the list is filtered by them. */}
+          {item.category && <span className={styles.categoryChip}>{item.category}</span>}
           {item.created_at && (
             <span className={styles.stat}>Created {formatDayMonthYear(item.created_at)}</span>
           )}
@@ -202,8 +205,6 @@ function StudyItemRow({ item }: { item: StudyItem }) {
             first={item.first_studied_at}
             last={item.last_studied_at}
           />
-          {/* Same line as the dates, pushed to the far end of it. */}
-          {item.category && <span className={styles.categoryChip}>{item.category}</span>}
         </div>
       </div>
       <div className={styles.actions}>

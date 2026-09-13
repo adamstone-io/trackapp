@@ -103,10 +103,9 @@
   white-space: nowrap;
 }
 
-/* The category rides the dates line, pushed to its right-hand end. */
+/* The category leads the metadata line rather than floating away from it. */
 .categoryChip {
   composes: chip;
-  margin-left: auto;
 }
 
 .notes {
