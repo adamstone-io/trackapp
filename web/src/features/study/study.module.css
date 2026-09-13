@@ -51,21 +51,11 @@
   border-bottom: var(--border-hairline) solid var(--color-border);
 }
 
-.thumb {
-  flex: none;
-  width: 3.5rem;
-  height: 3.5rem;
-  object-fit: cover;
-  border-radius: var(--radius-md);
-  border: var(--border-hairline) solid var(--color-border);
-}
-
-/* The note image sits inside the text column, under the notes it belongs to. */
-.noteThumb {
-  align-self: flex-start;
-  max-width: 12rem;
-  max-height: 8rem;
-  object-fit: cover;
+/* Both images live in the row's text column and fill its width — a study
+ * image is content to read, not a thumbnail to identify the row by. */
+.image {
+  width: 100%;
+  height: auto;
   border-radius: var(--radius-md);
   border: var(--border-hairline) solid var(--color-border);
 }

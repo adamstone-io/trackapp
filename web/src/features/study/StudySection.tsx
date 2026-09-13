@@ -156,18 +156,22 @@ function StudyItemRow({ item }: { item: StudyItem }) {
 
   return (
     <>
-      {item.image_url && (
-        <img className={styles.thumb} src={item.image_url} alt={`Prompt image for ${item.prompt}`} />
-      )}
       <div className={styles.main}>
         <div className={styles.titleLine}>
           <h3 className={styles.name}>{item.prompt}</h3>
           {item.category && <span className={styles.chip}>{item.category}</span>}
         </div>
+        {item.image_url && (
+          <img
+            className={styles.image}
+            src={item.image_url}
+            alt={`Prompt image for ${item.prompt}`}
+          />
+        )}
         {revealed && item.notes && <p className={styles.notes}>{item.notes}</p>}
         {revealed && item.note_image_url && (
           <img
-            className={styles.noteThumb}
+            className={styles.image}
             src={item.note_image_url}
             alt={`Note image for ${item.prompt}`}
           />
