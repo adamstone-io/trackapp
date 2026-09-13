@@ -73,6 +73,24 @@ export interface Habit {
   created_at?: string;
 }
 
+export interface StudyItem {
+  id: string;
+  /** The item's title/front text (legacy field name). */
+  prompt: string;
+  notes: string;
+  category: string;
+  image_url: string | null;
+  note_image_url: string | null;
+  prime_count: number;
+  study_count: number;
+  first_primed_at: string | null;
+  last_primed_at: string | null;
+  first_studied_at: string | null;
+  last_studied_at: string | null;
+  is_archived: boolean;
+  created_at?: string;
+}
+
 export type TimerMode = "stopwatch" | "countdown";
 
 export interface ActiveTimer {

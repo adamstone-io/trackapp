@@ -1,0 +1,69 @@
+/* Form controls for the study page's add/edit item forms. */
+
+.openButton {
+  composes: secondaryButton from "../timer/controls.module.css";
+  margin-top: var(--space-4);
+}
+
+.form {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: var(--space-3);
+  margin-top: var(--space-4);
+}
+
+/* An edit form replaces its list row, so it fills the row's width. */
+.rowForm {
+  composes: form;
+  flex-basis: 100%;
+  margin-top: 0;
+}
+
+.field {
+  composes: field from "../timer/controls.module.css";
+}
+
+.label {
+  composes: label from "../timer/controls.module.css";
+}
+
+.input {
+  composes: input from "../timer/controls.module.css";
+}
+
+.nameInput {
+  composes: input;
+  flex: 1 1 12rem;
+}
+
+.notesInput {
+  composes: input;
+  flex: 1 1 16rem;
+  resize: vertical;
+  min-height: var(--touch-target);
+}
+
+.fileInput {
+  font-size: var(--text-xs);
+  color: var(--color-text-secondary);
+  max-width: 14rem;
+}
+
+.removeImage {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-height: var(--touch-target);
+  font-size: var(--text-sm);
+  color: var(--color-text-secondary);
+  cursor: pointer;
+}
+
+.saveButton {
+  composes: primaryButton from "../timer/controls.module.css";
+}
+
+.cancelButton {
+  composes: secondaryButton from "../timer/controls.module.css";
+}

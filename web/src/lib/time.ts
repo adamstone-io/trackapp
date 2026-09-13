@@ -16,6 +16,14 @@ export function formatTimerReadout(totalSeconds: number): string {
   return `${pad(Math.floor(s / 3600))}:${pad(Math.floor((s % 3600) / 60))}:${pad(s % 60)}`;
 }
 
+const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+
+/** "1 Sep 2026" — local calendar date for an ISO timestamp. */
+export function formatDayMonthYear(iso: string): string {
+  const date = new Date(iso);
+  return `${date.getDate()} ${MONTHS[date.getMonth()]} ${date.getFullYear()}`;
+}
+
 /** "10:00" — local wall-clock time for an ISO timestamp. */
 export function formatClockTime(iso: string): string {
   return new Date(iso).toLocaleTimeString([], {

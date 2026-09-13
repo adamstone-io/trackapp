@@ -104,12 +104,20 @@ function doFetch(path: string, options: ApiFetchOptions, accessToken: string | n
     "x-user-timezone": Intl.DateTimeFormat().resolvedOptions().timeZone,
   };
   if (accessToken) headers.Authorization = `Bearer ${accessToken}`;
-  if (options.body !== undefined) headers["Content-Type"] = "application/json";
+
+  // FormData sets its own multipart Content-Type (with boundary).
+  const isFormData = options.body instanceof FormData;
+  if (options.body !== undefined && !isFormData) headers["Content-Type"] = "application/json";
 
   return fetch(`${API_BASE}${path}`, {
     method: options.method ?? "GET",
     headers,
-    body: options.body !== undefined ? JSON.stringify(options.body) : undefined,
+    body:
+      options.body === undefined
+        ? undefined
+        : isFormData
+          ? (options.body as FormData)
+          : JSON.stringify(options.body),
   });
 }
 
