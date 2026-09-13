@@ -33,6 +33,7 @@ export function DashboardPage() {
         </>
       )}
       {planned && <TodaysPlan tasks={planned} />}
+      {habits && <HabitChains habits={habits} />}
       <PeriodPicker period={period} onChange={setPeriod} />
       {stats && (
         <>
@@ -40,7 +41,6 @@ export function DashboardPage() {
           <ActivityCounts stats={stats} />
         </>
       )}
-      {habits && <HabitChains habits={habits} />}
     </PageShell>
   );
 }
