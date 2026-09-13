@@ -2,6 +2,7 @@ import { useState, type FormEvent } from "react";
 import type { Habit } from "../../api/types";
 import {
   useBackfillHabit,
+  useDeleteHabit,
   useEditHabit,
   useHabitsQuery,
   useLogHabit,
@@ -84,6 +85,7 @@ function HabitRow({ habit }: { habit: Habit }) {
   const logMutation = useLogHabit();
   const unlogMutation = useUnlogHabit();
   const editMutation = useEditHabit();
+  const deleteMutation = useDeleteHabit();
 
   if (editing) {
     return <EditHabitForm habit={habit} onDone={() => setEditing(false)} />;
@@ -124,6 +126,13 @@ function HabitRow({ habit }: { habit: Habit }) {
             {
               label: "Archive",
               onSelect: () => editMutation.mutate({ id: habit.id, patch: { is_active: false } }),
+            },
+            {
+              label: "Delete",
+              danger: true,
+              confirm: "Confirm delete",
+              confirmNote: "Permanently removes the habit and its streak.",
+              onSelect: () => deleteMutation.mutate(habit.id),
             },
           ]}
         />

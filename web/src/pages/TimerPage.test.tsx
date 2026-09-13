@@ -603,6 +603,11 @@ describe("renaming a time entry", () => {
     await user.click(within(log).getByRole("button", { name: "More Write spec" }));
     await user.click(within(log).getByRole("button", { name: /^edit$/i }));
 
+    // Clicking the title itself is the menu's Edit twin — same editor.
+    expect(within(log).getByLabelText(/entry title/i)).toBeInTheDocument();
+    await user.keyboard("{Escape}");
+    await user.click(within(log).getByRole("button", { name: "Write spec" }));
+
     const input = within(log).getByLabelText(/entry title/i);
     await user.clear(input);
     await user.type(input, "Write the rebuild spec{Enter}");

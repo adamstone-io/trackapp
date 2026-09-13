@@ -272,6 +272,30 @@ describe("archiving and restoring", () => {
   });
 });
 
+describe("deleting a habit", () => {
+  it("asks for confirmation, then deletes and removes the row", async () => {
+    const user = userEvent.setup();
+    let deleted = false;
+    server.use(
+      http.get(api("/habits/"), () => HttpResponse.json(habitsPage([habit()]))),
+      http.delete(api("/habits/habit-1/"), () => {
+        deleted = true;
+        return new HttpResponse(null, { status: 204 });
+      }),
+    );
+
+    renderApp("/habits");
+    await user.click(await screen.findByRole("button", { name: /more meditate/i }));
+    await user.click(screen.getByRole("button", { name: /^delete$/i }));
+    // Nothing happens until the confirmation click.
+    expect(deleted).toBe(false);
+    await user.click(screen.getByRole("button", { name: /confirm delete/i }));
+
+    expect(screen.queryByText("Meditate")).not.toBeInTheDocument();
+    expect(deleted).toBe(true);
+  });
+});
+
 describe("editing a habit", () => {
   it("saves a new name and targets and shows them", async () => {
     const user = userEvent.setup();

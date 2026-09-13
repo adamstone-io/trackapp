@@ -2,6 +2,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   backfillHabit,
   createHabit,
+  deleteHabit,
   listAllHabits,
   logHabit,
   patchHabit,
@@ -183,6 +184,23 @@ export function useBackfillHabit() {
     onError: (error, _variables, context) => {
       rollback(queryClient, context?.previous);
       showToast(error instanceof Error ? error.message : "Could not log the past day.");
+    },
+  });
+}
+
+/** Permanent delete, optimistically removed from the list. */
+export function useDeleteHabit() {
+  const queryClient = useQueryClient();
+  const { showToast } = useToast();
+
+  return useMutation({
+    mutationKey: HABITS_MUTATION_KEY,
+    mutationFn: (id: string) => deleteHabit(id),
+    onMutate: (id) =>
+      snapshotAndApply(queryClient, (current) => current.filter((habit) => habit.id !== id)),
+    onError: (error, _id, context) => {
+      rollback(queryClient, context?.previous);
+      showToast(error instanceof Error ? error.message : "Could not delete the habit.");
     },
   });
 }

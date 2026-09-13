@@ -36,11 +36,13 @@
   border-bottom: var(--border-hairline) solid var(--color-border);
 }
 
+/* Grows to fill the row so counters and actions stay flush right. */
 .main {
   display: flex;
   align-items: baseline;
   gap: var(--space-3);
   min-width: 0;
+  flex: 1 1 auto;
 }
 
 .name {

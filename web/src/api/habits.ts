@@ -40,3 +40,8 @@ export type HabitPatch = Partial<
 export function patchHabit(id: string, patch: HabitPatch): Promise<Habit> {
   return apiFetch<Habit>(`/habits/${id}/`, { method: "PATCH", body: patch });
 }
+
+/** Permanent delete — the habit's counters and streak go with it. */
+export function deleteHabit(id: string): Promise<void> {
+  return apiFetch<void>(`/habits/${id}/`, { method: "DELETE" });
+}

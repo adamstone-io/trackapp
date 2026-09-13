@@ -74,6 +74,26 @@ function EditText({
   );
 }
 
+/** Row text that also opens its editor on click (the ⋮ menu's Edit twin). */
+function ClickableText({
+  value,
+  className,
+  editable,
+  onClick,
+}: {
+  value: string;
+  className: string;
+  editable: boolean;
+  onClick: () => void;
+}) {
+  if (!editable) return <span className={className}>{value}</span>;
+  return (
+    <button className={className} type="button" title="Rename" onClick={onClick}>
+      {value}
+    </button>
+  );
+}
+
 function TimeEntryRow({ entry }: { entry: Extract<TodayEntry, { type: "time_entry" }> }) {
   const data = entry.data;
   const [editing, setEditing] = useState(false);
@@ -89,7 +109,12 @@ function TimeEntryRow({ entry }: { entry: Extract<TodayEntry, { type: "time_entr
             onCommit={(taskTitle) => renameEntry.mutate({ id: entry.id, taskTitle })}
           />
         ) : (
-          <span className={styles.title}>{data.task_title}</span>
+          <ClickableText
+            value={data.task_title}
+            className={styles.title}
+            editable={isSettled(entry.id)}
+            onClick={() => setEditing(true)}
+          />
         )}
         {data.project_name && <span className={styles.project}>{data.project_name}</span>}
       </div>
@@ -178,7 +203,12 @@ function MomentRow({ entry }: { entry: Extract<TodayEntry, { type: "moment" }> }
             onCommit={(description) => editMoment.mutate({ id: entry.id, patch: { description } })}
           />
         ) : (
-          <span className={styles.momentText}>{data.description}</span>
+          <ClickableText
+            value={data.description}
+            className={styles.momentText}
+            editable={isSettled(entry.id)}
+            onClick={() => setEditing(true)}
+          />
         )}
       </div>
       <div className={styles.meta}>
