@@ -64,10 +64,6 @@ function errorMessage(error: unknown, fallback: string): string {
   return error instanceof Error ? error.message : fallback;
 }
 
-function rowIdOf(variables: unknown): string {
-  return typeof variables === "string" ? variables : (variables as { id: string }).id;
-}
-
 /** Sync the server's authoritative row — but only when this is the row's last
  * in-flight mutation; an earlier response landing late would clobber state
  * that newer optimistic updates already applied (same rule as useHabits). */
@@ -75,7 +71,7 @@ function syncFromServer(queryClient: QueryClient, saved: StudyItem | undefined, 
   if (!saved) return;
   const inFlight = queryClient.isMutating({
     mutationKey: STUDY_MUTATION_KEY,
-    predicate: (mutation) => rowIdOf(mutation.state.variables) === id,
+    predicate: (mutation) => (mutation.state.variables as { id: string }).id === id,
   });
   if (inFlight <= 1) replaceRow(queryClient, saved.id, saved);
 }
@@ -97,10 +93,18 @@ export function useCreateStudyItem() {
   return useMutation({
     mutationFn: async ({ draft, imageFile }: StudyItemDraft) => {
       const created = await createStudyItem(draft);
-      return imageFile ? uploadStudyImage(created.id, imageFile) : created;
+      if (!imageFile) return created;
+      // The item is saved even if its image isn't: report the partial
+      // failure but never roll back a row the server already has.
+      try {
+        return await uploadStudyImage(created.id, imageFile);
+      } catch {
+        showToast("Saved the study item, but the image upload failed.");
+        return created;
+      }
     },
     onMutate: async ({ draft }) => {
-      const tempId = `optimistic-${draft.prompt}`;
+      const tempId = `optimistic-${crypto.randomUUID()}`;
       const optimistic: StudyItem = {
         id: tempId,
         ...draft,
@@ -112,6 +116,7 @@ export function useCreateStudyItem() {
         last_primed_at: null,
         first_studied_at: null,
         last_studied_at: null,
+        last_reviewed_at: null,
         is_archived: false,
       };
       const previous = await snapshotAndApply(queryClient, (current) => [...current, optimistic]);
@@ -145,10 +150,16 @@ export function useEditStudyItem() {
   return useMutation({
     mutationKey: STUDY_MUTATION_KEY,
     mutationFn: async ({ id, patch, imageFile, removeImage }: StudyItemEdit) => {
-      let saved = await patchStudyItem(id, patch);
-      if (imageFile) saved = await uploadStudyImage(id, imageFile);
-      else if (removeImage) saved = await removeStudyImage(id);
-      return saved;
+      const saved = await patchStudyItem(id, patch);
+      if (!imageFile && !removeImage) return saved;
+      // The patch is saved even if the image change isn't: report the
+      // partial failure but never roll back fields the server accepted.
+      try {
+        return imageFile ? await uploadStudyImage(id, imageFile) : await removeStudyImage(id);
+      } catch {
+        showToast("Saved the changes, but updating the image failed.");
+        return saved;
+      }
     },
     onMutate: async ({ id, patch, removeImage }) => ({
       previous: await snapshotAndApply(queryClient, (current) =>

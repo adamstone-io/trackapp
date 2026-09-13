@@ -27,6 +27,7 @@ function item(overrides: Record<string, unknown> = {}) {
     last_primed_at: "2026-09-10T10:00:00Z",
     first_studied_at: "2026-09-02T10:00:00Z",
     last_studied_at: "2026-09-08T10:00:00Z",
+    last_reviewed_at: null,
     is_archived: false,
     created_at: "2026-08-01T00:00:00Z",
     ...overrides,
@@ -101,6 +102,18 @@ describe("study items list", () => {
         last_primed_at: "2026-08-20T10:00:00Z",
         last_studied_at: "2026-08-15T10:00:00Z",
       }),
+      // Legacy items whose only interactions were reviews still count as touched.
+      item({
+        id: "reviewed",
+        prompt: "Reviewed once",
+        prime_count: 0,
+        study_count: 0,
+        first_primed_at: null,
+        last_primed_at: null,
+        first_studied_at: null,
+        last_studied_at: null,
+        last_reviewed_at: "2026-08-10T10:00:00Z",
+      }),
     ]);
 
     renderApp("/study");
@@ -109,7 +122,7 @@ describe("study items list", () => {
     const titles = within(screen.getByRole("list", { name: /study items/i }))
       .getAllByRole("listitem")
       .map((li) => li.querySelector("h3")?.textContent);
-    expect(titles).toEqual(["Never touched", "Stale", "Recent"]);
+    expect(titles).toEqual(["Never touched", "Reviewed once", "Stale", "Recent"]);
   });
 });
 
@@ -196,11 +209,43 @@ describe("creating a study item", () => {
     await user.click(await screen.findByRole("button", { name: /add study item/i }));
     await user.type(screen.getByLabelText(/title/i), "Kanji: 火");
     await user.type(screen.getByLabelText(/notes/i), "fire");
-    await user.type(screen.getByLabelText("Category"), "kanji");
+    await user.type(screen.getByLabelText("Category"), "Kanji");
     await user.click(screen.getByRole("button", { name: /save/i }));
 
     expect(await screen.findByText("Kanji: 火")).toBeInTheDocument();
-    expect(posted).toEqual({ prompt: "Kanji: 火", notes: "fire", category: "kanji" });
+    // The typed case is preserved — rewriting it would fork existing categories.
+    expect(posted).toEqual({ prompt: "Kanji: 火", notes: "fire", category: "Kanji" });
+  });
+
+  it("keeps the created item and explains when only the image upload fails", async () => {
+    const user = userEvent.setup();
+    serve([]);
+    server.use(
+      http.post(api("/study-items/"), async ({ request }) => {
+        const body = (await request.json()) as Record<string, unknown>;
+        return HttpResponse.json(
+          item({ id: "item-new", ...body, prime_count: 0, study_count: 0 }),
+          { status: 201 },
+        );
+      }),
+      http.post(api("/study-items/item-new/upload_image/"), () =>
+        HttpResponse.json({ detail: "Image too large. Maximum size: 10MB" }, { status: 400 }),
+      ),
+    );
+
+    renderApp("/study");
+    await user.click(await screen.findByRole("button", { name: /add study item/i }));
+    await user.type(screen.getByLabelText(/title/i), "Kanji: 火");
+    await user.upload(
+      screen.getByLabelText(/image/i),
+      new File(["png-bytes"], "huge.png", { type: "image/png" }),
+    );
+    await user.click(screen.getByRole("button", { name: /save/i }));
+
+    expect(
+      await screen.findByText("Saved the study item, but the image upload failed."),
+    ).toBeInTheDocument();
+    expect(screen.getByText("Kanji: 火")).toBeInTheDocument();
   });
 
   it("uploads the chosen image after creating and shows it", async () => {

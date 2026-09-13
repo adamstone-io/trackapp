@@ -4,16 +4,16 @@
 
 **Blocked by:** 01 (Scaffold + Auth + Design system)
 
-**Status:** ready-for-agent
+**Status:** done (2026-09-13 — backend commit 9b4ac70 + study page 8e2287d)
 
-- [ ] Study items list showing all items
-- [ ] Create study item: title, notes, category, optional image upload
-- [ ] Edit study item
-- [ ] Archive/restore study items
-- [ ] Category filter: dropdown or input that filters the list
-- [ ] Category autocomplete from existing categories (GET /api/study-items/categories/)
-- [ ] Log Prime button on each item: records prime interaction via POST /api/study-items/{id}/log_interaction/
-- [ ] Log Study button on items with notes (absent/disabled if no notes)
-- [ ] System records first-ever and most-recent dates for both prime and study
-- [ ] Optimistic UI on all mutations with rollback + error toast
-- [ ] Image display on study items
+- [x] Study items list showing all items — ordered least-recently-touched first, never-touched at the top (spec story 52's All ordering)
+- [x] Create study item: title, notes, category, optional image upload — image rides POST upload_image/ after the create settles
+- [x] Edit study item — inline form via RowMenu; can also replace/remove the image
+- [x] Archive/restore study items
+- [x] Category filter: input that filters the list (prefix match, client-side)
+- [x] Category autocomplete from existing categories (GET /api/study-items/categories/) — shared datalist for the filter and both forms
+- [x] Log Prime button on each item: records prime interaction via POST /api/study-items/{id}/log_interaction/ with an explicit {"interaction": "prime"} body (backend extension; legacy body-less mode logging preserved)
+- [x] Log Study button on items with notes (disabled if no notes; backend also 400s a study interaction without notes)
+- [x] System records first-ever and most-recent dates for both prime and study — shown as a tooltip on each count
+- [x] Optimistic UI on all mutations with rollback + error toast
+- [x] Image display on study items

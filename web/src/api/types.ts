@@ -87,6 +87,8 @@ export interface StudyItem {
   last_primed_at: string | null;
   first_studied_at: string | null;
   last_studied_at: string | null;
+  /** Legacy review-mode interactions; read only for recency ordering. */
+  last_reviewed_at: string | null;
   is_archived: boolean;
   created_at?: string;
 }

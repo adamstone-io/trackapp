@@ -87,8 +87,10 @@ function sortLeastRecentlyTouchedFirst(items: StudyItem[]): StudyItem[] {
 }
 
 function lastTouchedMs(item: StudyItem): number | null {
-  const touches = [item.last_primed_at, item.last_studied_at]
-    .filter((iso): iso is string => iso !== null)
+  // last_reviewed_at counts too: legacy items whose only interactions were
+  // reviews shouldn't sort as never-touched.
+  const touches = [item.last_primed_at, item.last_studied_at, item.last_reviewed_at]
+    .filter((iso): iso is string => typeof iso === "string")
     .map((iso) => Date.parse(iso));
   return touches.length > 0 ? Math.max(...touches) : null;
 }
@@ -284,8 +286,10 @@ function StudyItemForm({
     event.preventDefault();
     const trimmed = prompt.trim();
     if (!trimmed) return;
+    // Category keeps the typed case: autocomplete offers existing values
+    // verbatim, and rewriting them would fork the category.
     onSubmit({
-      draft: { prompt: trimmed, notes: notes.trim(), category: category.trim().toLowerCase() },
+      draft: { prompt: trimmed, notes: notes.trim(), category: category.trim() },
       imageFile,
       removeImage: removeImage && !imageFile,
     });
