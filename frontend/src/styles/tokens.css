@@ -106,6 +106,17 @@
   --container-pad: var(--space-4);
   --nav-height: 3.5rem;
   --touch-target: 44px;
+  /* A list row is a mouse target on a desktop and a thumb target on a phone.
+     Padding a long day's log for thumbs costs rows on screen, so the desktop
+     case is tighter and the coarse-pointer override below restores the full
+     target where fingers are doing the pointing. */
+  --row-min-height: 2rem;
+}
+
+@media (pointer: coarse) {
+  :root {
+    --row-min-height: var(--touch-target);
+  }
 }
 
 @media (min-width: 768px) {

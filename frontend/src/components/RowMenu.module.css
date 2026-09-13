@@ -5,7 +5,7 @@
 }
 
 .trigger {
-  min-height: var(--touch-target);
+  min-height: var(--row-min-height);
   min-width: var(--touch-target);
   background: transparent;
   border: none;
