@@ -2,6 +2,8 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   createMoment,
   createTimeEntry,
+  deleteMoment,
+  deleteTimeEntry,
   patchMoment,
   patchTimeEntry,
   type MomentCreate,
@@ -208,6 +210,40 @@ export function useRenameTimeEntry() {
       showToast(error instanceof Error ? error.message : "Could not rename the entry.");
     },
   });
+}
+
+/** Permanent delete of a log row, optimistically removed from today's list. */
+function useDeleteTodayEntry(
+  type: TodayEntry["type"],
+  remove: (id: string) => Promise<void>,
+  fallback: string,
+) {
+  const queryClient = useQueryClient();
+  const { showToast } = useToast();
+
+  return useMutation({
+    mutationFn: (id: string) => remove(id),
+    onMutate: async (id) => {
+      await queryClient.cancelQueries({ queryKey: TODAY_ENTRIES_KEY });
+      const previousEntries = queryClient.getQueryData<TodayEntry[]>(TODAY_ENTRIES_KEY);
+      queryClient.setQueryData<TodayEntry[]>(TODAY_ENTRIES_KEY, (current) =>
+        current?.filter((entry) => !(entry.type === type && entry.id === id)),
+      );
+      return { previousEntries };
+    },
+    onError: (error, _id, context) => {
+      rollbackOptimisticEntry(queryClient, context?.previousEntries);
+      showToast(error instanceof Error ? error.message : fallback);
+    },
+  });
+}
+
+export function useDeleteTimeEntry() {
+  return useDeleteTodayEntry("time_entry", deleteTimeEntry, "Could not delete the entry.");
+}
+
+export function useDeleteMoment() {
+  return useDeleteTodayEntry("moment", deleteMoment, "Could not delete the moment.");
 }
 
 /** Everything needed to turn a running timer into a time entry, frozen at click time. */

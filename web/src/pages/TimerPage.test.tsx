@@ -621,6 +621,44 @@ describe("renaming a time entry", () => {
   });
 });
 
+describe("deleting a time entry", () => {
+  it("deletes from the row's ⋮ menu after confirmation", async () => {
+    const user = userEvent.setup();
+    let deleted = false;
+    const entryData = {
+      id: "te-1",
+      task: "task-1",
+      task_title: "Write spec",
+      started_at: "2026-09-12T10:00:00Z",
+      ended_at: "2026-09-12T11:30:00Z",
+      duration_seconds: 5400,
+      notes: "",
+      breaks: [],
+    };
+    server.use(
+      http.get(api("/today-entries/"), () =>
+        HttpResponse.json([{ type: "time_entry", id: "te-1", sort_time: entryData.started_at, data: entryData }]),
+      ),
+      http.delete(api("/time-entries/te-1/"), () => {
+        deleted = true;
+        return new HttpResponse(null, { status: 204 });
+      }),
+    );
+
+    renderApp("/timer");
+
+    const log = await screen.findByRole("list", { name: /today/i });
+    await user.click(within(log).getByRole("button", { name: "More Write spec" }));
+    await user.click(within(log).getByRole("button", { name: /^delete$/i }));
+    // Nothing happens until the confirmation click.
+    expect(deleted).toBe(false);
+    await user.click(within(log).getByRole("button", { name: /confirm delete/i }));
+
+    expect(within(log).queryByText("Write spec")).not.toBeInTheDocument();
+    expect(deleted).toBe(true);
+  });
+});
+
 describe("manual time entry", () => {
   it("defaults start to the end of the last entry and end to now, then records the entry", async () => {
     vi.useFakeTimers({ shouldAdvanceTime: true });

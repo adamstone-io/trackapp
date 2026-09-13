@@ -5,7 +5,13 @@ import type { TodayEntry } from "../../api/types";
 import { formatClockTime, formatDuration } from "../../lib/time";
 import { isSettled } from "../../lib/optimistic";
 import { RowMenu } from "../../components/RowMenu";
-import { TODAY_ENTRIES_KEY, useEditMoment, useRenameTimeEntry } from "./useTimeEntries";
+import {
+  TODAY_ENTRIES_KEY,
+  useDeleteMoment,
+  useDeleteTimeEntry,
+  useEditMoment,
+  useRenameTimeEntry,
+} from "./useTimeEntries";
 import styles from "./TodayLog.module.css";
 
 export function TodayLog() {
@@ -98,6 +104,7 @@ function TimeEntryRow({ entry }: { entry: Extract<TodayEntry, { type: "time_entr
   const data = entry.data;
   const [editing, setEditing] = useState(false);
   const renameEntry = useRenameTimeEntry();
+  const deleteEntry = useDeleteTimeEntry();
   return (
     <>
       <div className={styles.main}>
@@ -128,7 +135,15 @@ function TimeEntryRow({ entry }: { entry: Extract<TodayEntry, { type: "time_entr
       <RowMenu
         name={data.task_title}
         disabled={!isSettled(entry.id)}
-        items={[{ label: "Edit", onSelect: () => setEditing(true) }]}
+        items={[
+          { label: "Edit", onSelect: () => setEditing(true) },
+          {
+            label: "Delete",
+            danger: true,
+            confirm: "Confirm delete",
+            onSelect: () => deleteEntry.mutate(entry.id),
+          },
+        ]}
       />
     </>
   );
@@ -188,6 +203,7 @@ function MomentRow({ entry }: { entry: Extract<TodayEntry, { type: "moment" }> }
   const data = entry.data;
   const [editing, setEditing] = useState(false);
   const editMoment = useEditMoment();
+  const deleteMoment = useDeleteMoment();
 
   return (
     <>
@@ -222,7 +238,15 @@ function MomentRow({ entry }: { entry: Extract<TodayEntry, { type: "moment" }> }
       <RowMenu
         name={data.description}
         disabled={!isSettled(entry.id)}
-        items={[{ label: "Edit", onSelect: () => setEditing(true) }]}
+        items={[
+          { label: "Edit", onSelect: () => setEditing(true) },
+          {
+            label: "Delete",
+            danger: true,
+            confirm: "Confirm delete",
+            onSelect: () => deleteMoment.mutate(entry.id),
+          },
+        ]}
       />
     </>
   );

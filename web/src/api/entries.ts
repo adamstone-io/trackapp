@@ -37,3 +37,11 @@ export function patchMoment(id: string, patch: MomentPatch): Promise<Moment> {
 export function patchTimeEntry(id: string, patch: { task_title: string }): Promise<TimeEntry> {
   return apiFetch<TimeEntry>(`/time-entries/${id}/`, { method: "PATCH", body: patch });
 }
+
+export function deleteTimeEntry(id: string): Promise<void> {
+  return apiFetch<void>(`/time-entries/${id}/`, { method: "DELETE" });
+}
+
+export function deleteMoment(id: string): Promise<void> {
+  return apiFetch<void>(`/moments/${id}/`, { method: "DELETE" });
+}
