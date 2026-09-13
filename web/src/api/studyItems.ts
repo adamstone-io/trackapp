@@ -11,8 +11,19 @@ export interface StudyItemCreate {
   category: string;
 }
 
-export function createStudyItem(payload: StudyItemCreate): Promise<StudyItem> {
-  return apiFetch<StudyItem>("/study-items/", { method: "POST", body: payload });
+/**
+ * The backend requires an item to hold a prompt or an image at every point, so
+ * an image-prompt item has to arrive with its image rather than uploading it
+ * in a second step — hence the multipart path.
+ */
+export function createStudyItem(payload: StudyItemCreate, image?: File): Promise<StudyItem> {
+  if (!image) {
+    return apiFetch<StudyItem>("/study-items/", { method: "POST", body: payload });
+  }
+  const form = new FormData();
+  for (const [field, value] of Object.entries(payload)) form.append(field, value);
+  form.append("image", image);
+  return apiFetch<StudyItem>("/study-items/", { method: "POST", body: form });
 }
 
 export type StudyItemPatch = Partial<

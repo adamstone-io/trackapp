@@ -156,10 +156,14 @@ export function useCreateStudyItem() {
 
   return useMutation({
     mutationFn: async ({ draft, images }: StudyItemDraft) => {
-      const created = await createStudyItem(draft);
+      // An image prompt rides the create itself; the row would not validate
+      // without it. Everything else follows once the row has an id.
+      const promptFile = images?.image?.file;
+      const created = await createStudyItem(draft, promptFile);
       // The item is saved even if its images aren't: report the partial
       // failure but never roll back a row the server already has.
-      const { row, failed } = await applyImageChanges(created.id, images, created);
+      const remaining = promptFile ? { ...images, image: undefined } : images;
+      const { row, failed } = await applyImageChanges(created.id, remaining, created);
       if (failed.length > 0) showToast(imageFailureMessage("Saved the study item", failed));
       return row;
     },
@@ -208,6 +212,21 @@ export function useEditStudyItem() {
   return useMutation({
     mutationKey: STUDY_MUTATION_KEY,
     mutationFn: async ({ id, patch, images }: StudyItemEdit) => {
+      // Clearing the prompt text is only legal once the image standing in for
+      // it exists, so that upload has to go first.
+      if (patch.prompt === "" && images?.image?.file) {
+        const uploaded = await uploadStudyImage(id, "image", images.image.file);
+        const rest = { ...images, image: undefined };
+        // Same rule as the image legs: the upload the server took stands, and
+        // a failure after it is reported rather than rolled back.
+        const saved = await patchStudyItem(id, patch).catch(() => {
+          showToast("Saved the image, but the rest of the changes failed to save.");
+          return uploaded;
+        });
+        const { row, failed } = await applyImageChanges(id, rest, saved);
+        if (failed.length > 0) showToast(imageFailureMessage("Saved the changes", failed));
+        return row;
+      }
       const saved = await patchStudyItem(id, patch);
       // The patch is saved even if an image change isn't: report the
       // partial failure but never roll back fields the server accepted.

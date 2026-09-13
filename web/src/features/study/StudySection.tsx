@@ -18,6 +18,12 @@ import formStyles from "./forms.module.css";
 
 const CATEGORY_OPTIONS_ID = "study-category-options";
 
+/** What to call an item in menus and button labels. An image prompt has no
+ * text to borrow, so it falls back the way quick moments do. */
+function itemLabel(item: StudyItem): string {
+  return item.prompt.trim() || "Untitled";
+}
+
 export function StudySection() {
   const { data: items } = useStudyItemsQuery();
   const { data: categories } = useStudyCategoriesQuery();
@@ -112,12 +118,12 @@ function ArchivedStudyItems({ items }: { items: StudyItem[] }) {
         {items.map((item) => (
           <li key={item.id} className={styles.item}>
             <div className={styles.main}>
-              <span className={styles.archivedName}>{item.prompt}</span>
+              <span className={styles.archivedName}>{itemLabel(item)}</span>
             </div>
             <button
               className={styles.moreAction}
               type="button"
-              aria-label={`Restore ${item.prompt}`}
+              aria-label={`Restore ${itemLabel(item)}`}
               disabled={!isSettled(item.id)}
               onClick={() => editMutation.mutate({ id: item.id, patch: { is_archived: false } })}
             >
@@ -139,6 +145,7 @@ function StudyItemRow({ item }: { item: StudyItem }) {
   // The row is a two-sided card: the answer stays hidden until Study reveals
   // it, and the next press logs the study and puts it away again.
   const hasAnswer = Boolean(item.notes.trim() || item.note_image_url);
+  const label = itemLabel(item);
 
   if (editing) {
     return (
@@ -157,15 +164,17 @@ function StudyItemRow({ item }: { item: StudyItem }) {
   return (
     <>
       <div className={styles.main}>
-        <div className={styles.titleLine}>
-          <h3 className={styles.name}>{item.prompt}</h3>
-          {item.category && <span className={styles.chip}>{item.category}</span>}
-        </div>
+        {(item.prompt || item.category) && (
+          <div className={styles.titleLine}>
+            {item.prompt && <h3 className={styles.name}>{item.prompt}</h3>}
+            {item.category && <span className={styles.chip}>{item.category}</span>}
+          </div>
+        )}
         {item.image_url && (
           <img
             className={styles.image}
             src={item.image_url}
-            alt={`Prompt image for ${item.prompt}`}
+            alt={`Prompt image for ${label}`}
           />
         )}
         {revealed && item.notes && <p className={styles.notes}>{item.notes}</p>}
@@ -173,7 +182,7 @@ function StudyItemRow({ item }: { item: StudyItem }) {
           <img
             className={styles.image}
             src={item.note_image_url}
-            alt={`Note image for ${item.prompt}`}
+            alt={`Note image for ${label}`}
           />
         )}
         <div className={styles.stats}>
@@ -200,7 +209,7 @@ function StudyItemRow({ item }: { item: StudyItem }) {
         <button
           className={styles.logButton}
           type="button"
-          aria-label={`Log prime for ${item.prompt}`}
+          aria-label={`Log prime for ${label}`}
           disabled={!settled}
           onClick={() => logMutation.mutate({ id: item.id, kind: "prime" })}
         >
@@ -210,7 +219,7 @@ function StudyItemRow({ item }: { item: StudyItem }) {
           className={styles.logButton}
           type="button"
           aria-label={
-            revealed ? `Finish studying ${item.prompt}` : `Show the answer for ${item.prompt}`
+            revealed ? `Finish studying ${label}` : `Show the answer for ${label}`
           }
           disabled={!settled || !hasAnswer}
           onClick={() => {
@@ -225,7 +234,7 @@ function StudyItemRow({ item }: { item: StudyItem }) {
           {revealed ? "Done" : "Study"}
         </button>
         <RowMenu
-          name={item.prompt}
+          name={label}
           disabled={!settled}
           items={[
             { label: "Edit", onSelect: () => setEditing(true) },
@@ -311,6 +320,11 @@ function StudyItemForm({
   const [category, setCategory] = useState(initial?.category ?? "");
   const promptImage = useImageField();
   const noteImage = useImageField();
+  const initialPromptKind: AnswerKind = initial?.image_url && !initial.prompt ? "image" : "text";
+  const [promptKind, setPromptKind] = useState<AnswerKind>(initialPromptKind);
+  const switchedPrompt = promptKind !== initialPromptKind;
+  // Neither side may be empty: an image prompt needs an image to be the prompt.
+  const hasPromptImage = Boolean(promptImage.file || (initial?.image_url && !promptImage.remove));
   const initialAnswerKind = initial?.note_image_url ? "image" : "text";
   const [answerKind, setAnswerKind] = useState<AnswerKind>(initialAnswerKind);
   const switchedKind = answerKind !== initialAnswerKind;
@@ -318,7 +332,10 @@ function StudyItemForm({
   function handleSubmit(event: FormEvent) {
     event.preventDefault();
     const trimmed = prompt.trim();
-    if (!trimmed) return;
+    if (promptKind === "text" ? !trimmed : !hasPromptImage) return;
+    const promptText = promptKind === "text" ? trimmed : switchedPrompt ? "" : (initial?.prompt ?? "");
+    const promptImageChange =
+      promptKind === "image" ? promptImage.change : switchedPrompt ? { remove: true } : undefined;
     // An answer is one thing or the other, so committing to a kind drops what
     // the other held — but only when the user actually switched: a legacy row
     // carrying both keeps them until someone chooses.
@@ -328,28 +345,56 @@ function StudyItemForm({
     // Category keeps the typed case: autocomplete offers existing values
     // verbatim, and rewriting them would fork the category.
     onSubmit({
-      draft: { prompt: trimmed, notes: answerNotes, category: category.trim() },
-      images: { image: promptImage.change, note_image: noteImageChange },
+      draft: { prompt: promptText, notes: answerNotes, category: category.trim() },
+      images: { image: promptImageChange, note_image: noteImageChange },
     });
   }
 
   return (
     <form className={initial ? formStyles.rowForm : formStyles.form} onSubmit={handleSubmit}>
-      <div className={formStyles.field}>
-        <label className={formStyles.label} htmlFor={`${idPrefix}-title`}>
-          Title
-        </label>
-        <input
-          id={`${idPrefix}-title`}
-          className={formStyles.nameInput}
-          type="text"
-          value={prompt}
-          onChange={(event) => setPrompt(event.target.value)}
-          autoComplete="off"
-          autoFocus
-          required
-        />
-      </div>
+      <fieldset className={formStyles.answer}>
+        <legend className={formStyles.label}>Prompt</legend>
+        <div className={formStyles.choices}>
+          <AnswerKindChoice
+            idPrefix={`${idPrefix}-prompt`}
+            kind="text"
+            label="Text"
+            selected={promptKind}
+            onSelect={setPromptKind}
+          />
+          <AnswerKindChoice
+            idPrefix={`${idPrefix}-prompt`}
+            kind="image"
+            label="Image"
+            selected={promptKind}
+            onSelect={setPromptKind}
+          />
+        </div>
+        {promptKind === "text" ? (
+          <div className={formStyles.field}>
+            <label className={formStyles.label} htmlFor={`${idPrefix}-prompt-text`}>
+              Prompt
+            </label>
+            <input
+              id={`${idPrefix}-prompt-text`}
+              className={formStyles.nameInput}
+              type="text"
+              value={prompt}
+              onChange={(event) => setPrompt(event.target.value)}
+              autoComplete="off"
+              autoFocus
+              required
+            />
+          </div>
+        ) : (
+          <ImageField
+            id={`${idPrefix}-image`}
+            label="Prompt image"
+            field={promptImage}
+            hasExisting={Boolean(initial?.image_url)}
+          />
+        )}
+      </fieldset>
       <div className={formStyles.field}>
         <label className={formStyles.label} htmlFor={`${idPrefix}-category`}>
           Category
@@ -364,12 +409,6 @@ function StudyItemForm({
           autoComplete="off"
         />
       </div>
-      <ImageField
-        id={`${idPrefix}-image`}
-        label="Prompt image"
-        field={promptImage}
-        hasExisting={Boolean(initial?.image_url)}
-      />
       <fieldset className={formStyles.answer}>
         <legend className={formStyles.label}>Answer</legend>
         <div className={formStyles.choices}>
