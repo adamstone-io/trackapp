@@ -97,6 +97,53 @@ describe("creating a habit", () => {
 });
 
 describe("logging progress", () => {
+
+  it("shows only the periods the habit is aimed at", async () => {
+    server.use(
+      http.get(api("/habits/"), () =>
+        HttpResponse.json(
+          habitsPage([
+            habit({ weekly_target: 0, monthly_target: 0 }),
+            habit({
+              id: "habit-2",
+              name: "Deep clean",
+              daily_target: 0,
+              weekly_target: 0,
+              monthly_target: 2,
+              monthly_count: 1,
+            }),
+            habit({
+              id: "habit-3",
+              name: "Stretch",
+              daily_target: 0,
+              weekly_target: 0,
+              monthly_target: 0,
+              daily_count: 7,
+            }),
+          ]),
+        ),
+      ),
+    );
+
+    renderApp("/habits");
+    await screen.findByText("Meditate");
+
+    // Daily habit: its weekly and monthly tallies are noise.
+    const meditate = card("Meditate");
+    expect(within(meditate).getByText("2/3")).toBeInTheDocument();
+    expect(within(meditate).queryByText("W")).not.toBeInTheDocument();
+    expect(within(meditate).queryByText("M")).not.toBeInTheDocument();
+
+    // Monthly habit: no daily or weekly counter.
+    const clean = card("Deep clean");
+    expect(within(clean).getByText("1/2")).toBeInTheDocument();
+    expect(within(clean).queryByText("D")).not.toBeInTheDocument();
+    expect(within(clean).queryByText("W")).not.toBeInTheDocument();
+
+    // No target at all: today's count still shows, or the row has no number.
+    expect(within(card("Stretch")).getByText("7")).toBeInTheDocument();
+  });
+
   it("increments all three counters immediately, then shows the server's streak", async () => {
     const user = userEvent.setup();
     let release!: () => void;

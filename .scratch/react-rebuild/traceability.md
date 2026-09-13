@@ -17,6 +17,7 @@ original ticket was scoped too small, not something to restructure away.
 | 03 Moments (in the day log) | done | R15, R15a, R17 (edit only — removal moved to 13), R9g (landed with 03's follow-up commits, 599d1a5) |
 | 04 Habits page | done | R18, R19, R20, R21, R22, R23, R23b, R23c |
 | 04.1 Undo a back-filled habit day | needs-triage | R23b (back-fill half) |
+| 04.2 Counters match the habit's target | done | R19, R20 |
 | 05 Projects page (was "Workspace") | done | R10, R11, R12, R13, R14, R60 (projects half), R61 |
 | 05.3 Workspace form rows | done | — (UI defect) |
 | 05.4 Time entry ↔ project | done | R10, R11 (time attributed to a project) |

@@ -102,9 +102,9 @@ function HabitRow({ habit }: { habit: Habit }) {
         )}
       </div>
       <div className={styles.counters}>
-        <Counter label="D" count={habit.daily_count} target={habit.daily_target} />
-        <Counter label="W" count={habit.weekly_count} target={habit.weekly_target} />
-        <Counter label="M" count={habit.monthly_count} target={habit.monthly_target} />
+        {countersFor(habit).map(({ label, count, target }) => (
+          <Counter key={label} label={label} count={count} target={target} />
+        ))}
       </div>
       <div className={styles.actions}>
         <button
@@ -245,6 +245,19 @@ function BackfillForm({ habit, onDone }: { habit: Habit; onDone: () => void }) {
       </button>
     </form>
   );
+}
+
+/** Only the periods the habit is actually aimed at: a daily habit's weekly and
+ * monthly tallies are noise. A habit with no target at all still shows today's
+ * count, or the row would have no number on it. */
+function countersFor(habit: Habit) {
+  const periods = [
+    { label: "D", count: habit.daily_count, target: habit.daily_target },
+    { label: "W", count: habit.weekly_count, target: habit.weekly_target },
+    { label: "M", count: habit.monthly_count, target: habit.monthly_target },
+  ];
+  const targeted = periods.filter((period) => period.target > 0);
+  return targeted.length > 0 ? targeted : [periods[0]];
 }
 
 function Counter({ label, count, target }: { label: string; count: number; target: number }) {
