@@ -7,6 +7,7 @@ import {
   type ActiveTimerCreate,
 } from "../../api/timer";
 import type { ActiveTimer } from "../../api/types";
+import { ensureTaskId } from "../../api/tasks";
 import { useToast } from "../../components/toast/ToastProvider";
 
 export const ACTIVE_TIMER_KEY = ["active-timer"];
@@ -18,12 +19,25 @@ export function useActiveTimerQuery() {
   });
 }
 
+/** Starting with a project resolves the task up front so the association
+ * survives pauses and reloads — ActiveTimer persists the task FK, not a
+ * project. Untagged timers still resolve their task at stop, as before. */
+export interface StartTimerRequest {
+  payload: ActiveTimerCreate;
+  projectId?: string | null;
+}
+
 export function useStartTimer() {
   const queryClient = useQueryClient();
   const { showToast } = useToast();
   return useMutation({
-    mutationFn: (payload: ActiveTimerCreate) => createActiveTimer(payload),
-    onMutate: async (payload) => {
+    mutationFn: async ({ payload, projectId }: StartTimerRequest) =>
+      createActiveTimer(
+        projectId
+          ? { ...payload, task: await ensureTaskId(payload.task_title, projectId) }
+          : payload,
+      ),
+    onMutate: async ({ payload }) => {
       await queryClient.cancelQueries({ queryKey: ACTIVE_TIMER_KEY });
       const previous = queryClient.getQueryData<ActiveTimer | null>(ACTIVE_TIMER_KEY);
       const optimistic: ActiveTimer = {

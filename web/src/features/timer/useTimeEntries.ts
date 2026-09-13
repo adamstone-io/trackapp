@@ -10,8 +10,9 @@ import {
   type MomentPatch,
 } from "../../api/entries";
 import { ensureTaskId } from "../../api/tasks";
+import { PROJECTS_KEY } from "../workspace/useWorkspace";
 import { deleteActiveTimer } from "../../api/timer";
-import type { ActiveTimer, TimeEntry, TodayEntry } from "../../api/types";
+import type { ActiveTimer, Project, TimeEntry, TodayEntry } from "../../api/types";
 import { useToast } from "../../components/toast/ToastProvider";
 import { ACTIVE_TIMER_KEY, computeElapsedSeconds } from "./useActiveTimer";
 
@@ -27,10 +28,12 @@ export interface EntryDraft {
   durationSeconds: number;
   /** Known task id; when absent one is resolved (or created) by title. */
   taskId?: string | null;
+  /** The project this time belongs to; the task is resolved within it. */
+  projectId?: string | null;
 }
 
 async function persistEntry(draft: EntryDraft): Promise<TimeEntry> {
-  const taskId = draft.taskId ?? (await ensureTaskId(draft.taskTitle));
+  const taskId = draft.taskId ?? (await ensureTaskId(draft.taskTitle, draft.projectId ?? null));
   return createTimeEntry({
     task: taskId,
     task_title: draft.taskTitle,
@@ -175,6 +178,56 @@ export function useEditMoment() {
     onError: (error, _variables, context) => {
       rollbackOptimisticEntry(queryClient, context?.previousEntries);
       showToast(error instanceof Error ? error.message : "Could not update the moment.");
+    },
+  });
+}
+
+/** Move a logged entry to another project (or to none) by re-pointing it at
+ * the task with the same title in that project — the same rule new entries
+ * follow, so the two never disagree. */
+export function useMoveEntryToProject() {
+  const queryClient = useQueryClient();
+  const { showToast } = useToast();
+
+  return useMutation({
+    mutationFn: async ({
+      id,
+      taskTitle,
+      projectId,
+    }: {
+      id: string;
+      taskTitle: string;
+      projectId: string | null;
+      project?: Project | null;
+    }) => patchTimeEntry(id, { task: await ensureTaskId(taskTitle, projectId) }),
+    onMutate: async ({ id, projectId, project }) => {
+      await queryClient.cancelQueries({ queryKey: TODAY_ENTRIES_KEY });
+      const previousEntries = queryClient.getQueryData<TodayEntry[]>(TODAY_ENTRIES_KEY);
+      queryClient.setQueryData<TodayEntry[]>(TODAY_ENTRIES_KEY, (current) =>
+        current?.map((entry) =>
+          entry.type === "time_entry" && entry.id === id
+            ? {
+                ...entry,
+                data: {
+                  ...entry.data,
+                  project_id: projectId ?? undefined,
+                  project_name: project?.name,
+                  project_color: project?.color,
+                },
+              }
+            : entry,
+        ),
+      );
+      return { previousEntries };
+    },
+    onSettled: () => {
+      // Project totals on the workspace page moved with it.
+      queryClient.invalidateQueries({ queryKey: PROJECTS_KEY });
+      queryClient.invalidateQueries({ queryKey: TODAY_ENTRIES_KEY });
+    },
+    onError: (error, _variables, context) => {
+      rollbackOptimisticEntry(queryClient, context?.previousEntries);
+      showToast(error instanceof Error ? error.message : "Could not move the entry.");
     },
   });
 }

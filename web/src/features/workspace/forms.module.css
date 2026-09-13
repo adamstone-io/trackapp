@@ -5,12 +5,15 @@
   margin-top: var(--space-4);
 }
 
+/* One field per row: the fields are different heights (text inputs, a swatch
+ * row), and sharing rows left them stretched and ragged. */
 .form {
   display: flex;
-  flex-wrap: wrap;
-  align-items: flex-end;
-  gap: var(--space-3);
+  flex-direction: column;
+  align-items: stretch;
+  gap: var(--space-4);
   margin-top: var(--space-4);
+  max-width: 32rem;
 }
 
 /* An edit form replaces its list row, so it fills the row's width. */
@@ -34,11 +37,15 @@
 
 .nameInput {
   composes: input;
-  flex: 1 1 12rem;
 }
 
 .select {
   composes: input;
+}
+
+.buttons {
+  display: flex;
+  gap: var(--space-3);
 }
 
 .saveButton {

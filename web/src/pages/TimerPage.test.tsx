@@ -722,6 +722,101 @@ describe("manual time entry", () => {
   });
 });
 
+describe("associating time with a project", () => {
+  const project = { id: "proj-1", name: "TrackApp", description: "", color: "#e8613a", archived: false, total_seconds: 0 };
+
+  function serveProjects(projects: object[] = [project]) {
+    server.use(
+      http.get(api("/projects/"), () =>
+        HttpResponse.json({ count: projects.length, next: null, previous: null, results: projects }),
+      ),
+    );
+  }
+
+  it("starts a timer under the chosen project, resolving its task there", async () => {
+    const user = userEvent.setup();
+    let createdTask: Record<string, unknown> | null = null;
+    let startedTimer: Record<string, unknown> | null = null;
+    serveProjects();
+    server.use(
+      // A task with the same title exists, but in no project — so it is not a match.
+      http.get(api("/tasks/"), () =>
+        HttpResponse.json({
+          count: 1,
+          next: null,
+          previous: null,
+          results: [{ id: "task-loose", title: "Deep work", category: "other", project: null }],
+        }),
+      ),
+      http.post(api("/tasks/"), async ({ request }) => {
+        createdTask = (await request.json()) as Record<string, unknown>;
+        return HttpResponse.json({ id: "task-proj", ...createdTask }, { status: 201 });
+      }),
+      http.post(api("/active-timer/"), async ({ request }) => {
+        startedTimer = (await request.json()) as Record<string, unknown>;
+        return HttpResponse.json(
+          { id: 1, created_at: "2026-09-12T10:00:00Z", ...startedTimer },
+          { status: 201 },
+        );
+      }),
+    );
+
+    renderApp("/timer");
+    await user.type(await screen.findByLabelText(/task/i), "Deep work");
+    await user.selectOptions(screen.getByLabelText(/project/i), "proj-1");
+    await user.click(screen.getByRole("button", { name: /start/i }));
+
+    await waitFor(() => expect(startedTimer).not.toBeNull());
+    // The task is created inside the project rather than reusing the loose one.
+    expect(createdTask).toMatchObject({ title: "Deep work", project: "proj-1" });
+    expect(startedTimer).toMatchObject({ task: "task-proj" });
+  });
+
+  it("moves a logged entry to a project from its ⋮ menu", async () => {
+    const user = userEvent.setup();
+    let patched: Record<string, unknown> | null = null;
+    serveProjects();
+    // The move re-points the entry at a task in the project, so a refetch of
+    // the log carries the enrichment the backend adds.
+    let entries: object[] = todayEntriesFixture;
+    server.use(
+      http.get(api("/today-entries/"), () => HttpResponse.json(entries)),
+      http.get(api("/tasks/"), () =>
+        HttpResponse.json({
+          count: 1,
+          next: null,
+          previous: null,
+          results: [
+            { id: "task-in-proj", title: "Morning review", category: "other", project: "proj-1" },
+          ],
+        }),
+      ),
+      http.patch(api("/time-entries/te-1/"), async ({ request }) => {
+        patched = (await request.json()) as Record<string, unknown>;
+        entries = todayEntriesFixture.map((entry) =>
+          entry.id === "te-1"
+            ? {
+                ...entry,
+                data: { ...entry.data, task: "task-in-proj", project_name: "TrackApp", project_color: "#e8613a" },
+              }
+            : entry,
+        );
+        return HttpResponse.json({ id: "te-1", task: "task-in-proj", task_title: "Morning review" });
+      }),
+    );
+
+    renderApp("/timer");
+    await user.click(await screen.findByRole("button", { name: /more morning review/i }));
+    await user.click(screen.getByRole("button", { name: /^project$/i }));
+    await user.selectOptions(screen.getByLabelText(/project for morning review/i), "proj-1");
+
+    await waitFor(() => expect(patched).toEqual({ task: "task-in-proj" }));
+    // The row shows where the time went without waiting for a refetch.
+    const movedRow = screen.getByText("Morning review").closest("li")!;
+    await waitFor(() => expect(within(movedRow).getByText("TrackApp")).toBeInTheDocument());
+  });
+});
+
 describe("add moment", () => {
   it("creates a moment from the task title text and shows it in the log immediately", async () => {
     const user = userEvent.setup();
@@ -892,8 +987,11 @@ describe("moment category", () => {
 
 describe("today's log", () => {
   it("shows time entries and moments combined, in the order the API returns", async () => {
+    // The move re-points the entry at a task in the project, so a refetch of
+    // the log carries the enrichment the backend adds.
+    let entries: object[] = todayEntriesFixture;
     server.use(
-      http.get(api("/today-entries/"), () => HttpResponse.json(todayEntriesFixture)),
+      http.get(api("/today-entries/"), () => HttpResponse.json(entries)),
     );
 
     renderApp("/timer");

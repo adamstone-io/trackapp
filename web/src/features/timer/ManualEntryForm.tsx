@@ -3,6 +3,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import type { TodayEntry } from "../../api/types";
 import { useToast } from "../../components/toast/ToastProvider";
 import { TODAY_ENTRIES_KEY, useAddManualEntry } from "./useTimeEntries";
+import { ProjectSelect } from "../workspace/ProjectSelect";
 import styles from "./ManualEntryForm.module.css";
 
 function toTimeValue(date: Date): string {
@@ -23,6 +24,7 @@ export function ManualEntryForm() {
   const [title, setTitle] = useState("");
   const [start, setStart] = useState("");
   const [end, setEnd] = useState("");
+  const [projectId, setProjectId] = useState<string | null>(null);
   const queryClient = useQueryClient();
   const addEntry = useAddManualEntry();
   const { showToast } = useToast();
@@ -57,6 +59,7 @@ export function ManualEntryForm() {
       startedAt: startedAt.toISOString(),
       endedAt: endedAt.toISOString(),
       durationSeconds,
+      projectId,
     });
     handleClose();
   }
@@ -82,6 +85,17 @@ export function ManualEntryForm() {
           value={title}
           onChange={(event) => setTitle(event.target.value)}
           autoComplete="off"
+        />
+      </div>
+      <div className={styles.field}>
+        <label className={styles.label} htmlFor="manual-project">
+          Project
+        </label>
+        <ProjectSelect
+          id="manual-project"
+          className={styles.input}
+          value={projectId}
+          onChange={setProjectId}
         />
       </div>
       <div className={styles.field}>

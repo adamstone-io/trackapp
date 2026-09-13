@@ -234,12 +234,14 @@ function ProjectForm({
           ))}
         </div>
       </div>
-      <button className={formStyles.saveButton} type="submit">
-        Save
-      </button>
-      <button className={formStyles.cancelButton} type="button" onClick={onCancel}>
-        Cancel
-      </button>
+      <div className={formStyles.buttons}>
+        <button className={formStyles.saveButton} type="submit">
+          Save
+        </button>
+        <button className={formStyles.cancelButton} type="button" onClick={onCancel}>
+          Cancel
+        </button>
+      </div>
     </form>
   );
 }

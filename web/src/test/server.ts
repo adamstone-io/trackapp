@@ -22,6 +22,10 @@ export const defaultHandlers = [
   http.get(api("/auth/user/"), () => HttpResponse.json(activeUser)),
   http.get(api("/today-entries/"), () => HttpResponse.json([])),
   http.get(api("/active-timer/"), () => HttpResponse.json(null)),
+  // The timer's project picker asks for these on every render of the page.
+  http.get(api("/projects/"), () =>
+    HttpResponse.json({ count: 0, next: null, previous: null, results: [] }),
+  ),
 ];
 
 export const server = setupServer(...defaultHandlers);

@@ -34,7 +34,9 @@ export function patchMoment(id: string, patch: MomentPatch): Promise<Moment> {
   return apiFetch<Moment>(`/moments/${id}/`, { method: "PATCH", body: patch });
 }
 
-export function patchTimeEntry(id: string, patch: { task_title: string }): Promise<TimeEntry> {
+export type TimeEntryPatch = Partial<Pick<TimeEntry, "task_title" | "task">>;
+
+export function patchTimeEntry(id: string, patch: TimeEntryPatch): Promise<TimeEntry> {
   return apiFetch<TimeEntry>(`/time-entries/${id}/`, { method: "PATCH", body: patch });
 }
 

@@ -15,6 +15,7 @@ import {
   useStartTimer,
 } from "./useActiveTimer";
 import { buildStopRequest, useStopTimer } from "./useTimeEntries";
+import { ProjectSelect } from "../workspace/ProjectSelect";
 import styles from "./TimerControls.module.css";
 
 interface TimerControlsProps {
@@ -38,6 +39,7 @@ function StartTimerForm({ title, onTitleChange }: { title: string; onTitleChange
   const [mode, setMode] = useState<TimerMode>("stopwatch");
   const [durationMinutes, setDurationMinutes] = useState("");
   const [favorites, setFavorites] = useState(loadDurationFavorites);
+  const [projectId, setProjectId] = useState<string | null>(null);
   const start = useStartTimer();
 
   const targetSeconds = durationMinutes ? Number(durationMinutes) * 60 : 0;
@@ -47,13 +49,16 @@ function StartTimerForm({ title, onTitleChange }: { title: string; onTitleChange
     if (mode === "countdown" && targetSeconds <= 0) return;
     start.mutate(
       {
-        task_title: title.trim() || "Untitled",
-        task: null,
-        started_at: new Date().toISOString(),
-        elapsed_seconds: 0,
-        is_paused: false,
-        mode,
-        target_duration: mode === "countdown" ? targetSeconds : null,
+        payload: {
+          task_title: title.trim() || "Untitled",
+          task: null,
+          started_at: new Date().toISOString(),
+          elapsed_seconds: 0,
+          is_paused: false,
+          mode,
+          target_duration: mode === "countdown" ? targetSeconds : null,
+        },
+        projectId,
       },
       { onSuccess: () => onTitleChange("") },
     );
@@ -73,6 +78,17 @@ function StartTimerForm({ title, onTitleChange }: { title: string; onTitleChange
           onChange={(event) => onTitleChange(event.target.value)}
           placeholder="What are you working on?"
           autoComplete="off"
+        />
+      </div>
+      <div className={styles.field}>
+        <label className={styles.label} htmlFor="timer-project">
+          Project
+        </label>
+        <ProjectSelect
+          id="timer-project"
+          className={styles.input}
+          value={projectId}
+          onChange={setProjectId}
         />
       </div>
       <div className={styles.controlsRow}>

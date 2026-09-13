@@ -10,8 +10,11 @@ import {
   useDeleteMoment,
   useDeleteTimeEntry,
   useEditMoment,
+  useMoveEntryToProject,
   useRenameTimeEntry,
 } from "./useTimeEntries";
+import { ProjectSelect } from "../workspace/ProjectSelect";
+import { useProjectsQuery } from "../workspace/useWorkspace";
 import styles from "./TodayLog.module.css";
 
 export function TodayLog() {
@@ -103,8 +106,23 @@ function ClickableText({
 function TimeEntryRow({ entry }: { entry: Extract<TodayEntry, { type: "time_entry" }> }) {
   const data = entry.data;
   const [editing, setEditing] = useState(false);
+  const [movingProject, setMovingProject] = useState(false);
   const renameEntry = useRenameTimeEntry();
   const deleteEntry = useDeleteTimeEntry();
+  const moveEntry = useMoveEntryToProject();
+  const { data: projects } = useProjectsQuery();
+
+  function moveToProject(projectId: string | null) {
+    setMovingProject(false);
+    if ((data.project_id ?? null) === projectId) return;
+    moveEntry.mutate({
+      id: entry.id,
+      taskTitle: data.task_title,
+      projectId,
+      project: projects?.find((project) => project.id === projectId) ?? null,
+    });
+  }
+
   return (
     <>
       <div className={styles.main}>
@@ -137,6 +155,7 @@ function TimeEntryRow({ entry }: { entry: Extract<TodayEntry, { type: "time_entr
         disabled={!isSettled(entry.id)}
         items={[
           { label: "Edit", onSelect: () => setEditing(true) },
+          { label: "Project", onSelect: () => setMovingProject(true) },
           {
             label: "Delete",
             danger: true,
@@ -145,6 +164,24 @@ function TimeEntryRow({ entry }: { entry: Extract<TodayEntry, { type: "time_entr
           },
         ]}
       />
+      {movingProject && (
+        <div className={styles.moveProject}>
+          <ProjectSelect
+            ariaLabel={`Project for ${data.task_title}`}
+            className={styles.projectSelect}
+            value={data.project_id ?? null}
+            onChange={moveToProject}
+            autoFocus
+          />
+          <button
+            className={styles.cancelMove}
+            type="button"
+            onClick={() => setMovingProject(false)}
+          >
+            Cancel
+          </button>
+        </div>
+      )}
     </>
   );
 }
