@@ -12,14 +12,12 @@ data/
 data/db-backups
 folder structure/
 backups
-frontend/config.js
 backend/media
 backend/convert_study_items.py
 .vscode
-frontend/dist/
 node_modules/
 CLAUDE.md
 raycast/node_modules/
-web/dist/
-web/node_modules/
+frontend/dist/
+frontend/node_modules/
 *.tsbuildinfo
