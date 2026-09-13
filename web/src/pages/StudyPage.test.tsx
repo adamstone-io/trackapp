@@ -101,6 +101,33 @@ describe("study items list", () => {
     );
   });
 
+  it("shows the creation date and how long since the last prime and study", async () => {
+    const daysAgo = (n: number) => new Date(Date.now() - n * 86_400_000).toISOString();
+    serve([
+      item({
+        created_at: "2026-08-01T12:00:00Z",
+        last_primed_at: daysAgo(3),
+        last_studied_at: daysAgo(20),
+      }),
+      item({
+        id: "item-2",
+        prompt: "Kanji: 火",
+        study_count: 0,
+        first_studied_at: null,
+        last_studied_at: null,
+      }),
+    ]);
+
+    renderApp("/study");
+    await screen.findByText("Kanji: 水");
+
+    const card = row("Kanji: 水");
+    expect(within(card).getByText(/created 1 aug 2026/i)).toBeInTheDocument();
+    expect(within(card).getByText(/3 primes · 3 days ago/i)).toBeInTheDocument();
+    expect(within(card).getByText(/1 study · 20 days ago/i)).toBeInTheDocument();
+    expect(within(row("Kanji: 火")).getByText(/0 studies · never/i)).toBeInTheDocument();
+  });
+
   it("orders never-touched items first, then least-recently-touched", async () => {
     serve([
       item({ id: "recent", prompt: "Recent", last_primed_at: "2026-09-12T10:00:00Z" }),

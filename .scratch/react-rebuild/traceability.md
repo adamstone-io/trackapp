@@ -22,6 +22,7 @@ original ticket was scoped too small, not something to restructure away.
 | 06.1 Study item links | ready | R29a, R29b |
 | 06.2 Study prompt + note images | done | R24 (images half) |
 | 06.3 Study reveals the answer | done | R27a (study interaction), R24 (answer is text or image) |
+| 06.4 Study row creation date + recency | done | R28 (dates shown per item) |
 | 07 Dashboard + Stats | ready | R31, R32, R33, R33a |
 | 08 Scheduled tasks + Calendar | ready | R33b, R60 (scheduled-tasks half), R62, R62a, R63, R63a, R64, R64a, R64b |
 | 09 Spaced repetition | ready | R31t, R31u, R31v |

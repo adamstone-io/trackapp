@@ -1,7 +1,7 @@
 import { useMemo, useState, type FormEvent } from "react";
 import type { StudyItem } from "../../api/types";
 import type { StudyItemCreate } from "../../api/studyItems";
-import { formatDayMonthYear } from "../../lib/time";
+import { formatDayMonthYear, formatDaysAgo } from "../../lib/time";
 import { isSettled } from "../../lib/optimistic";
 import { RowMenu } from "../../components/RowMenu";
 import {
@@ -173,6 +173,9 @@ function StudyItemRow({ item }: { item: StudyItem }) {
           />
         )}
         <div className={styles.stats}>
+          {item.created_at && (
+            <span className={styles.stat}>Created {formatDayMonthYear(item.created_at)}</span>
+          )}
           <InteractionStat
             noun="prime"
             plural="primes"
@@ -233,7 +236,7 @@ function StudyItemRow({ item }: { item: StudyItem }) {
   );
 }
 
-/** "3 primes" with the first-ever and most-recent dates as a tooltip. */
+/** "3 primes · 3 days ago", with the first-ever and most-recent dates as a tooltip. */
 function InteractionStat({
   noun,
   plural,
@@ -253,7 +256,7 @@ function InteractionStat({
       : undefined;
   return (
     <span className={styles.stat} title={history}>
-      {count} {count === 1 ? noun : plural}
+      {count} {count === 1 ? noun : plural} · {formatDaysAgo(last)}
     </span>
   );
 }

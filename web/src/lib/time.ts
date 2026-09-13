@@ -32,3 +32,22 @@ export function formatClockTime(iso: string): string {
     hour12: false,
   });
 }
+
+/** Whole calendar days from an ISO timestamp to now, in local time.
+ * Calendar days, not 24h chunks: something logged last night was "yesterday"
+ * this morning. Rounding absorbs the DST hour. */
+export function daysSince(iso: string, now: Date = new Date()): number {
+  const then = new Date(iso);
+  const thenMidnight = new Date(then.getFullYear(), then.getMonth(), then.getDate());
+  const nowMidnight = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  return Math.round((nowMidnight.getTime() - thenMidnight.getTime()) / 86_400_000);
+}
+
+/** "never", "today", "yesterday", "20 days ago" — how long since something happened. */
+export function formatDaysAgo(iso: string | null): string {
+  if (!iso) return "never";
+  const days = daysSince(iso);
+  if (days <= 0) return "today";
+  if (days === 1) return "yesterday";
+  return `${days} days ago`;
+}
