@@ -34,9 +34,6 @@ export function DashboardPage() {
           <StudyCounts />
         </div>
       </div>
-      {days && <DailyTrend days={days} />}
-      {planned && <TodaysPlan tasks={planned} />}
-      {habits && <HabitChains habits={habits} />}
       <PeriodPicker period={period} onChange={setPeriod} />
       {stats && (
         <>
@@ -44,6 +41,9 @@ export function DashboardPage() {
           <ActivityCounts stats={stats} />
         </>
       )}
+      {planned && <TodaysPlan tasks={planned} />}
+      {habits && <HabitChains habits={habits} />}
+      {days && <DailyTrend days={days} />}
     </PageShell>
   );
 }

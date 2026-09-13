@@ -23,8 +23,13 @@ chain is holding.
 - **Habit streaks** — every active habit's recent days drawn as a chain, with
   the current run stated as a streak. R21a, R33a.
 
+Order down the page: the two day-scoped cards abreast at the top, then the
+period block (selector, Top tasks, Activity), then today's plan and the habit
+streaks, with the fortnight trend last.
+
 The period selector (Today / Yesterday / This week / This month) governs the
-Top tasks and Activity cards only; the other cards are day-scoped.
+Top tasks and Activity cards only, and travels directly above them; every other
+card is day-scoped and ignores it.
 
 ## API
 
