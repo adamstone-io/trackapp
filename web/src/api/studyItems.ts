@@ -41,12 +41,26 @@ export function listStudyCategories(): Promise<StudyCategory[]> {
   return apiFetch<StudyCategory[]>("/study-items/categories/");
 }
 
-export function uploadStudyImage(id: string, file: File): Promise<StudyItem> {
+/** A study item carries two images: one for the prompt, one for the answer note. */
+export type StudyImageSlot = "image" | "note_image";
+
+const IMAGE_ACTIONS: Record<StudyImageSlot, { upload: string; remove: string }> = {
+  image: { upload: "upload_image", remove: "remove_image" },
+  note_image: { upload: "upload_note_image", remove: "remove_note_image" },
+};
+
+export function uploadStudyImage(id: string, slot: StudyImageSlot, file: File): Promise<StudyItem> {
   const form = new FormData();
-  form.append("image", file);
-  return apiFetch<StudyItem>(`/study-items/${id}/upload_image/`, { method: "POST", body: form });
+  // The form field name matches the model field the endpoint writes to.
+  form.append(slot, file);
+  return apiFetch<StudyItem>(`/study-items/${id}/${IMAGE_ACTIONS[slot].upload}/`, {
+    method: "POST",
+    body: form,
+  });
 }
 
-export function removeStudyImage(id: string): Promise<StudyItem> {
-  return apiFetch<StudyItem>(`/study-items/${id}/remove_image/`, { method: "DELETE" });
+export function removeStudyImage(id: string, slot: StudyImageSlot): Promise<StudyItem> {
+  return apiFetch<StudyItem>(`/study-items/${id}/${IMAGE_ACTIONS[slot].remove}/`, {
+    method: "DELETE",
+  });
 }

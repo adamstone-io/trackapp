@@ -17,9 +17,10 @@ original ticket was scoped too small, not something to restructure away.
 | 03 Moments (in the day log) | done | R15, R15a, R17 (edit only — removal moved to 13), R9g (landed with 03's follow-up commits, 599d1a5) |
 | 04 Habits page | done | R18, R19, R20, R21, R22, R23, R23b, R23c |
 | 04.1 Undo a back-filled habit day | needs-triage | R23b (back-fill half) |
-| 05 Projects & Workspace | ready | R10, R11, R12, R13, R14, R60 (projects half), R61 |
-| 06 Study page core | ready | R24, R27, R27a, R28, R29, R30, R31s |
+| 05 Projects & Workspace | done | R10, R11, R12, R13, R14, R60 (projects half), R61 |
+| 06 Study page core | done | R24, R27, R27a, R28, R29, R30, R31s |
 | 06.1 Study item links | ready | R29a, R29b |
+| 06.2 Study prompt + note images | done | R24 (images half) |
 | 07 Dashboard + Stats | ready | R31, R32, R33, R33a |
 | 08 Scheduled tasks + Calendar | ready | R33b, R60 (scheduled-tasks half), R62, R62a, R63, R63a, R64, R64a, R64b |
 | 09 Spaced repetition | ready | R31t, R31u, R31v |

@@ -60,6 +60,16 @@
   border: var(--border-hairline) solid var(--color-border);
 }
 
+/* The note image sits inside the text column, under the notes it belongs to. */
+.noteThumb {
+  align-self: flex-start;
+  max-width: 12rem;
+  max-height: 8rem;
+  object-fit: cover;
+  border-radius: var(--radius-md);
+  border: var(--border-hairline) solid var(--color-border);
+}
+
 .main {
   display: flex;
   flex-direction: column;

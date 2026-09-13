@@ -8,6 +8,7 @@ import {
   removeStudyImage,
   uploadStudyImage,
   type InteractionKind,
+  type StudyImageSlot,
   type StudyItemCreate,
   type StudyItemPatch,
 } from "../../api/studyItems";
@@ -80,10 +81,73 @@ function invalidateCategories(queryClient: QueryClient) {
   queryClient.invalidateQueries({ queryKey: STUDY_CATEGORIES_KEY });
 }
 
+/** One image slot's pending change: upload a file, or clear what's there. */
+export interface StudyImageChange {
+  file?: File;
+  remove?: boolean;
+}
+
+export type StudyImageChanges = Partial<Record<StudyImageSlot, StudyImageChange>>;
+
+const IMAGE_SLOTS: StudyImageSlot[] = ["image", "note_image"];
+
+const IMAGE_LABELS: Record<StudyImageSlot, string> = {
+  image: "prompt image",
+  note_image: "note image",
+};
+
+const IMAGE_URL_FIELDS: Record<StudyImageSlot, "image_url" | "note_image_url"> = {
+  image: "image_url",
+  note_image: "note_image_url",
+};
+
+function hasChange(change: StudyImageChange | undefined): boolean {
+  return Boolean(change?.file || change?.remove);
+}
+
+/** Apply the image legs once the row itself is saved. The legs are independent:
+ * one failing leaves the saved row (and the other image) alone, and the caller
+ * reports which slot failed rather than rolling anything back. */
+async function applyImageChanges(
+  id: string,
+  changes: StudyImageChanges | undefined,
+  saved: StudyItem,
+): Promise<{ row: StudyItem; failed: StudyImageSlot[] }> {
+  let row = saved;
+  const failed: StudyImageSlot[] = [];
+  for (const slot of IMAGE_SLOTS) {
+    const change = changes?.[slot];
+    if (!hasChange(change)) continue;
+    try {
+      row = change?.file
+        ? await uploadStudyImage(id, slot, change.file)
+        : await removeStudyImage(id, slot);
+    } catch {
+      failed.push(slot);
+    }
+  }
+  return { row, failed };
+}
+
+/** "Saved the study item, but the note image failed to save." */
+function imageFailureMessage(saved: string, failed: StudyImageSlot[]): string {
+  const names = failed.map((slot) => IMAGE_LABELS[slot]).join(" and ");
+  return `${saved}, but the ${names} failed to save.`;
+}
+
+/** The optimistic patch for image slots being cleared. */
+function clearedImageUrls(changes: StudyImageChanges | undefined): Partial<StudyItem> {
+  const cleared: Partial<StudyItem> = {};
+  for (const slot of IMAGE_SLOTS) {
+    if (changes?.[slot]?.remove && !changes[slot]?.file) cleared[IMAGE_URL_FIELDS[slot]] = null;
+  }
+  return cleared;
+}
+
 export interface StudyItemDraft {
   draft: StudyItemCreate;
-  /** Uploaded after the create settles — the upload needs the server id. */
-  imageFile?: File;
+  /** Uploaded after the create settles — the uploads need the server id. */
+  images?: StudyImageChanges;
 }
 
 export function useCreateStudyItem() {
@@ -91,17 +155,13 @@ export function useCreateStudyItem() {
   const { showToast } = useToast();
 
   return useMutation({
-    mutationFn: async ({ draft, imageFile }: StudyItemDraft) => {
+    mutationFn: async ({ draft, images }: StudyItemDraft) => {
       const created = await createStudyItem(draft);
-      if (!imageFile) return created;
-      // The item is saved even if its image isn't: report the partial
+      // The item is saved even if its images aren't: report the partial
       // failure but never roll back a row the server already has.
-      try {
-        return await uploadStudyImage(created.id, imageFile);
-      } catch {
-        showToast("Saved the study item, but the image upload failed.");
-        return created;
-      }
+      const { row, failed } = await applyImageChanges(created.id, images, created);
+      if (failed.length > 0) showToast(imageFailureMessage("Saved the study item", failed));
+      return row;
     },
     onMutate: async ({ draft }) => {
       const tempId = `optimistic-${crypto.randomUUID()}`;
@@ -136,34 +196,28 @@ export function useCreateStudyItem() {
 export interface StudyItemEdit {
   id: string;
   patch: StudyItemPatch;
-  /** Replaces the item's image after the patch settles. */
-  imageFile?: File;
-  /** Removes the item's image (ignored when imageFile is given). */
-  removeImage?: boolean;
+  /** Per-slot image uploads/removals applied after the patch settles. */
+  images?: StudyImageChanges;
 }
 
-/** Edit title/notes/category, flip is_archived, or change the image, optimistically. */
+/** Edit title/notes/category, flip is_archived, or change either image, optimistically. */
 export function useEditStudyItem() {
   const queryClient = useQueryClient();
   const { showToast } = useToast();
 
   return useMutation({
     mutationKey: STUDY_MUTATION_KEY,
-    mutationFn: async ({ id, patch, imageFile, removeImage }: StudyItemEdit) => {
+    mutationFn: async ({ id, patch, images }: StudyItemEdit) => {
       const saved = await patchStudyItem(id, patch);
-      if (!imageFile && !removeImage) return saved;
-      // The patch is saved even if the image change isn't: report the
+      // The patch is saved even if an image change isn't: report the
       // partial failure but never roll back fields the server accepted.
-      try {
-        return imageFile ? await uploadStudyImage(id, imageFile) : await removeStudyImage(id);
-      } catch {
-        showToast("Saved the changes, but updating the image failed.");
-        return saved;
-      }
+      const { row, failed } = await applyImageChanges(id, images, saved);
+      if (failed.length > 0) showToast(imageFailureMessage("Saved the changes", failed));
+      return row;
     },
-    onMutate: async ({ id, patch, removeImage }) => ({
+    onMutate: async ({ id, patch, images }) => ({
       previous: await snapshotAndApply(queryClient, (current) =>
-        patchInList(current, id, () => (removeImage ? { ...patch, image_url: null } : patch)),
+        patchInList(current, id, () => ({ ...patch, ...clearedImageUrls(images) })),
       ),
     }),
     onSettled: (saved, error, { id }) => {

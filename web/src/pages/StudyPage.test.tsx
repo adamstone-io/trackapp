@@ -73,14 +73,26 @@ describe("study items list", () => {
     expect(studyStat).toHaveAttribute("title", expect.stringMatching(/first .*2 Sept?.*last .*8 Sept?/i));
   });
 
-  it("shows the item's image when it has one", async () => {
-    serve([item({ image_url: "http://files.example/water.png" })]);
+  it("shows the item's prompt and note images when it has them", async () => {
+    serve([
+      item({
+        image_url: "http://files.example/water.png",
+        note_image_url: "http://files.example/water-note.png",
+      }),
+    ]);
 
     renderApp("/study");
     await screen.findByText("Kanji: 水");
 
-    const image = row("Kanji: 水").querySelector("img")!;
-    expect(image).toHaveAttribute("src", "http://files.example/water.png");
+    const card = row("Kanji: 水");
+    expect(within(card).getByAltText(/prompt image/i)).toHaveAttribute(
+      "src",
+      "http://files.example/water.png",
+    );
+    expect(within(card).getByAltText(/note image/i)).toHaveAttribute(
+      "src",
+      "http://files.example/water-note.png",
+    );
   });
 
   it("orders never-touched items first, then least-recently-touched", async () => {
@@ -237,13 +249,13 @@ describe("creating a study item", () => {
     await user.click(await screen.findByRole("button", { name: /add study item/i }));
     await user.type(screen.getByLabelText(/title/i), "Kanji: 火");
     await user.upload(
-      screen.getByLabelText(/image/i),
+      screen.getByLabelText("Prompt image"),
       new File(["png-bytes"], "huge.png", { type: "image/png" }),
     );
     await user.click(screen.getByRole("button", { name: /save/i }));
 
     expect(
-      await screen.findByText("Saved the study item, but the image upload failed."),
+      await screen.findByText("Saved the study item, but the prompt image failed to save."),
     ).toBeInTheDocument();
     expect(screen.getByText("Kanji: 火")).toBeInTheDocument();
   });
@@ -274,19 +286,106 @@ describe("creating a study item", () => {
     await user.click(await screen.findByRole("button", { name: /add study item/i }));
     await user.type(screen.getByLabelText(/title/i), "Kanji: 火");
     await user.upload(
-      screen.getByLabelText(/image/i),
+      screen.getByLabelText("Prompt image"),
       new File(["png-bytes"], "fire.png", { type: "image/png" }),
     );
     await user.click(screen.getByRole("button", { name: /save/i }));
 
     await screen.findByText("Kanji: 火");
     await waitFor(() =>
-      expect(row("Kanji: 火").querySelector("img")).toHaveAttribute(
+      expect(within(row("Kanji: 火")).getByAltText(/prompt image/i)).toHaveAttribute(
         "src",
         "http://files.example/fire.png",
       ),
     );
     expect(uploadContentType).toMatch(/^multipart\/form-data/);
+  });
+
+  it("uploads a note image to its own endpoint and shows it under the notes", async () => {
+    const user = userEvent.setup();
+    let promptUploads = 0;
+    serve([]);
+    server.use(
+      http.post(api("/study-items/"), async ({ request }) => {
+        const body = (await request.json()) as Record<string, unknown>;
+        return HttpResponse.json(
+          item({ id: "item-new", ...body, prime_count: 0, study_count: 0 }),
+          { status: 201 },
+        );
+      }),
+      http.post(api("/study-items/item-new/upload_image/"), () => {
+        promptUploads += 1;
+        return HttpResponse.json(item({ id: "item-new", prompt: "Kanji: 火" }));
+      }),
+      http.post(api("/study-items/item-new/upload_note_image/"), () =>
+        HttpResponse.json(
+          item({
+            id: "item-new",
+            prompt: "Kanji: 火",
+            note_image_url: "http://files.example/fire-note.png",
+          }),
+        ),
+      ),
+    );
+
+    renderApp("/study");
+    await user.click(await screen.findByRole("button", { name: /add study item/i }));
+    await user.type(screen.getByLabelText(/title/i), "Kanji: 火");
+    await user.upload(
+      screen.getByLabelText("Note image"),
+      new File(["png-bytes"], "fire-note.png", { type: "image/png" }),
+    );
+    await user.click(screen.getByRole("button", { name: /save/i }));
+
+    await screen.findByText("Kanji: 火");
+    await waitFor(() =>
+      expect(within(row("Kanji: 火")).getByAltText(/note image/i)).toHaveAttribute(
+        "src",
+        "http://files.example/fire-note.png",
+      ),
+    );
+    // The untouched prompt slot is left alone.
+    expect(promptUploads).toBe(0);
+  });
+
+  it("removes one image without disturbing the other", async () => {
+    const user = userEvent.setup();
+    const removed: string[] = [];
+    serve([
+      item({
+        image_url: "http://files.example/water.png",
+        note_image_url: "http://files.example/water-note.png",
+      }),
+    ]);
+    server.use(
+      http.patch(api("/study-items/item-1/"), () =>
+        HttpResponse.json(
+          item({
+            image_url: "http://files.example/water.png",
+            note_image_url: "http://files.example/water-note.png",
+          }),
+        ),
+      ),
+      http.delete(api("/study-items/item-1/remove_note_image/"), () => {
+        removed.push("note_image");
+        return HttpResponse.json(item({ image_url: "http://files.example/water.png" }));
+      }),
+      http.delete(api("/study-items/item-1/remove_image/"), () => {
+        removed.push("image");
+        return HttpResponse.json(item({ note_image_url: "http://files.example/water-note.png" }));
+      }),
+    );
+
+    renderApp("/study");
+    await user.click(await screen.findByRole("button", { name: /more kanji: 水/i }));
+    await user.click(screen.getByRole("button", { name: /^edit$/i }));
+    await user.click(screen.getByLabelText(/remove note image/i));
+    await user.click(screen.getByRole("button", { name: /save/i }));
+
+    await waitFor(() => expect(removed).toEqual(["note_image"]));
+    const card = row("Kanji: 水");
+    expect(within(card).queryByAltText(/note image/i)).not.toBeInTheDocument();
+    expect(within(card).getByAltText(/prompt image/i)).toBeInTheDocument();
   });
 
   it("autocompletes the category from existing categories", async () => {

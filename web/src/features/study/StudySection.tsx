@@ -5,6 +5,8 @@ import { formatDayMonthYear } from "../../lib/time";
 import { isSettled } from "../../lib/optimistic";
 import { RowMenu } from "../../components/RowMenu";
 import {
+  type StudyImageChange,
+  type StudyImageChanges,
   useCreateStudyItem,
   useEditStudyItem,
   useLogInteraction,
@@ -139,8 +141,8 @@ function StudyItemRow({ item }: { item: StudyItem }) {
       <StudyItemForm
         idPrefix={`edit-study-item-${item.id}`}
         initial={item}
-        onSubmit={({ draft, imageFile, removeImage }) => {
-          editMutation.mutate({ id: item.id, patch: draft, imageFile, removeImage });
+        onSubmit={({ draft, images }) => {
+          editMutation.mutate({ id: item.id, patch: draft, images });
           setEditing(false);
         }}
         onCancel={() => setEditing(false)}
@@ -150,13 +152,22 @@ function StudyItemRow({ item }: { item: StudyItem }) {
 
   return (
     <>
-      {item.image_url && <img className={styles.thumb} src={item.image_url} alt="" />}
+      {item.image_url && (
+        <img className={styles.thumb} src={item.image_url} alt={`Prompt image for ${item.prompt}`} />
+      )}
       <div className={styles.main}>
         <div className={styles.titleLine}>
           <h3 className={styles.name}>{item.prompt}</h3>
           {item.category && <span className={styles.chip}>{item.category}</span>}
         </div>
         {item.notes && <p className={styles.notes}>{item.notes}</p>}
+        {item.note_image_url && (
+          <img
+            className={styles.noteThumb}
+            src={item.note_image_url}
+            alt={`Note image for ${item.prompt}`}
+          />
+        )}
         <div className={styles.stats}>
           <InteractionStat
             noun="prime"
@@ -249,8 +260,8 @@ function AddStudyItemForm() {
   return (
     <StudyItemForm
       idPrefix="add-study-item"
-      onSubmit={({ draft, imageFile }) => {
-        createMutation.mutate({ draft, imageFile });
+      onSubmit={({ draft, images }) => {
+        createMutation.mutate({ draft, images });
         setOpen(false);
       }}
       onCancel={() => setOpen(false)}
@@ -260,11 +271,10 @@ function AddStudyItemForm() {
 
 interface StudyItemFormResult {
   draft: StudyItemCreate;
-  imageFile?: File;
-  removeImage?: boolean;
+  images: StudyImageChanges;
 }
 
-/** Title/notes/category/image form shared by add (no initial) and edit. */
+/** Title/notes/category/images form shared by add (no initial) and edit. */
 function StudyItemForm({
   idPrefix,
   initial,
@@ -279,8 +289,8 @@ function StudyItemForm({
   const [prompt, setPrompt] = useState(initial?.prompt ?? "");
   const [notes, setNotes] = useState(initial?.notes ?? "");
   const [category, setCategory] = useState(initial?.category ?? "");
-  const [imageFile, setImageFile] = useState<File | undefined>(undefined);
-  const [removeImage, setRemoveImage] = useState(false);
+  const promptImage = useImageField();
+  const noteImage = useImageField();
 
   function handleSubmit(event: FormEvent) {
     event.preventDefault();
@@ -290,8 +300,7 @@ function StudyItemForm({
     // verbatim, and rewriting them would fork the category.
     onSubmit({
       draft: { prompt: trimmed, notes: notes.trim(), category: category.trim() },
-      imageFile,
-      removeImage: removeImage && !imageFile,
+      images: { image: promptImage.change, note_image: noteImage.change },
     });
   }
 
@@ -338,28 +347,18 @@ function StudyItemForm({
           autoComplete="off"
         />
       </div>
-      <div className={formStyles.field}>
-        <label className={formStyles.label} htmlFor={`${idPrefix}-image`}>
-          Image
-        </label>
-        <input
-          id={`${idPrefix}-image`}
-          className={formStyles.fileInput}
-          type="file"
-          accept="image/jpeg,image/png,image/gif,image/webp"
-          onChange={(event) => setImageFile(event.target.files?.[0])}
-        />
-      </div>
-      {initial?.image_url && !imageFile && (
-        <label className={formStyles.removeImage}>
-          <input
-            type="checkbox"
-            checked={removeImage}
-            onChange={(event) => setRemoveImage(event.target.checked)}
-          />
-          Remove image
-        </label>
-      )}
+      <ImageField
+        id={`${idPrefix}-image`}
+        label="Prompt image"
+        field={promptImage}
+        hasExisting={Boolean(initial?.image_url)}
+      />
+      <ImageField
+        id={`${idPrefix}-note-image`}
+        label="Note image"
+        field={noteImage}
+        hasExisting={Boolean(initial?.note_image_url)}
+      />
       <button className={formStyles.saveButton} type="submit">
         Save
       </button>
@@ -367,5 +366,62 @@ function StudyItemForm({
         Cancel
       </button>
     </form>
+  );
+}
+
+interface ImageFieldState {
+  file: File | undefined;
+  remove: boolean;
+  setFile: (file: File | undefined) => void;
+  setRemove: (remove: boolean) => void;
+  /** Undefined when the slot is untouched, so the hooks skip that leg. */
+  change: StudyImageChange | undefined;
+}
+
+/** One image slot's form state: a replacement file, or a request to clear it. */
+function useImageField(): ImageFieldState {
+  const [file, setFile] = useState<File | undefined>(undefined);
+  const [remove, setRemove] = useState(false);
+  // A chosen file wins over the remove checkbox — it replaces the image anyway.
+  const change = file ? { file } : remove ? { remove: true } : undefined;
+  return { file, remove, setFile, setRemove, change };
+}
+
+function ImageField({
+  id,
+  label,
+  field,
+  hasExisting,
+}: {
+  id: string;
+  label: string;
+  field: ImageFieldState;
+  hasExisting: boolean;
+}) {
+  return (
+    <>
+      <div className={formStyles.field}>
+        <label className={formStyles.label} htmlFor={id}>
+          {label}
+        </label>
+        <input
+          id={id}
+          className={formStyles.fileInput}
+          type="file"
+          accept="image/jpeg,image/png,image/gif,image/webp"
+          onChange={(event) => field.setFile(event.target.files?.[0])}
+        />
+      </div>
+      {hasExisting && !field.file && (
+        <label className={formStyles.removeImage}>
+          <input
+            type="checkbox"
+            checked={field.remove}
+            onChange={(event) => field.setRemove(event.target.checked)}
+          />
+          Remove {label.toLowerCase()}
+        </label>
+      )}
+    </>
   );
 }
