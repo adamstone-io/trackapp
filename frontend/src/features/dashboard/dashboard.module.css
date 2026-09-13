@@ -47,21 +47,23 @@
 .compare {
   display: flex;
   align-items: flex-end;
-  gap: var(--space-6);
-  padding-top: var(--space-2);
+  gap: var(--space-5);
+  padding-top: var(--space-1);
 }
 
+/* Capped rather than stretched: two numbers don't need the page's width. */
 .compareColumn {
   display: flex;
   flex: 1 1 0;
   flex-direction: column;
-  gap: var(--space-2);
+  gap: var(--space-1);
   min-width: 0;
+  max-width: 11rem;
 }
 
 .compareValue {
   font-family: var(--font-mono);
-  font-size: var(--text-xl);
+  font-size: var(--text-md);
   color: var(--color-text);
 }
 
@@ -70,7 +72,7 @@
   composes: track;
   display: flex;
   align-items: flex-end;
-  height: 6rem;
+  height: 2.5rem;
   border-radius: var(--radius-sm);
 }
 
@@ -97,7 +99,7 @@
 }
 
 .delta {
-  margin-top: var(--space-3);
+  margin-top: var(--space-2);
   font-size: var(--text-sm);
   color: var(--color-text-secondary);
 }
