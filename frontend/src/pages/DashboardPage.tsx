@@ -30,7 +30,9 @@ export function DashboardPage() {
     <PageShell>
       <div className={styles.topRow}>
         {days && <TimeComparison days={days} />}
-        <StudyCounts />
+        <div className={styles.topWide}>
+          <StudyCounts />
+        </div>
       </div>
       {days && <DailyTrend days={days} />}
       {planned && <TodaysPlan tasks={planned} />}

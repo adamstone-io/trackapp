@@ -14,6 +14,11 @@
   flex: 1 1 15rem;
 }
 
+/* Four columns need more room than two. */
+.topWide {
+  flex: 1.4 1 20rem;
+}
+
 .cardHead {
   display: flex;
   align-items: baseline;
@@ -59,7 +64,7 @@
 .compare {
   display: flex;
   align-items: flex-end;
-  gap: var(--space-5);
+  gap: var(--space-3);
   padding-top: var(--space-1);
 }
 
@@ -114,6 +119,27 @@
   margin-top: var(--space-2);
   font-size: var(--text-sm);
   color: var(--color-text-secondary);
+}
+
+/* Two pairs of columns under one scale: a grouped bar chart. The gap between
+   the pairs is wider than the gap inside one, so the grouping reads. */
+.groups {
+  display: flex;
+  gap: var(--space-6);
+}
+
+.group {
+  flex: 1 1 0;
+  min-width: 0;
+}
+
+.groupCaption {
+  margin-top: var(--space-2);
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  letter-spacing: var(--letter-spacing-wide);
+  text-transform: uppercase;
+  color: var(--color-text);
 }
 
 /* ---- The fortnight trend ---- */

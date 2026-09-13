@@ -223,20 +223,39 @@ describe("activity counts", () => {
   });
 });
 
-describe("study today", () => {
-  it("charts what was primed and studied today, beside the time tracked", async () => {
-    seedDashboard({ stats: { prime_count: 40, study_count: 7 } });
+describe("study", () => {
+  /** Per-period study counts, so today and yesterday can differ. */
+  function seedStudy(byPeriod: Record<string, { prime_count: number; study_count: number }>) {
+    seedDashboard();
+    server.use(
+      http.get(api("/stats/"), ({ request }) => {
+        const period = new URL(request.url).searchParams.get("period") ?? "";
+        return HttpResponse.json(periodStats({ period, ...byPeriod[period] }));
+      }),
+    );
+  }
+
+  it("charts priming and studying today against yesterday", async () => {
+    seedStudy({
+      today: { prime_count: 40, study_count: 7 },
+      yesterday: { prime_count: 12, study_count: 3 },
+    });
 
     renderApp("/");
 
-    const card = await screen.findByRole("region", { name: "Study today" });
-    expect(within(card).getByText("Primed")).toBeInTheDocument();
-    expect(within(card).getByText("40")).toBeInTheDocument();
-    expect(within(card).getByText("Studied")).toBeInTheDocument();
-    expect(within(card).getByText("7")).toBeInTheDocument();
+    const card = await screen.findByRole("region", { name: "Study" });
+    const primed = within(card).getByText("Primed").closest("div")!;
+    const studied = within(card).getByText("Studied").closest("div")!;
+    expect(await within(primed).findByText("40")).toBeInTheDocument();
+    expect(within(primed).getByText("12")).toBeInTheDocument();
+    expect(within(studied).getByText("7")).toBeInTheDocument();
+    expect(within(studied).getByText("3")).toBeInTheDocument();
+    // The two pairs are genuinely separate, not one undivided run of columns.
+    expect(within(primed).queryByText("7")).not.toBeInTheDocument();
+    expect(within(studied).queryByText("40")).not.toBeInTheDocument();
   });
 
-  it("stays on today when the breakdown below moves to another period", async () => {
+  it("holds its two days when the breakdown below moves to another period", async () => {
     const asked: string[] = [];
     seedDashboard();
     server.use(
@@ -251,7 +270,7 @@ describe("study today", () => {
 
     renderApp("/");
 
-    const card = await screen.findByRole("region", { name: "Study today" });
+    const card = await screen.findByRole("region", { name: "Study" });
     expect(await within(card).findByText("40")).toBeInTheDocument();
 
     await userEvent.click(screen.getByRole("button", { name: "This month" }));

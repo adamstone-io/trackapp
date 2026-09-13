@@ -9,9 +9,11 @@ chain is holding.
 ## What it shows
 - **Time tracked** — today's total beside yesterday's, with the gap stated
   ("32m more than yesterday"). R31b.
-- **Study today** — today's primed and studied counts, abreast of the time
-  tracked. Pinned to today whatever the period selector says; when the selector
-  is on Today it shares that query rather than making its own. R32.
+- **Study** — priming and studying, today against yesterday, abreast of the
+  time tracked. Two pairs of columns under one scale, so priming is comparable
+  with studying and not only with its own day. Pinned to those two days
+  whatever the period selector says; when the selector is on Today or Yesterday
+  it shares that query rather than making a second one. R32.
 - **Last 14 days** — one column per day of tracked time, today in accent. R31d.
 - **Today's plan** — the day's scheduled tasks, earliest first; a task already
   started reads muted. R33b.
