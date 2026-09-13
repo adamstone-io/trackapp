@@ -226,6 +226,15 @@ class Habit(models.Model):
     last_completed_date = models.DateField(null=True, blank=True)
     last_logged_at = models.DateTimeField(null=True, blank=True)
 
+    # R21a: every local date the habit was carried, ascending ISO strings.
+    # The streak only remembers its own run; this is the whole chain, gaps
+    # and all, so a broken link stays visible after the streak restarts.
+    completed_dates = models.JSONField(default=list, blank=True)
+
+    # How far back the API reports the chain. The stored history is never
+    # trimmed — this only bounds what goes over the wire.
+    CHAIN_WINDOW_DAYS = 90
+
     def __str__(self) -> str:
         return self.name
 
@@ -269,6 +278,34 @@ class Habit(models.Model):
             "monthly_count": monthly,
             "streak_count": streak,
         }
+
+    def _record_completion(self, day):
+        """Add a link to the chain for `day` (idempotent)."""
+        iso = day.isoformat()
+        if iso not in self.completed_dates:
+            self.completed_dates = sorted([*self.completed_dates, iso])
+
+    def _withdraw_completion(self, day):
+        """Remove `day`'s link — the day no longer counts as carried."""
+        iso = day.isoformat()
+        if iso in self.completed_dates:
+            self.completed_dates = [d for d in self.completed_dates if d != iso]
+
+    def _completes_a_day(self, count):
+        """Whether `count` logs on one day have carried the habit.
+
+        With a daily target, the target has to be met. Without one, the
+        habit has nothing to hit, so any log carries the day.
+        """
+        if self.daily_target > 0:
+            return count >= self.daily_target
+        return count > 0
+
+    def recent_completions(self, today):
+        """The chain's links inside the reporting window, ending at `today`."""
+        first = (today - timedelta(days=self.CHAIN_WINDOW_DAYS - 1)).isoformat()
+        last = today.isoformat()
+        return [day for day in self.completed_dates if first <= day <= last]
 
     def _apply_resets(self, today, last_logged_date):
         new_day, new_week, new_month = self._boundaries_crossed(last_logged_date, today)
@@ -328,6 +365,9 @@ class Habit(models.Model):
         self.monthly_count += amount
         self.last_logged_at = now  # Store in UTC
 
+        if self._completes_a_day(self.daily_count):
+            self._record_completion(today)
+
         # Update streak if daily target completed
         if self.daily_target > 0 and self.daily_count >= self.daily_target:
             if self.last_completed_date != today:
@@ -369,6 +409,8 @@ class Habit(models.Model):
             self.monthly_count += amount
         self.last_logged_at = now
 
+        if self._completes_a_day(amount):
+            self._record_completion(day)
         if self.daily_target > 0 and amount >= self.daily_target:
             self._credit_completion(day)
 
@@ -416,6 +458,9 @@ class Habit(models.Model):
         self.weekly_count = max(0, self.weekly_count - amount)
         self.monthly_count = max(0, self.monthly_count - amount)
         self.last_logged_at = now
+
+        if not self._completes_a_day(self.daily_count):
+            self._withdraw_completion(today)
 
         if (
             self.daily_target > 0

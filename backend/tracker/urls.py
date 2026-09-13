@@ -6,6 +6,7 @@ from .token_views import CustomTokenObtainPairView
 from .views import (
     ActiveTimerView,
     CurrentUserView,
+    DailyStatsView,
     HabitViewSet,
     MomentViewSet,
     ProjectViewSet,
@@ -37,5 +38,6 @@ urlpatterns = [
     path("api/auth/token/refresh/", TokenRefreshView.as_view(), name="token-refresh"),
     path("api/today-entries/", TodayEntriesView.as_view(), name="today-entries"),
     path("api/stats/", StatsView.as_view(), name="stats"),
+    path("api/stats/daily/", DailyStatsView.as_view(), name="stats-daily"),
     path("api/active-timer/", ActiveTimerView.as_view(), name="active-timer"),
 ]

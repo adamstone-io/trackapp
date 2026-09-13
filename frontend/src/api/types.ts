@@ -74,6 +74,9 @@ export interface Habit {
   streak_count: number;
   last_completed_date: string | null;
   last_logged_at: string | null;
+  /** The chain: local dates ("YYYY-MM-DD") the habit was carried, oldest
+   * first, trimmed by the backend to its reporting window. */
+  recent_completions: string[];
   created_at?: string;
 }
 
@@ -111,4 +114,33 @@ export interface ActiveTimer {
   mode: TimerMode;
   target_duration: number | null;
   created_at: string;
+}
+
+export type StatsPeriod = "today" | "yesterday" | "this_week" | "this_month";
+
+/** One task's share of a period's tracked time. */
+export interface TaskTotal {
+  title: string;
+  total_seconds: number;
+  entry_count: number;
+}
+
+/** GET /stats/?period= — everything the dashboard shows for one period. */
+export interface PeriodStats {
+  period: StatsPeriod;
+  total_seconds: number;
+  entry_count: number;
+  moment_count: number;
+  /** Longest first. */
+  by_task: TaskTotal[];
+  prime_count: number;
+  study_count: number;
+  review_count: number;
+}
+
+/** One day of tracked time; `date` is a local "YYYY-MM-DD". */
+export interface DayStats {
+  date: string;
+  total_seconds: number;
+  entry_count: number;
 }

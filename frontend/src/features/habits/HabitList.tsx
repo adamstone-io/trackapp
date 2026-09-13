@@ -13,13 +13,13 @@ import formStyles from "./AddHabitForm.module.css";
 import { TargetField } from "./AddHabitForm";
 import { isSettled } from "../../lib/optimistic";
 import { RowMenu } from "../../components/RowMenu";
+import { toIsoDay } from "../../lib/time";
 
 /** Latest back-fillable date: yesterday, as a local "YYYY-MM-DD". */
 function yesterdayIso(): string {
   const day = new Date();
   day.setDate(day.getDate() - 1);
-  const pad = (n: number) => String(n).padStart(2, "0");
-  return `${day.getFullYear()}-${pad(day.getMonth() + 1)}-${pad(day.getDate())}`;
+  return toIsoDay(day);
 }
 
 export function HabitList() {

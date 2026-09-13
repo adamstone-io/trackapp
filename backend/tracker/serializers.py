@@ -91,9 +91,13 @@ class MomentSerializer(serializers.ModelSerializer):
 
 
 class HabitSerializer(serializers.ModelSerializer):
+    # The chain, trimmed to the reporting window. The stored history is
+    # excluded: years of dates are of no use to a dashboard strip.
+    recent_completions = serializers.SerializerMethodField()
+
     class Meta:
         model = Habit
-        fields = "__all__"
+        exclude = ("completed_dates",)
         read_only_fields = (
             "user",
             "created_at",
@@ -109,11 +113,19 @@ class HabitSerializer(serializers.ModelSerializer):
 
     def to_representation(self, instance):
         data = super().to_representation(instance)
-        request = self.context.get("request")
-        tzname = request.headers.get("x-user-timezone") if request else None
-        today = local_date(timezone.now(), tzname)
+        today, tzname = self._today()
         data.update(instance.state_as_of(today, tzname))
         return data
+
+    def get_recent_completions(self, instance):
+        today, _ = self._today()
+        return instance.recent_completions(today)
+
+    def _today(self):
+        """(local date, timezone name) for the requesting client."""
+        request = self.context.get("request")
+        tzname = request.headers.get("x-user-timezone") if request else None
+        return local_date(timezone.now(), tzname), tzname
 
 
 class StudyItemSerializer(serializers.ModelSerializer):

@@ -1,0 +1,362 @@
+.card {
+  margin-top: var(--space-6);
+}
+
+.cardHead {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-3);
+  margin-bottom: var(--space-3);
+}
+
+.heading {
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  font-weight: var(--font-weight-medium);
+  letter-spacing: var(--letter-spacing-wide);
+  text-transform: uppercase;
+  color: var(--color-text-muted);
+}
+
+.empty {
+  color: var(--color-text-muted);
+  font-size: var(--text-sm);
+  padding: var(--space-4) 0;
+}
+
+/* ---- Chart primitives ---- */
+
+/* Every chart is a track a fill grows inside; only the axis differs. */
+.track {
+  background: var(--color-bg-raised);
+  overflow: hidden;
+}
+
+.fill {
+  background: var(--color-border-strong);
+}
+
+/* The accent is rationed to the day in focus: today's column, today's bar. */
+.today {
+  background: var(--color-accent);
+}
+
+/* ---- Today against yesterday ---- */
+
+.compare {
+  display: flex;
+  align-items: flex-end;
+  gap: var(--space-6);
+  padding-top: var(--space-2);
+}
+
+.compareColumn {
+  display: flex;
+  flex: 1 1 0;
+  flex-direction: column;
+  gap: var(--space-2);
+  min-width: 0;
+}
+
+.compareValue {
+  font-family: var(--font-mono);
+  font-size: var(--text-xl);
+  color: var(--color-text);
+}
+
+/* Fills grow from the baseline, so the two columns share one floor. */
+.compareTrack {
+  composes: track;
+  display: flex;
+  align-items: flex-end;
+  height: 6rem;
+  border-radius: var(--radius-sm);
+}
+
+.compareFill {
+  composes: fill;
+  width: 100%;
+  min-height: var(--border-hairline);
+  transition: height var(--transition-base);
+}
+
+.compareLabel {
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  letter-spacing: var(--letter-spacing-wide);
+  text-transform: uppercase;
+  color: var(--color-text-secondary);
+}
+
+.total {
+  flex: none;
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  color: var(--color-text-secondary);
+}
+
+.delta {
+  margin-top: var(--space-3);
+  font-size: var(--text-sm);
+  color: var(--color-text-secondary);
+}
+
+/* ---- The fortnight trend ---- */
+
+.trend {
+  display: flex;
+  align-items: flex-end;
+  gap: var(--space-1);
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.trendColumn {
+  display: flex;
+  flex: 1 1 0;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-2);
+  min-width: 0;
+}
+
+.trendTrack {
+  composes: track;
+  display: flex;
+  align-items: flex-end;
+  width: 100%;
+  height: 4rem;
+  border-radius: var(--radius-sm);
+}
+
+.trendFill {
+  composes: fill;
+  width: 100%;
+  min-height: var(--border-hairline);
+  transition: height var(--transition-base);
+}
+
+.trendTick {
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  color: var(--color-text-muted);
+}
+
+/* ---- Period selector ---- */
+
+.periods {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  margin-top: var(--space-7);
+}
+
+.period {
+  padding: var(--space-2) var(--space-3);
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  letter-spacing: var(--letter-spacing-wide);
+  text-transform: uppercase;
+  color: var(--color-text-secondary);
+  background: none;
+  border: var(--border-hairline) solid var(--color-border);
+  border-radius: var(--radius-full);
+  cursor: pointer;
+  transition: color var(--transition-fast), border-color var(--transition-fast);
+}
+
+.period:hover {
+  color: var(--color-text);
+  border-color: var(--color-border-strong);
+}
+
+.periodOn {
+  color: var(--color-accent);
+  border-color: var(--color-accent);
+  background: var(--color-accent-muted);
+}
+
+/* ---- Bar lists ---- */
+
+.bars {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.bar {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.barHead {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+
+.barName {
+  font-size: var(--text-sm);
+  color: var(--color-text);
+  overflow-wrap: anywhere;
+}
+
+.barValue {
+  flex: none;
+  font-family: var(--font-mono);
+  font-size: var(--text-sm);
+  color: var(--color-text-secondary);
+}
+
+.barTrack {
+  composes: track;
+  height: var(--space-2);
+  border-radius: var(--radius-full);
+}
+
+.barFill {
+  composes: fill;
+  height: 100%;
+  min-width: var(--stripe-width);
+  border-radius: var(--radius-full);
+  transition: width var(--transition-base);
+}
+
+/* ---- Habit chains ---- */
+
+.chains {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  border-top: var(--border-hairline) solid var(--color-border);
+}
+
+.chainRow {
+  padding: var(--space-3) 0;
+  border-bottom: var(--border-hairline) solid var(--color-border);
+}
+
+.chainHead {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-3);
+  margin-bottom: var(--space-3);
+}
+
+.chainName {
+  font-size: var(--text-base);
+  color: var(--color-text);
+  overflow-wrap: anywhere;
+}
+
+.chainMeta {
+  display: flex;
+  flex: none;
+  align-items: baseline;
+  gap: var(--space-3);
+}
+
+.chainCount {
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  color: var(--color-text-secondary);
+}
+
+.chainLength {
+  flex: none;
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  color: var(--color-accent);
+}
+
+.chainBroken {
+  flex: none;
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  color: var(--color-text-muted);
+}
+
+.chainStrip {
+  display: flex;
+  align-items: center;
+}
+
+/* One cell per day; the dot sits at its centre so a link can run from the
+   previous centre to this one. */
+.chainDay {
+  position: relative;
+  flex: 1 1 0;
+  height: var(--space-4);
+}
+
+.chainDot {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: var(--space-2);
+  height: var(--space-2);
+  border-radius: var(--radius-full);
+  background: var(--color-border);
+  transform: translate(-50%, -50%);
+}
+
+.chainDone .chainDot {
+  background: var(--color-accent);
+}
+
+/* The chain itself: drawn only between two carried days, so a skipped day
+   leaves the gap that breaks it. */
+.chainLinked::before {
+  content: "";
+  position: absolute;
+  top: 50%;
+  right: 50%;
+  left: -50%;
+  height: var(--underline-width);
+  background: var(--color-accent);
+  transform: translateY(-50%);
+}
+
+/* ---- Today's plan ---- */
+
+.plan {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  border-top: var(--border-hairline) solid var(--color-border);
+}
+
+.planRow {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-3);
+  padding: var(--space-3) 0;
+  border-bottom: var(--border-hairline) solid var(--color-border);
+}
+
+.planTime {
+  flex: none;
+  font-family: var(--font-mono);
+  font-size: var(--text-sm);
+  color: var(--color-text-secondary);
+}
+
+.planTitle {
+  font-size: var(--text-base);
+  color: var(--color-text);
+  overflow-wrap: anywhere;
+}
+
+/* A task already started reads as behind you, not ahead. */
+.planDone .planTitle,
+.planDone .planTime {
+  color: var(--color-text-muted);
+}

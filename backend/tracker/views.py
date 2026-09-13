@@ -5,7 +5,7 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 from django.conf import settings
 from django.utils import timezone
-from datetime import date, timedelta, timezone as dt_timezone
+from datetime import date, datetime, time, timedelta, timezone as dt_timezone
 from math import ceil
 from django.db.models import Case, Count, F, IntegerField, Min, Q, Sum, Value, When
 from django.db.models.functions import Coalesce
@@ -361,13 +361,15 @@ class HabitViewSet(UserOwnedViewSet):
     queryset = Habit.objects.all()
     serializer_class = HabitSerializer
 
-    COUNTER_FIELDS = [
+    # Everything a log / unlog / back-fill can touch, saved together.
+    PROGRESS_FIELDS = [
         "daily_count",
         "weekly_count",
         "monthly_count",
         "streak_count",
         "last_completed_date",
         "last_logged_at",
+        "completed_dates",
     ]
 
     @staticmethod
@@ -383,7 +385,7 @@ class HabitViewSet(UserOwnedViewSet):
         return amount, None
 
     def _save_and_respond(self, habit):
-        habit.save(update_fields=self.COUNTER_FIELDS)
+        habit.save(update_fields=self.PROGRESS_FIELDS)
         return Response(self.get_serializer(habit).data, status=status.HTTP_200_OK)
 
     @action(detail=True, methods=["post"])
@@ -793,6 +795,51 @@ class TodayEntriesView(APIView):
         return combined
 
 
+def _zone(tzname):
+    """The IANA zone named by the X-User-Timezone header (UTC on anything else)."""
+    import zoneinfo
+
+    try:
+        return zoneinfo.ZoneInfo(tzname)
+    except Exception:
+        return zoneinfo.ZoneInfo("UTC")
+
+
+def _epoch_ms(dt):
+    if timezone.is_naive(dt):
+        dt = timezone.make_aware(dt, dt_timezone.utc)
+    return int(dt.astimezone(dt_timezone.utc).timestamp() * 1000)
+
+
+def _normalize_timestamp_ms(value):
+    """History arrays hold ISO strings or epoch values; read either as epoch ms.
+
+    Returns None for anything unreadable.
+    """
+    if value is None:
+        return None
+
+    try:
+        # Epoch numbers (seconds or milliseconds)
+        if isinstance(value, (int, float)):
+            return int(value if value > 10**11 else value * 1000)
+
+        # Digit-only strings as epoch values
+        if isinstance(value, str) and value.isdigit():
+            num = int(value)
+            return int(num if num > 10**11 else num * 1000)
+
+        if isinstance(value, datetime):
+            return _epoch_ms(value)
+
+        if isinstance(value, str):
+            return _epoch_ms(datetime.fromisoformat(value.replace("Z", "+00:00")))
+    except Exception:
+        return None
+
+    return None
+
+
 class StatsView(APIView):
     """
     Stats endpoint that returns aggregated statistics for time entries.
@@ -815,8 +862,8 @@ class StatsView(APIView):
         period = request.query_params.get('period', 'today')
         
         start, end, _ = self._get_period_range(period, user_timezone)
-        start_ms = self._to_epoch_ms(start)
-        end_ms = self._to_epoch_ms(end)
+        start_ms = _epoch_ms(start)
+        end_ms = _epoch_ms(end)
         
         # Get time entries
         time_entries = TimeEntry.objects.filter(
@@ -862,24 +909,31 @@ class StatsView(APIView):
         for item in study_items:
             # Count interactions in the period
             for timestamp_value in item.prime_timestamps:
-                ts_ms = self._normalize_timestamp_ms(timestamp_value)
+                ts_ms = _normalize_timestamp_ms(timestamp_value)
                 if ts_ms is not None and start_ms <= ts_ms < end_ms:
                     prime_count += 1
             
             for timestamp_value in item.study_timestamps:
-                ts_ms = self._normalize_timestamp_ms(timestamp_value)
+                ts_ms = _normalize_timestamp_ms(timestamp_value)
                 if ts_ms is not None and start_ms <= ts_ms < end_ms:
                     study_count += 1
             
             for timestamp_value in item.review_timestamps:
-                ts_ms = self._normalize_timestamp_ms(timestamp_value)
+                ts_ms = _normalize_timestamp_ms(timestamp_value)
                 if ts_ms is not None and start_ms <= ts_ms < end_ms:
                     review_count += 1
         
+        moment_count = Moment.objects.filter(
+            user=request.user,
+            timestamp__gte=start,
+            timestamp__lt=end,
+        ).count()
+
         return Response({
             'period': period,
             'total_seconds': total_seconds,
             'entry_count': len(time_entries),
+            'moment_count': moment_count,
             'by_task': by_task,
             'prime_count': prime_count,
             'study_count': study_count,
@@ -897,13 +951,7 @@ class StatsView(APIView):
         Returns:
             Tuple of (start, end, tz) where tz is the resolved timezone
         """
-        import zoneinfo
-        
-        try:
-            tz = zoneinfo.ZoneInfo(user_timezone)
-        except Exception:
-            tz = zoneinfo.ZoneInfo('UTC')
-        
+        tz = _zone(user_timezone)
         now_in_tz = timezone.now().astimezone(tz)
         
         if period == 'today':
@@ -934,39 +982,53 @@ class StatsView(APIView):
         
         return start, end, tz
 
-    def _to_epoch_ms(self, dt):
-        if timezone.is_naive(dt):
-            dt = timezone.make_aware(dt, dt_timezone.utc)
-        return int(dt.astimezone(dt_timezone.utc).timestamp() * 1000)
 
-    def _normalize_timestamp_ms(self, value):
-        """
-        Normalize timestamp values stored as ISO strings or epoch values.
-        Returns epoch milliseconds (int) or None.
-        """
-        if value is None:
-            return None
+class DailyStatsView(APIView):
+    """A per-day series of tracked time behind the dashboard's trend.
 
+    GET /api/stats/daily/?days=N — N days ending today, oldest first, with a
+    row for every day whether anything happened on it or not. Days are cut
+    at midnight in the X-User-Timezone timezone. Counts for a whole period
+    (moments, primes, studies) belong to StatsView, not here.
+    """
+    permission_classes = [permissions.IsAuthenticated, HasAppAccess]
+
+    DEFAULT_DAYS = 14
+    MAX_DAYS = 90
+
+    def get(self, request):
+        user_timezone = request.headers.get('X-User-Timezone', 'UTC')
+        tz = _zone(user_timezone)
+        days = self._parse_days(request.query_params.get('days'))
+
+        today = timezone.now().astimezone(tz).date()
+        first_day = today - timedelta(days=days - 1)
+        start = datetime.combine(first_day, time.min, tzinfo=tz)
+        end = datetime.combine(today + timedelta(days=1), time.min, tzinfo=tz)
+
+        rows = {
+            day.isoformat(): {'date': day.isoformat(), 'total_seconds': 0, 'entry_count': 0}
+            for day in (first_day + timedelta(days=offset) for offset in range(days))
+        }
+
+        for entry in TimeEntry.objects.filter(
+            user=request.user, started_at__gte=start, started_at__lt=end
+        ):
+            row = rows.get(entry.started_at.astimezone(tz).date().isoformat())
+            if row is None:
+                continue
+            row['total_seconds'] += entry.duration_seconds or 0
+            row['entry_count'] += 1
+
+        return Response({'days': list(rows.values())})
+
+    def _parse_days(self, raw):
+        """A window of days, clamped to something a dashboard can draw."""
         try:
-            # Epoch numbers (seconds or milliseconds)
-            if isinstance(value, (int, float)):
-                return int(value if value > 10**11 else value * 1000)
-
-            # Digit-only strings as epoch values
-            if isinstance(value, str) and value.isdigit():
-                num = int(value)
-                return int(num if num > 10**11 else num * 1000)
-
-            if isinstance(value, timezone.datetime):
-                return self._to_epoch_ms(value)
-
-            if isinstance(value, str):
-                dt = timezone.datetime.fromisoformat(value.replace('Z', '+00:00'))
-                return self._to_epoch_ms(dt)
-        except Exception:
-            return None
-
-        return None
+            days = int(raw)
+        except (TypeError, ValueError):
+            return self.DEFAULT_DAYS
+        return max(1, min(days, self.MAX_DAYS))
 
 
 class ActiveTimerView(APIView):

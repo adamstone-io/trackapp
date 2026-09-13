@@ -1,10 +1,10 @@
-from datetime import timedelta
+from datetime import datetime, timedelta, timezone as dt_timezone
 
 from django.contrib.auth.models import User
 from django.test import TestCase
 from django.utils import timezone
 
-from .models import Habit, Project, StudyItem, Task, TimeEntry
+from .models import Habit, Moment, Project, StudyItem, Task, TimeEntry
 
 
 class EmailLoginTests(TestCase):
@@ -916,3 +916,204 @@ class StudyInteractionTests(StudyItemApiTestCase):
 
         item.refresh_from_db()
         self.assertEqual(len(item.prime_timestamps), 2)
+
+
+class HabitChainTests(HabitApiTestCase):
+    """R21a: the habits chain — which days the habit was carried.
+
+    The chain is the "don't break the chain" record: one link per day the
+    habit was completed, so a skipped day shows as a gap. A day counts as
+    completed when its daily target is met; a habit with no daily target
+    counts any day it was logged at all.
+    """
+
+    def make_habit(self, **overrides):
+        fields = dict(user=self.user, name="Meditate", daily_target=2)
+        fields.update(overrides)
+        return Habit.objects.create(**fields)
+
+    def chain(self):
+        return self.get_habit()["recent_completions"]
+
+    def test_meeting_the_daily_target_adds_todays_link(self):
+        habit = self.make_habit()
+        self.post_action(habit, "log")
+        self.assertEqual(self.chain(), [])
+
+        self.post_action(habit, "log")
+        self.assertEqual(self.chain(), [self.today().isoformat()])
+
+    def test_further_logs_past_the_target_do_not_duplicate_the_link(self):
+        habit = self.make_habit(daily_target=1)
+        self.post_action(habit, "log")
+        self.post_action(habit, "log")
+        self.assertEqual(self.chain(), [self.today().isoformat()])
+
+    def test_unlogging_below_the_target_breaks_todays_link(self):
+        habit = self.make_habit(daily_target=1)
+        self.post_action(habit, "log")
+        self.assertEqual(self.chain(), [self.today().isoformat()])
+
+        self.post_action(habit, "unlog")
+        self.assertEqual(self.chain(), [])
+
+    def test_a_habit_with_no_daily_target_links_any_day_it_was_logged(self):
+        habit = self.make_habit(daily_target=0, weekly_target=3)
+        self.post_action(habit, "log")
+        self.assertEqual(self.chain(), [self.today().isoformat()])
+
+        self.post_action(habit, "unlog")
+        self.assertEqual(self.chain(), [])
+
+    def test_back_filling_a_past_day_fills_its_link(self):
+        habit = self.make_habit(daily_target=2)
+        yesterday = self.today() - timedelta(days=1)
+        self.post_action(habit, "log", {"date": yesterday.isoformat(), "amount": 2})
+        self.assertEqual(self.chain(), [yesterday.isoformat()])
+
+    def test_a_gap_stays_a_gap(self):
+        habit = self.make_habit(daily_target=1)
+        two_days_ago = self.today() - timedelta(days=2)
+        self.post_action(habit, "log", {"date": two_days_ago.isoformat(), "amount": 1})
+        self.post_action(habit, "log")
+        self.assertEqual(self.chain(), [two_days_ago.isoformat(), self.today().isoformat()])
+
+    def test_links_older_than_the_window_are_not_reported(self):
+        old = self.today() - timedelta(days=Habit.CHAIN_WINDOW_DAYS)
+        edge = self.today() - timedelta(days=Habit.CHAIN_WINDOW_DAYS - 1)
+        self.make_habit(completed_dates=[old.isoformat(), edge.isoformat()])
+        self.assertEqual(self.chain(), [edge.isoformat()])
+
+    def test_the_full_history_stays_off_the_wire(self):
+        self.make_habit(completed_dates=[self.today().isoformat()])
+        self.assertNotIn("completed_dates", self.get_habit())
+
+
+class StatsApiTestCase(TestCase):
+    """The dashboard's two reads: a period summary and a per-day series.
+
+    The clock is frozen at Wednesday 2026-03-11 12:00 UTC so day boundaries
+    are deterministic; Brisbane (UTC+10) is 22:00 on the same date.
+    """
+
+    FROZEN_NOW = datetime(2026, 3, 11, 12, 0, tzinfo=dt_timezone.utc)
+
+    def setUp(self):
+        self.user = User.objects.create_user(
+            username="adam", email="adam@example.com", password="hunter2"
+        )
+        token = self.client.post(
+            "/api/auth/token/",
+            {"username": "adam", "password": "hunter2"},
+            content_type="application/json",
+        ).json()["access"]
+        self.headers = {"authorization": f"Bearer {token}"}
+        self.task = Task.objects.create(user=self.user, title="Write")
+
+    def frozen(self):
+        from unittest import mock
+
+        return mock.patch("django.utils.timezone.now", return_value=self.FROZEN_NOW)
+
+    def at(self, day, hour=9, minute=0):
+        return datetime(2026, 3, day, hour, minute, tzinfo=dt_timezone.utc)
+
+    def entry(self, started_at, seconds=600, user=None):
+        return TimeEntry.objects.create(
+            user=user or self.user,
+            task=self.task,
+            task_title=self.task.title,
+            started_at=started_at,
+            ended_at=started_at + timedelta(seconds=seconds),
+            duration_seconds=seconds,
+        )
+
+    def moment(self, timestamp, user=None):
+        return Moment.objects.create(
+            user=user or self.user, description="A thought", timestamp=timestamp
+        )
+
+    def get(self, path, tz="UTC"):
+        with self.frozen():
+            response = self.client.get(path, headers={**self.headers, "x-user-timezone": tz})
+        self.assertEqual(response.status_code, 200)
+        return response.json()
+
+    def days(self, query="", tz="UTC"):
+        return self.get(f"/api/stats/daily/{query}", tz=tz)["days"]
+
+    def day(self, series, date):
+        return next(row for row in series if row["date"] == date)
+
+
+class StatsPeriodTests(StatsApiTestCase):
+    """R31c: the period summary counts moments alongside time and study."""
+
+    def test_the_period_summary_counts_its_moments(self):
+        self.moment(self.at(11, 9))
+        self.moment(self.at(11, 10))
+        self.moment(self.at(10, 9))  # yesterday — outside the period
+
+        self.assertEqual(self.get("/api/stats/?period=today")["moment_count"], 2)
+        self.assertEqual(self.get("/api/stats/?period=yesterday")["moment_count"], 1)
+
+    def test_another_users_moments_never_count(self):
+        intruder = User.objects.create_user(username="eve", password="hunter2")
+        self.moment(self.at(11, 9), user=intruder)
+
+        self.assertEqual(self.get("/api/stats/?period=today")["moment_count"], 0)
+
+
+class DailyStatsTests(StatsApiTestCase):
+    """R31b/R31d: a per-day series of tracked time behind the trend."""
+
+    def test_the_series_runs_from_oldest_to_today(self):
+        series = self.days("?days=3")
+
+        self.assertEqual(
+            [row["date"] for row in series], ["2026-03-09", "2026-03-10", "2026-03-11"]
+        )
+
+    def test_a_day_with_no_activity_reports_zeroes_rather_than_going_missing(self):
+        series = self.days("?days=2")
+
+        self.assertEqual(self.day(series, "2026-03-10")["total_seconds"], 0)
+        self.assertEqual(self.day(series, "2026-03-10")["entry_count"], 0)
+
+    def test_each_day_totals_its_own_time_and_counts_its_own_entries(self):
+        self.entry(self.at(11, 9), seconds=600)
+        self.entry(self.at(11, 14), seconds=300)
+        self.entry(self.at(10, 9), seconds=1200)
+
+        series = self.days("?days=2")
+
+        self.assertEqual(self.day(series, "2026-03-11")["total_seconds"], 900)
+        self.assertEqual(self.day(series, "2026-03-11")["entry_count"], 2)
+        self.assertEqual(self.day(series, "2026-03-10")["total_seconds"], 1200)
+        self.assertEqual(self.day(series, "2026-03-10")["entry_count"], 1)
+
+    def test_days_are_cut_at_midnight_in_the_users_timezone(self):
+        # 2026-03-10 20:00 UTC is 2026-03-11 06:00 in Brisbane.
+        self.entry(self.at(10, 20), seconds=600)
+
+        brisbane = self.days("?days=2", tz="Australia/Brisbane")
+
+        self.assertEqual(self.day(brisbane, "2026-03-11")["total_seconds"], 600)
+        self.assertEqual(self.day(brisbane, "2026-03-10")["total_seconds"], 0)
+
+    def test_the_window_defaults_to_a_fortnight(self):
+        self.assertEqual(len(self.days()), 14)
+
+    def test_an_unreasonable_window_is_clamped_rather_than_refused(self):
+        self.assertEqual(len(self.days("?days=0")), 1)
+        self.assertEqual(len(self.days("?days=9000")), 90)
+        self.assertEqual(len(self.days("?days=nonsense")), 14)
+
+    def test_another_users_activity_never_appears(self):
+        intruder = User.objects.create_user(username="eve", password="hunter2")
+        self.entry(self.at(11, 9), seconds=600, user=intruder)
+
+        today = self.day(self.days("?days=2"), "2026-03-11")
+
+        self.assertEqual(today["total_seconds"], 0)
+        self.assertEqual(today["entry_count"], 0)

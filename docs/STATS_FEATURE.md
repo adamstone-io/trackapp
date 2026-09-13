@@ -1,31 +1,72 @@
-# Stats Feature
+# Stats & Dashboard Feature
 
 ## Overview
-The Stats page summarizes time tracking and study activity for today, including
-time entries, priming, and reviews.
+The dashboard is the app's landing page (`/`): how today compares with
+yesterday, what the last fortnight looked like, what is scheduled for today,
+where the time and attention went over a chosen period, and how each habit's
+chain is holding.
 
-## Metrics
-- **Total time today** (sum of time entry durations)
-- **Entries count** for today
-- **Time by task** (sorted by total time)
-- **Priming stats** (total, today, yesterday, week, last week)
-- **Review stats** (total, today, this week, this month)
+## What it shows
+- **Time tracked** — today's total beside yesterday's, with the gap stated
+  ("32m more than yesterday"). R31b.
+- **Last 14 days** — one column per day of tracked time, today in accent. R31d.
+- **Today's plan** — the day's scheduled tasks, earliest first; a task already
+  started reads muted. R33b.
+- **Top tasks** — the period's total, and the five tasks with the most time in
+  it. R31, R31a.
+- **Activity** — entries, moments, primes and studies as one bar chart. R31c, R32.
+- **Habit chains** — every active habit's recent days as a chain. R21a, R33a.
 
-## Files Structure
+The period selector (Today / Yesterday / This week / This month) governs the
+Top tasks and Activity cards only; the other cards are day-scoped.
 
-### Controller
-- `js/controllers/stats-controller.js` - Aggregates data from API
+## API
 
-### View
-- `js/views/stats-view.js` - Renders statistics
+### `GET /api/stats/?period=today|yesterday|this_week|this_month`
+One period's summary:
 
-### Data
-- `js/data/storage.js` - API list calls for entries, priming, and reviews
+```json
+{
+  "period": "today",
+  "total_seconds": 11520,
+  "entry_count": 6,
+  "moment_count": 2,
+  "by_task": [{"title": "Write", "total_seconds": 7200, "entry_count": 3}],
+  "prime_count": 40,
+  "study_count": 7,
+  "review_count": 0
+}
+```
 
-### Page
-- `html/stats.html` - Stats page
-- `js/stats-main.js` - Entry point
+`by_task` comes back longest-first; the dashboard takes the top five.
+
+### `GET /api/stats/daily/?days=N`
+A per-day series of tracked time, oldest first, with a row for every day whether
+anything happened on it or not. `days` defaults to 14 and is clamped to 1–90.
+Counts spanning a whole period (moments, primes, studies) belong to the period
+endpoint above, not here.
+
+```json
+{"days": [{"date": "2026-09-13", "total_seconds": 3600, "entry_count": 2}]}
+```
+
+Both endpoints cut days at midnight in the `X-User-Timezone` timezone, never
+UTC. The period endpoint's study counts come from the `prime_timestamps` /
+`study_timestamps` history arrays, which hold either epoch values or ISO
+strings — both are read.
+
+## Frontend
+- `src/pages/DashboardPage.tsx` — composes the cards, owns the period state
+- `src/features/dashboard/` — `TimeComparison`, `DailyTrend`, `TodaysPlan`,
+  `PeriodPicker`, `TopTasks`, `ActivityCounts`, `HabitChains`, and the shared
+  `Card` / `BarList` primitives
+- `src/features/dashboard/useStats.ts` — the two TanStack Query reads
+- Charts are hand-rolled CSS (flex tracks and percentage fills) — no chart
+  dependency.
 
 ## Notes
-- Stats are calculated client-side from API data.
-- Today is based on local midnight to local midnight.
+- The dashboard reads only; every mutation lives on the feature pages. Its two
+  stats queries carry `staleTime: 0`, so every visit re-reads rather than
+  showing numbers another page has since moved.
+- Tests: `src/pages/DashboardPage.test.tsx` (MSW), `StatsPeriodTests` and
+  `DailyStatsTests` in `backend/tracker/tests.py`.

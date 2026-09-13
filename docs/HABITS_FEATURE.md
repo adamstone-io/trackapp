@@ -45,6 +45,24 @@ can log progress, edit targets, and archive items.
 }
 ```
 
+## The chain (R21a)
+`Habit.completed_dates` records every local date the habit was carried — its
+daily target met, or, for a habit with no daily target, logged at all. Logging
+adds the day, unlogging back below the target withdraws it, and a back-fill
+fills the past day's link.
+
+The API never sends the whole history: `HabitSerializer` exposes
+`recent_completions`, the dates inside `Habit.CHAIN_WINDOW_DAYS` (90) ending
+today in the user's timezone. The dashboard draws the last 28 of them as a
+chain — consecutive days joined, a skipped day leaving the break.
+
+Unlogging is destructive to the chain: it withdraws today's link outright
+rather than archiving it, and only today's — a mistaken back-fill of a past day
+cannot be taken back.
+
+The chain is not the streak. `streak_count` remembers only its own live run and
+reads zero during a gap; the chain keeps the gaps, which is the point of it.
+
 ## Notes
 - Reset timestamps are stored locally to determine daily/weekly resets.
 - Habit data is API-backed via `/api/habits/`.

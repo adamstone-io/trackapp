@@ -51,3 +51,24 @@ export function formatDaysAgo(iso: string | null): string {
   if (days === 1) return "yesterday";
   return `${days} days ago`;
 }
+
+const WEEKDAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+
+/** A local calendar date as the API spells it: "2026-09-13". */
+export function toIsoDay(date: Date): string {
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
+}
+
+/** An API day string back into a local Date at midnight.
+ * `new Date("2026-09-13")` would read as UTC and slip a day west of London. */
+export function parseIsoDay(isoDay: string): Date {
+  const [year, month, day] = isoDay.split("-").map(Number);
+  return new Date(year, month - 1, day);
+}
+
+/** "Sat 13 Sep" — a day label for a chart column. */
+export function formatWeekdayDayMonth(isoDay: string): string {
+  const date = parseIsoDay(isoDay);
+  return `${WEEKDAYS[date.getDay()]} ${date.getDate()} ${MONTHS[date.getMonth()]}`;
+}

@@ -64,6 +64,7 @@ export function useCreateHabit() {
         streak_count: 0,
         last_completed_date: null,
         last_logged_at: null,
+        recent_completions: [],
       };
       const context = await snapshotAndApply(queryClient, (current) => [...current, optimistic]);
       return { ...context, tempId };
