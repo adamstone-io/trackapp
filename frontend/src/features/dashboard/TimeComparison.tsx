@@ -1,6 +1,7 @@
 import type { DayStats } from "../../api/types";
 import { formatDuration } from "../../lib/time";
 import { Card } from "./Card";
+import { Column } from "./Column";
 import styles from "./dashboard.module.css";
 
 /** How today's tracked time stands against yesterday's. */
@@ -12,37 +13,16 @@ export function TimeComparison({ days }: { days: DayStats[] }) {
   return (
     <Card title="Time tracked">
       <div className={styles.compare}>
-        <Column label="Today" seconds={today} tallest={tallest} highlight />
-        <Column label="Yesterday" seconds={yesterday} tallest={tallest} />
+        <Column label="Today" value={today} display={show(today)} tallest={tallest} highlight />
+        <Column label="Yesterday" value={yesterday} display={show(yesterday)} tallest={tallest} />
       </div>
       <p className={styles.delta}>{describeGap(today - yesterday)}</p>
     </Card>
   );
 }
 
-function Column({
-  label,
-  seconds,
-  tallest,
-  highlight = false,
-}: {
-  label: string;
-  seconds: number;
-  tallest: number;
-  highlight?: boolean;
-}) {
-  return (
-    <div className={styles.compareColumn}>
-      <span className={styles.compareValue}>{seconds > 0 ? formatDuration(seconds) : "—"}</span>
-      <div className={styles.compareTrack}>
-        <div
-          className={highlight ? `${styles.compareFill} ${styles.today}` : styles.compareFill}
-          style={{ height: `${(seconds / tallest) * 100}%` }}
-        />
-      </div>
-      <span className={styles.compareLabel}>{label}</span>
-    </div>
-  );
+function show(seconds: number): string {
+  return seconds > 0 ? formatDuration(seconds) : "—";
 }
 
 function describeGap(seconds: number): string {

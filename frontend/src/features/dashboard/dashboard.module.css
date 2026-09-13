@@ -2,6 +2,18 @@
   margin-top: var(--space-6);
 }
 
+/* The day-scoped band: two cards abreast, stacking when there is no room. */
+.topRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-6);
+  align-items: flex-start;
+}
+
+.topRow > * {
+  flex: 1 1 15rem;
+}
+
 .cardHead {
   display: flex;
   align-items: baseline;

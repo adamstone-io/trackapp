@@ -1,4 +1,4 @@
-import { screen, within } from "@testing-library/react";
+import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { renderApp, seedSession } from "../test/render";
 import { server, http, HttpResponse, api } from "../test/server";
@@ -206,10 +206,8 @@ describe("top tasks", () => {
 });
 
 describe("activity counts", () => {
-  it("charts entries, moments, primes and studies together", async () => {
-    seedDashboard({
-      stats: { entry_count: 12, moment_count: 3, prime_count: 40, study_count: 7 },
-    });
+  it("charts the period's entries against its moments", async () => {
+    seedDashboard({ stats: { entry_count: 12, moment_count: 3 } });
 
     renderApp("/");
 
@@ -220,8 +218,46 @@ describe("activity counts", () => {
         .find((row) => within(row).queryByText(name))!;
     expect(within(labelled("Entries")).getByText("12")).toBeInTheDocument();
     expect(within(labelled("Moments")).getByText("3")).toBeInTheDocument();
-    expect(within(labelled("Primed")).getByText("40")).toBeInTheDocument();
-    expect(within(labelled("Studied")).getByText("7")).toBeInTheDocument();
+    // Priming and studying moved to their own card at the top of the page.
+    expect(within(chart).queryByText("Primed")).not.toBeInTheDocument();
+  });
+});
+
+describe("study today", () => {
+  it("charts what was primed and studied today, beside the time tracked", async () => {
+    seedDashboard({ stats: { prime_count: 40, study_count: 7 } });
+
+    renderApp("/");
+
+    const card = await screen.findByRole("region", { name: "Study today" });
+    expect(within(card).getByText("Primed")).toBeInTheDocument();
+    expect(within(card).getByText("40")).toBeInTheDocument();
+    expect(within(card).getByText("Studied")).toBeInTheDocument();
+    expect(within(card).getByText("7")).toBeInTheDocument();
+  });
+
+  it("stays on today when the breakdown below moves to another period", async () => {
+    const asked: string[] = [];
+    seedDashboard();
+    server.use(
+      http.get(api("/stats/"), ({ request }) => {
+        const period = new URL(request.url).searchParams.get("period") ?? "";
+        asked.push(period);
+        return HttpResponse.json(
+          periodStats({ period, prime_count: period === "today" ? 40 : 900 }),
+        );
+      }),
+    );
+
+    renderApp("/");
+
+    const card = await screen.findByRole("region", { name: "Study today" });
+    expect(await within(card).findByText("40")).toBeInTheDocument();
+
+    await userEvent.click(screen.getByRole("button", { name: "This month" }));
+
+    await waitFor(() => expect(asked).toContain("this_month"));
+    expect(within(card).getByText("40")).toBeInTheDocument();
   });
 });
 

@@ -9,6 +9,9 @@ chain is holding.
 ## What it shows
 - **Time tracked** — today's total beside yesterday's, with the gap stated
   ("32m more than yesterday"). R31b.
+- **Study today** — today's primed and studied counts, abreast of the time
+  tracked. Pinned to today whatever the period selector says; when the selector
+  is on Today it shares that query rather than making its own. R32.
 - **Last 14 days** — one column per day of tracked time, today in accent. R31d.
 - **Today's plan** — the day's scheduled tasks, earliest first; a task already
   started reads muted. R33b.

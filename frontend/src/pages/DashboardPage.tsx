@@ -1,9 +1,11 @@
 import { useState } from "react";
 import { PageShell } from "../components/PageShell";
+import styles from "../features/dashboard/dashboard.module.css";
 import type { StatsPeriod } from "../api/types";
 import { useHabitsQuery } from "../features/habits/useHabits";
 import { useDailyStatsQuery, usePeriodStatsQuery } from "../features/dashboard/useStats";
 import { TimeComparison } from "../features/dashboard/TimeComparison";
+import { StudyCounts } from "../features/dashboard/StudyCounts";
 import { DailyTrend } from "../features/dashboard/DailyTrend";
 import { PeriodPicker } from "../features/dashboard/PeriodPicker";
 import { TopTasks } from "../features/dashboard/TopTasks";
@@ -26,12 +28,11 @@ export function DashboardPage() {
 
   return (
     <PageShell>
-      {days && (
-        <>
-          <TimeComparison days={days} />
-          <DailyTrend days={days} />
-        </>
-      )}
+      <div className={styles.topRow}>
+        {days && <TimeComparison days={days} />}
+        <StudyCounts />
+      </div>
+      {days && <DailyTrend days={days} />}
       {planned && <TodaysPlan tasks={planned} />}
       {habits && <HabitChains habits={habits} />}
       <PeriodPicker period={period} onChange={setPeriod} />
