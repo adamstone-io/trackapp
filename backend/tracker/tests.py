@@ -718,7 +718,7 @@ class StudyInteractionTests(StudyItemApiTestCase):
         self.assertIsNotNone(data["last_studied_at"])
         self.assertEqual(data["prime_count"], 0)
 
-    def test_study_interaction_requires_notes(self):
+    def test_study_interaction_requires_an_answer_side(self):
         item = StudyItem.objects.create(user=self.user, prompt="Kanji: 水")
 
         response = self.log(item, {"interaction": "study"})
@@ -726,6 +726,16 @@ class StudyInteractionTests(StudyItemApiTestCase):
         self.assertIn("notes", response.json()["detail"].lower())
         item.refresh_from_db()
         self.assertEqual(item.study_count, 0)
+
+    def test_study_interaction_accepts_a_note_image_instead_of_notes(self):
+        """An answer can be an image rather than text (ticket 06.3)."""
+        item = StudyItem.objects.create(user=self.user, prompt="Kanji: 水")
+        item.note_image = "study_item_images/note.png"
+        item.save(update_fields=["note_image"])
+
+        response = self.log(item, {"interaction": "study"})
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json()["study_count"], 1)
 
     def test_unknown_interaction_type_is_rejected(self):
         item = StudyItem.objects.create(user=self.user, prompt="Kanji: 水")

@@ -47,7 +47,7 @@ function row(title: string): HTMLElement {
 }
 
 describe("study items list", () => {
-  it("shows each item with title, category, notes, and interaction stats", async () => {
+  it("shows the prompt side and interaction stats, with the answer hidden", async () => {
     serve([item()]);
 
     renderApp("/study");
@@ -55,9 +55,10 @@ describe("study items list", () => {
     expect(await screen.findByText("Kanji: 水")).toBeInTheDocument();
     const card = row("Kanji: 水");
     expect(within(card).getByText("kanji")).toBeInTheDocument();
-    expect(within(card).getByText("water; the radical in 泳")).toBeInTheDocument();
     expect(within(card).getByText(/3 primes/i)).toBeInTheDocument();
     expect(within(card).getByText(/1 study/i)).toBeInTheDocument();
+    // The answer waits behind the Study button.
+    expect(within(card).queryByText("water; the radical in 泳")).not.toBeInTheDocument();
   });
 
   it("shows first-ever and most-recent dates for prime and study", async () => {
@@ -73,9 +74,11 @@ describe("study items list", () => {
     expect(studyStat).toHaveAttribute("title", expect.stringMatching(/first .*2 Sept?.*last .*8 Sept?/i));
   });
 
-  it("shows the item's prompt and note images when it has them", async () => {
+  it("shows the prompt image, and reveals an image answer on Study", async () => {
+    const user = userEvent.setup();
     serve([
       item({
+        notes: "",
         image_url: "http://files.example/water.png",
         note_image_url: "http://files.example/water-note.png",
       }),
@@ -89,6 +92,9 @@ describe("study items list", () => {
       "src",
       "http://files.example/water.png",
     );
+    expect(within(card).queryByAltText(/note image/i)).not.toBeInTheDocument();
+
+    await user.click(within(card).getByRole("button", { name: /show the answer/i }));
     expect(within(card).getByAltText(/note image/i)).toHaveAttribute(
       "src",
       "http://files.example/water-note.png",
@@ -157,7 +163,7 @@ describe("logging interactions", () => {
     expect(posted).toEqual({ interaction: "prime" });
   });
 
-  it("posts a study interaction from the Log Study button", async () => {
+  it("reveals the answer first, then logs the study on the next press", async () => {
     const user = userEvent.setup();
     let posted: Record<string, unknown> | null = null;
     serve([item()]);
@@ -169,20 +175,32 @@ describe("logging interactions", () => {
     );
 
     renderApp("/study");
-    await user.click(await screen.findByRole("button", { name: /log study for kanji: 水/i }));
+    await user.click(await screen.findByRole("button", { name: /show the answer for kanji: 水/i }));
+
+    // First press only reveals — nothing is logged yet.
+    expect(screen.getByText("water; the radical in 泳")).toBeInTheDocument();
+    expect(posted).toBeNull();
+
+    await user.click(screen.getByRole("button", { name: /finish studying kanji: 水/i }));
 
     expect(await screen.findByText(/2 studies/i)).toBeInTheDocument();
     expect(posted).toEqual({ interaction: "study" });
+    // Done with it: the answer goes away again.
+    expect(screen.queryByText("water; the radical in 泳")).not.toBeInTheDocument();
   });
 
-  it("disables Log Study on items without notes", async () => {
-    serve([item({ notes: "" })]);
+  it("disables Study on an item with no answer, but not on an image answer", async () => {
+    serve([
+      item({ notes: "" }),
+      item({ id: "item-2", prompt: "Kanji: 火", notes: "", note_image_url: "http://x/fire.png" }),
+    ]);
 
     renderApp("/study");
     await screen.findByText("Kanji: 水");
 
-    expect(screen.getByRole("button", { name: /log study for kanji: 水/i })).toBeDisabled();
+    expect(screen.getByRole("button", { name: /show the answer for kanji: 水/i })).toBeDisabled();
     expect(screen.getByRole("button", { name: /log prime for kanji: 水/i })).toBeEnabled();
+    expect(screen.getByRole("button", { name: /show the answer for kanji: 火/i })).toBeEnabled();
   });
 
   it("rolls the count back and shows a toast when logging fails", async () => {
@@ -331,6 +349,7 @@ describe("creating a study item", () => {
     renderApp("/study");
     await user.click(await screen.findByRole("button", { name: /add study item/i }));
     await user.type(screen.getByLabelText(/title/i), "Kanji: 火");
+    await user.click(screen.getByRole("radio", { name: /image/i }));
     await user.upload(
       screen.getByLabelText("Note image"),
       new File(["png-bytes"], "fire-note.png", { type: "image/png" }),
@@ -338,6 +357,9 @@ describe("creating a study item", () => {
     await user.click(screen.getByRole("button", { name: /save/i }));
 
     await screen.findByText("Kanji: 火");
+    await user.click(
+      await screen.findByRole("button", { name: /show the answer for kanji: 火/i }),
+    );
     await waitFor(() =>
       expect(within(row("Kanji: 火")).getByAltText(/note image/i)).toHaveAttribute(
         "src",
@@ -434,6 +456,74 @@ describe("editing a study item", () => {
       notes: "water; the radical in 泳",
       category: "kanji",
     });
+  });
+});
+
+describe("the answer is text or an image, never both", () => {
+  it("clears the text note when the answer is switched to an image", async () => {
+    const user = userEvent.setup();
+    let patched: Record<string, unknown> | null = null;
+    let uploaded = false;
+    serve([item()]);
+    server.use(
+      http.patch(api("/study-items/item-1/"), async ({ request }) => {
+        patched = (await request.json()) as Record<string, unknown>;
+        return HttpResponse.json(item({ notes: "" }));
+      }),
+      http.post(api("/study-items/item-1/upload_note_image/"), () => {
+        uploaded = true;
+        return HttpResponse.json(
+          item({ notes: "", note_image_url: "http://files.example/water-note.png" }),
+        );
+      }),
+    );
+
+    renderApp("/study");
+    await user.click(await screen.findByRole("button", { name: /more kanji: 水/i }));
+    await user.click(screen.getByRole("button", { name: /^edit$/i }));
+
+    // The text note is the answer today, so its field is the one on show.
+    expect(screen.getByLabelText(/notes/i)).toHaveValue("water; the radical in 泳");
+    await user.click(screen.getByRole("radio", { name: /image/i }));
+    expect(screen.queryByLabelText(/notes/i)).not.toBeInTheDocument();
+    await user.upload(
+      screen.getByLabelText("Note image"),
+      new File(["png-bytes"], "water-note.png", { type: "image/png" }),
+    );
+    await user.click(screen.getByRole("button", { name: /save/i }));
+
+    await waitFor(() => expect(uploaded).toBe(true));
+    expect(patched).toMatchObject({ notes: "" });
+  });
+
+  it("leaves a legacy item holding both alone until the kind is changed", async () => {
+    const user = userEvent.setup();
+    let patched: Record<string, unknown> | null = null;
+    const removals: string[] = [];
+    serve([item({ note_image_url: "http://files.example/water-note.png" })]);
+    server.use(
+      http.patch(api("/study-items/item-1/"), async ({ request }) => {
+        patched = (await request.json()) as Record<string, unknown>;
+        return HttpResponse.json(item({ prompt: "Kanji: 水 (mizu)" }));
+      }),
+      http.delete(api("/study-items/item-1/remove_note_image/"), () => {
+        removals.push("note_image");
+        return HttpResponse.json(item());
+      }),
+    );
+
+    renderApp("/study");
+    await user.click(await screen.findByRole("button", { name: /more kanji: 水/i }));
+    await user.click(screen.getByRole("button", { name: /^edit$/i }));
+    const title = screen.getByLabelText(/title/i);
+    await user.clear(title);
+    await user.type(title, "Kanji: 水 (mizu)");
+    await user.click(screen.getByRole("button", { name: /save/i }));
+
+    await screen.findByText("Kanji: 水 (mizu)");
+    // Neither side of the answer was touched: no wipe, no removal.
+    expect(patched).toMatchObject({ notes: "water; the radical in 泳" });
+    expect(removals).toEqual([]);
   });
 });
 

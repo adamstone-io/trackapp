@@ -5,12 +5,15 @@
   margin-top: var(--space-4);
 }
 
+/* One field per row: the fields are different heights (a textarea, a file
+ * picker, a radio group), and sharing rows left them stretched and ragged. */
 .form {
   display: flex;
-  flex-wrap: wrap;
-  align-items: flex-end;
-  gap: var(--space-3);
+  flex-direction: column;
+  align-items: stretch;
+  gap: var(--space-4);
   margin-top: var(--space-4);
+  max-width: 32rem;
 }
 
 /* An edit form replaces its list row, so it fills the row's width. */
@@ -18,6 +21,35 @@
   composes: form;
   flex-basis: 100%;
   margin-top: 0;
+}
+
+/* The answer side: pick text or image, then fill in the one you picked. */
+.answer {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  border: var(--border-hairline) solid var(--color-border);
+  border-radius: var(--radius-md);
+  padding: var(--space-3);
+}
+
+.choices {
+  display: flex;
+  gap: var(--space-4);
+}
+
+.choice {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: var(--text-sm);
+  color: var(--color-text-secondary);
+  cursor: pointer;
+}
+
+.buttons {
+  display: flex;
+  gap: var(--space-3);
 }
 
 .field {
@@ -34,12 +66,11 @@
 
 .nameInput {
   composes: input;
-  flex: 1 1 12rem;
 }
 
 .notesInput {
   composes: input;
-  flex: 1 1 16rem;
+  padding: var(--space-3);
   resize: vertical;
   min-height: var(--touch-target);
 }
@@ -47,7 +78,6 @@
 .fileInput {
   font-size: var(--text-xs);
   color: var(--color-text-secondary);
-  max-width: 14rem;
 }
 
 .removeImage {

@@ -132,9 +132,13 @@ function ArchivedStudyItems({ items }: { items: StudyItem[] }) {
 
 function StudyItemRow({ item }: { item: StudyItem }) {
   const [editing, setEditing] = useState(false);
+  const [revealed, setRevealed] = useState(false);
   const editMutation = useEditStudyItem();
   const logMutation = useLogInteraction();
   const settled = isSettled(item.id);
+  // The row is a two-sided card: the answer stays hidden until Study reveals
+  // it, and the next press logs the study and puts it away again.
+  const hasAnswer = Boolean(item.notes.trim() || item.note_image_url);
 
   if (editing) {
     return (
@@ -160,8 +164,8 @@ function StudyItemRow({ item }: { item: StudyItem }) {
           <h3 className={styles.name}>{item.prompt}</h3>
           {item.category && <span className={styles.chip}>{item.category}</span>}
         </div>
-        {item.notes && <p className={styles.notes}>{item.notes}</p>}
-        {item.note_image_url && (
+        {revealed && item.notes && <p className={styles.notes}>{item.notes}</p>}
+        {revealed && item.note_image_url && (
           <img
             className={styles.noteThumb}
             src={item.note_image_url}
@@ -198,11 +202,20 @@ function StudyItemRow({ item }: { item: StudyItem }) {
         <button
           className={styles.logButton}
           type="button"
-          aria-label={`Log study for ${item.prompt}`}
-          disabled={!settled || !item.notes.trim()}
-          onClick={() => logMutation.mutate({ id: item.id, kind: "study" })}
+          aria-label={
+            revealed ? `Finish studying ${item.prompt}` : `Show the answer for ${item.prompt}`
+          }
+          disabled={!settled || !hasAnswer}
+          onClick={() => {
+            if (!revealed) {
+              setRevealed(true);
+              return;
+            }
+            logMutation.mutate({ id: item.id, kind: "study" });
+            setRevealed(false);
+          }}
         >
-          Study
+          {revealed ? "Done" : "Study"}
         </button>
         <RowMenu
           name={item.prompt}
@@ -291,16 +304,25 @@ function StudyItemForm({
   const [category, setCategory] = useState(initial?.category ?? "");
   const promptImage = useImageField();
   const noteImage = useImageField();
+  const initialAnswerKind = initial?.note_image_url ? "image" : "text";
+  const [answerKind, setAnswerKind] = useState<AnswerKind>(initialAnswerKind);
+  const switchedKind = answerKind !== initialAnswerKind;
 
   function handleSubmit(event: FormEvent) {
     event.preventDefault();
     const trimmed = prompt.trim();
     if (!trimmed) return;
+    // An answer is one thing or the other, so committing to a kind drops what
+    // the other held — but only when the user actually switched: a legacy row
+    // carrying both keeps them until someone chooses.
+    const answerNotes = answerKind === "text" ? notes.trim() : switchedKind ? "" : (initial?.notes ?? "");
+    const noteImageChange =
+      answerKind === "image" ? noteImage.change : switchedKind ? { remove: true } : undefined;
     // Category keeps the typed case: autocomplete offers existing values
     // verbatim, and rewriting them would fork the category.
     onSubmit({
-      draft: { prompt: trimmed, notes: notes.trim(), category: category.trim() },
-      images: { image: promptImage.change, note_image: noteImage.change },
+      draft: { prompt: trimmed, notes: answerNotes, category: category.trim() },
+      images: { image: promptImage.change, note_image: noteImageChange },
     });
   }
 
@@ -319,18 +341,6 @@ function StudyItemForm({
           autoComplete="off"
           autoFocus
           required
-        />
-      </div>
-      <div className={formStyles.field}>
-        <label className={formStyles.label} htmlFor={`${idPrefix}-notes`}>
-          Notes
-        </label>
-        <textarea
-          id={`${idPrefix}-notes`}
-          className={formStyles.notesInput}
-          value={notes}
-          onChange={(event) => setNotes(event.target.value)}
-          rows={2}
         />
       </div>
       <div className={formStyles.field}>
@@ -353,19 +363,85 @@ function StudyItemForm({
         field={promptImage}
         hasExisting={Boolean(initial?.image_url)}
       />
-      <ImageField
-        id={`${idPrefix}-note-image`}
-        label="Note image"
-        field={noteImage}
-        hasExisting={Boolean(initial?.note_image_url)}
-      />
-      <button className={formStyles.saveButton} type="submit">
-        Save
-      </button>
-      <button className={formStyles.cancelButton} type="button" onClick={onCancel}>
-        Cancel
-      </button>
+      <fieldset className={formStyles.answer}>
+        <legend className={formStyles.label}>Answer</legend>
+        <div className={formStyles.choices}>
+          <AnswerKindChoice
+            idPrefix={idPrefix}
+            kind="text"
+            label="Text note"
+            selected={answerKind}
+            onSelect={setAnswerKind}
+          />
+          <AnswerKindChoice
+            idPrefix={idPrefix}
+            kind="image"
+            label="Image"
+            selected={answerKind}
+            onSelect={setAnswerKind}
+          />
+        </div>
+        {answerKind === "text" ? (
+          <div className={formStyles.field}>
+            <label className={formStyles.label} htmlFor={`${idPrefix}-notes`}>
+              Notes
+            </label>
+            <textarea
+              id={`${idPrefix}-notes`}
+              className={formStyles.notesInput}
+              value={notes}
+              onChange={(event) => setNotes(event.target.value)}
+              rows={3}
+            />
+          </div>
+        ) : (
+          <ImageField
+            id={`${idPrefix}-note-image`}
+            label="Note image"
+            field={noteImage}
+            hasExisting={Boolean(initial?.note_image_url)}
+          />
+        )}
+      </fieldset>
+      <div className={formStyles.buttons}>
+        <button className={formStyles.saveButton} type="submit">
+          Save
+        </button>
+        <button className={formStyles.cancelButton} type="button" onClick={onCancel}>
+          Cancel
+        </button>
+      </div>
     </form>
+  );
+}
+
+type AnswerKind = "text" | "image";
+
+/** The answer is a text note or an image, never both — a radio, not two fields. */
+function AnswerKindChoice({
+  idPrefix,
+  kind,
+  label,
+  selected,
+  onSelect,
+}: {
+  idPrefix: string;
+  kind: AnswerKind;
+  label: string;
+  selected: AnswerKind;
+  onSelect: (kind: AnswerKind) => void;
+}) {
+  return (
+    <label className={formStyles.choice}>
+      <input
+        type="radio"
+        name={`${idPrefix}-answer-kind`}
+        value={kind}
+        checked={selected === kind}
+        onChange={() => onSelect(kind)}
+      />
+      {label}
+    </label>
   );
 }
 

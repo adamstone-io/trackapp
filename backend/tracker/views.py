@@ -467,9 +467,11 @@ class StudyItemViewSet(UserOwnedViewSet):
                     {'detail': 'Unknown interaction type. Expected "prime" or "study".'},
                     status=status.HTTP_400_BAD_REQUEST,
                 )
-            if kind == 'study' and not item.notes.strip():
+            # An item's answer side is a text note or a note image; either
+            # one is something to study, but an item with neither isn't.
+            if kind == 'study' and not item.notes.strip() and not item.note_image:
                 return Response(
-                    {'detail': 'A study interaction requires the item to have notes.'},
+                    {'detail': 'A study interaction requires the item to have notes or a note image.'},
                     status=status.HTTP_400_BAD_REQUEST,
                 )
 
