@@ -62,6 +62,9 @@ export function StudySection() {
             onChange={(event) => setCategoryFilter(event.target.value)}
           />
         </div>
+        {/* Above the list: with a long list, adding an item shouldn't mean
+            scrolling past everything you already have. */}
+        <AddStudyItemForm />
         {active.length === 0 ? (
           <p className={styles.empty}>
             {categoryFilter ? "No study items in this category." : "Add your first study item."}
@@ -75,7 +78,6 @@ export function StudySection() {
             ))}
           </ul>
         )}
-        <AddStudyItemForm />
       </section>
       {archived.length > 0 && <ArchivedStudyItems items={archived} />}
     </>

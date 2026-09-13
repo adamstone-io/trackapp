@@ -30,6 +30,7 @@ original ticket was scoped too small, not something to restructure away.
 | 06.5 Study images fill the row | done | R24 (images half) |
 | 06.6 Prompt is text or an image | done | R24 (prompt half) |
 | 06.7 Prime/Study confirmation sound | done | R27a (legacy parity) |
+| 06.8 Add study item above the list | done | — (UI) |
 | 07 Dashboard (period selector; no separate /stats) | ready | R31, R32, R33, R33a |
 | 08 Scheduled tasks + Calendar | **wontfix — out of rebuild scope** | R33b, R60 (scheduled-tasks half), R62, R62a, R63, R63a, R64, R64a, R64b |
 | 09 Spaced repetition | ready | R31t, R31u, R31v |

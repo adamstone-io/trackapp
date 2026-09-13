@@ -141,6 +141,18 @@ describe("study items list", () => {
     expect(within(row("Kanji: 火")).getByText(/0 studies · never/i)).toBeInTheDocument();
   });
 
+  it("puts the add affordance above the list, not below it", async () => {
+    serve([item()]);
+
+    renderApp("/study");
+    await screen.findByText("Kanji: 水");
+
+    const addButton = screen.getByRole("button", { name: /add study item/i });
+    const list = screen.getByRole("list", { name: /study items/i });
+    // A long list shouldn't mean scrolling past everything to add one.
+    expect(addButton.compareDocumentPosition(list) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  });
+
   it("orders never-touched items first, then least-recently-touched", async () => {
     serve([
       item({ id: "recent", prompt: "Recent", last_primed_at: "2026-09-12T10:00:00Z" }),
