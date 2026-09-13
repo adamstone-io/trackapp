@@ -15,7 +15,8 @@ chain is holding.
 - **Top tasks** — the period's total, and the five tasks with the most time in
   it. R31, R31a.
 - **Activity** — entries, moments, primes and studies as one bar chart. R31c, R32.
-- **Habit chains** — every active habit's recent days as a chain. R21a, R33a.
+- **Habit streaks** — every active habit's recent days drawn as a chain, with
+  the current run stated as a streak. R21a, R33a.
 
 The period selector (Today / Yesterday / This week / This month) governs the
 Top tasks and Activity cards only; the other cards are day-scoped.

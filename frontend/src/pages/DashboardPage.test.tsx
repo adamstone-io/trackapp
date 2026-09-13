@@ -256,7 +256,7 @@ describe("the period selector", () => {
   });
 });
 
-describe("habit chains", () => {
+describe("habit streaks", () => {
   it("counts the run of days carried up to today", async () => {
     seedDashboard({
       habits: [habit({ recent_completions: [isoDay(-2), isoDay(-1), isoDay(0)] })],
@@ -264,28 +264,28 @@ describe("habit chains", () => {
 
     renderApp("/");
 
-    const chains = await screen.findByRole("list", { name: "Habit chains" });
+    const chains = await screen.findByRole("list", { name: "Habit streaks" });
     const row = within(chains).getByRole("listitem");
     expect(within(row).getByText("Meditate")).toBeInTheDocument();
-    expect(within(row).getByText("3 day chain")).toBeInTheDocument();
+    expect(within(row).getByText("3 day streak")).toBeInTheDocument();
   });
 
-  it("keeps the chain alive on a day not yet carried", async () => {
+  it("keeps the streak alive on a day not yet carried", async () => {
     seedDashboard({ habits: [habit({ recent_completions: [isoDay(-2), isoDay(-1)] })] });
 
     renderApp("/");
 
-    expect(await screen.findByText("2 day chain")).toBeInTheDocument();
+    expect(await screen.findByText("2 day streak")).toBeInTheDocument();
   });
 
-  it("breaks the chain when a day was skipped", async () => {
+  it("reads as broken when a day was skipped", async () => {
     seedDashboard({
       habits: [habit({ recent_completions: [isoDay(-5), isoDay(-4), isoDay(-2)] })],
     });
 
     renderApp("/");
 
-    expect(await screen.findByText("Chain broken")).toBeInTheDocument();
+    expect(await screen.findByText("Streak broken")).toBeInTheDocument();
   });
 
   it("describes the whole strip for a screen reader", async () => {
@@ -307,21 +307,21 @@ describe("habit chains", () => {
 
     renderApp("/");
 
-    const chains = await screen.findByRole("list", { name: "Habit chains" });
+    const chains = await screen.findByRole("list", { name: "Habit streaks" });
     const row = within(chains).getByRole("listitem");
     expect(within(row).getByText("2/3")).toBeInTheDocument();
     expect(within(row).getByText("5/10")).toBeInTheDocument();
     expect(within(row).queryByText("9/0")).not.toBeInTheDocument();
   });
 
-  it("leaves archived habits out of the chains", async () => {
+  it("leaves archived habits out of the list", async () => {
     seedDashboard({
       habits: [habit(), habit({ id: "habit-2", name: "Stretch", is_active: false })],
     });
 
     renderApp("/");
 
-    const chains = await screen.findByRole("list", { name: "Habit chains" });
+    const chains = await screen.findByRole("list", { name: "Habit streaks" });
     expect(within(chains).queryByText("Stretch")).not.toBeInTheDocument();
   });
 
@@ -330,7 +330,7 @@ describe("habit chains", () => {
 
     renderApp("/");
 
-    expect(await screen.findByText("No habits to chain yet.")).toBeInTheDocument();
+    expect(await screen.findByText("No habits yet.")).toBeInTheDocument();
   });
 });
 

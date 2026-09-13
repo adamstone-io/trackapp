@@ -12,11 +12,11 @@ export function HabitChains({ habits }: { habits: Habit[] }) {
   const days = recentDays(CHAIN_DAYS);
 
   return (
-    <Card title="Habit chains">
+    <Card title="Habit streaks">
       {active.length === 0 ? (
-        <p className={styles.empty}>No habits to chain yet.</p>
+        <p className={styles.empty}>No habits yet.</p>
       ) : (
-        <ul className={styles.chains} aria-label="Habit chains">
+        <ul className={styles.chains} aria-label="Habit streaks">
           {active.map((habit) => (
             <ChainRow key={habit.id} habit={habit} days={days} />
           ))}
@@ -49,7 +49,7 @@ function ChainRow({ habit, days }: { habit: Habit; days: string[] }) {
             </span>
           )}
           <span className={chain > 0 ? styles.chainLength : styles.chainBroken}>
-            {chain > 0 ? `${chain} day chain` : "Chain broken"}
+            {chain > 0 ? `${chain} day streak` : "Streak broken"}
           </span>
         </span>
       </div>
