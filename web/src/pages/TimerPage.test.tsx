@@ -574,7 +574,7 @@ describe("duration favorites", () => {
 });
 
 describe("renaming a time entry", () => {
-  it("renames a time entry by clicking its title in the log", async () => {
+  it("renames a time entry from its row's ⋮ menu", async () => {
     const user = userEvent.setup();
     let patched: Record<string, unknown> | null = null;
     const entryData = {
@@ -600,7 +600,8 @@ describe("renaming a time entry", () => {
     renderApp("/timer");
 
     const log = await screen.findByRole("list", { name: /today/i });
-    await user.click(within(log).getByRole("button", { name: "Write spec" }));
+    await user.click(within(log).getByRole("button", { name: "More Write spec" }));
+    await user.click(within(log).getByRole("button", { name: /^edit$/i }));
 
     const input = within(log).getByLabelText(/entry title/i);
     await user.clear(input);
@@ -735,7 +736,7 @@ describe("add moment", () => {
     expect(posted).toMatchObject({ description: "Untitled" });
   });
 
-  it("renames a moment by clicking its text in the log", async () => {
+  it("renames a moment from its row's ⋮ menu", async () => {
     const user = userEvent.setup();
     let patched: Record<string, unknown> | null = null;
     const moment = {
@@ -760,7 +761,8 @@ describe("add moment", () => {
     renderApp("/timer");
 
     const log = await screen.findByRole("list", { name: /today/i });
-    await user.click(within(log).getByRole("button", { name: "Untitled" }));
+    await user.click(within(log).getByRole("button", { name: "More Untitled" }));
+    await user.click(within(log).getByRole("button", { name: /^edit$/i }));
 
     const input = within(log).getByLabelText(/moment text/i);
     await user.clear(input);

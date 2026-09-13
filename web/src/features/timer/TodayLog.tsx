@@ -3,6 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { getTodayEntries } from "../../api/entries";
 import type { TodayEntry } from "../../api/types";
 import { formatClockTime, formatDuration } from "../../lib/time";
+import { isSettled } from "../../lib/optimistic";
 import { TODAY_ENTRIES_KEY, useEditMoment, useRenameTimeEntry } from "./useTimeEntries";
 import styles from "./TodayLog.module.css";
 
@@ -34,86 +35,104 @@ export function TodayLog() {
   );
 }
 
-/**
- * Click-to-rename text: a button that swaps to an input; Enter/blur commits,
- * Escape cancels. Rows still waiting on their server id render plain text.
- */
-function EditableText({
-  value,
+/** Text editor opened from a row's ⋮ menu; Enter/blur commits, Escape cancels. */
+function EditText({
+  initial,
   ariaLabel,
-  className,
-  editable,
+  onClose,
   onCommit,
 }: {
-  value: string;
+  initial: string;
   ariaLabel: string;
-  className: string;
-  editable: boolean;
+  onClose: () => void;
   onCommit: (next: string) => void;
 }) {
-  const [editing, setEditing] = useState(false);
-  const [draft, setDraft] = useState(value);
+  const [draft, setDraft] = useState(initial);
 
   function commit() {
-    setEditing(false);
+    onClose();
     const next = draft.trim();
-    if (!next || next === value) return;
+    if (!next || next === initial) return;
     onCommit(next);
   }
 
-  if (editing) {
-    return (
-      <input
-        className={styles.editInput}
-        type="text"
-        aria-label={ariaLabel}
-        value={draft}
-        autoFocus
-        onChange={(event) => setDraft(event.target.value)}
-        onBlur={commit}
-        onKeyDown={(event) => {
-          if (event.key === "Enter") commit();
-          if (event.key === "Escape") setEditing(false);
-        }}
-      />
-    );
-  }
-
-  if (!editable) return <span className={className}>{value}</span>;
-
   return (
-    <button
-      className={className}
-      type="button"
-      title="Rename"
-      onClick={() => {
-        setDraft(value);
-        setEditing(true);
+    <input
+      className={styles.editInput}
+      type="text"
+      aria-label={ariaLabel}
+      value={draft}
+      autoFocus
+      onChange={(event) => setDraft(event.target.value)}
+      onBlur={commit}
+      onKeyDown={(event) => {
+        if (event.key === "Enter") commit();
+        if (event.key === "Escape") onClose();
       }}
-    >
-      {value}
-    </button>
+    />
   );
 }
 
-/** A just-added optimistic row has no server id yet; let it settle first. */
-function isSettled(id: string): boolean {
-  return !id.startsWith("optimistic-");
+/** The ⋮ toggle plus its revealed action row. */
+function RowMenu({
+  name,
+  disabled,
+  onEdit,
+}: {
+  name: string;
+  disabled: boolean;
+  onEdit: () => void;
+}) {
+  const [open, setOpen] = useState(false);
+  return (
+    <>
+      <div className={styles.menu}>
+        <button
+          className={styles.menuButton}
+          type="button"
+          aria-label={`More ${name}`}
+          aria-expanded={open}
+          disabled={disabled}
+          onClick={() => setOpen((current) => !current)}
+        >
+          ⋮
+        </button>
+      </div>
+      {open && (
+        <div className={styles.menuRow}>
+          <button
+            className={styles.menuAction}
+            type="button"
+            onClick={() => {
+              setOpen(false);
+              onEdit();
+            }}
+          >
+            Edit
+          </button>
+        </div>
+      )}
+    </>
+  );
 }
 
 function TimeEntryRow({ entry }: { entry: Extract<TodayEntry, { type: "time_entry" }> }) {
   const data = entry.data;
+  const [editing, setEditing] = useState(false);
   const renameEntry = useRenameTimeEntry();
   return (
     <>
       <div className={styles.main}>
-        <EditableText
-          value={data.task_title}
-          ariaLabel="Entry title"
-          className={styles.title}
-          editable={isSettled(entry.id)}
-          onCommit={(taskTitle) => renameEntry.mutate({ id: entry.id, taskTitle })}
-        />
+        {editing ? (
+          <EditText
+            initial={data.task_title}
+            ariaLabel="Entry title"
+            onClose={() => setEditing(false)}
+            onCommit={(taskTitle) => renameEntry.mutate({ id: entry.id, taskTitle })}
+          />
+        ) : (
+          <span className={styles.title}>{data.task_title}</span>
+        )}
         {data.project_name && <span className={styles.project}>{data.project_name}</span>}
       </div>
       <div className={styles.meta}>
@@ -123,6 +142,11 @@ function TimeEntryRow({ entry }: { entry: Extract<TodayEntry, { type: "time_entr
         </span>
         <span className={styles.duration}>{formatDuration(data.duration_seconds)}</span>
       </div>
+      <RowMenu
+        name={data.task_title}
+        disabled={!isSettled(entry.id)}
+        onEdit={() => setEditing(true)}
+      />
     </>
   );
 }
@@ -179,6 +203,7 @@ function CategoryChip({
 
 function MomentRow({ entry }: { entry: Extract<TodayEntry, { type: "moment" }> }) {
   const data = entry.data;
+  const [editing, setEditing] = useState(false);
   const editMoment = useEditMoment();
 
   return (
@@ -187,13 +212,16 @@ function MomentRow({ entry }: { entry: Extract<TodayEntry, { type: "moment" }> }
         <span className={styles.momentMark} aria-hidden="true">
           ◆
         </span>
-        <EditableText
-          value={data.description}
-          ariaLabel="Moment text"
-          className={styles.momentText}
-          editable={isSettled(entry.id)}
-          onCommit={(description) => editMoment.mutate({ id: entry.id, patch: { description } })}
-        />
+        {editing ? (
+          <EditText
+            initial={data.description}
+            ariaLabel="Moment text"
+            onClose={() => setEditing(false)}
+            onCommit={(description) => editMoment.mutate({ id: entry.id, patch: { description } })}
+          />
+        ) : (
+          <span className={styles.momentText}>{data.description}</span>
+        )}
       </div>
       <div className={styles.meta}>
         <CategoryChip
@@ -203,6 +231,11 @@ function MomentRow({ entry }: { entry: Extract<TodayEntry, { type: "moment" }> }
         />
         <span>{formatClockTime(data.timestamp)}</span>
       </div>
+      <RowMenu
+        name={data.description}
+        disabled={!isSettled(entry.id)}
+        onEdit={() => setEditing(true)}
+      />
     </>
   );
 }
