@@ -5,6 +5,7 @@ import { formatDuration } from "../../lib/time";
 import { useCreateProject, useDeleteProject, useEditProject, useProjectsQuery } from "./useWorkspace";
 import { isSettled } from "../../lib/optimistic";
 import { RowMenu } from "../../components/RowMenu";
+import { ProjectEntriesModal } from "./ProjectEntriesModal";
 import styles from "./workspace.module.css";
 import formStyles from "./forms.module.css";
 
@@ -83,6 +84,7 @@ function ArchivedProjects({ projects }: { projects: Project[] }) {
 
 function ProjectRow({ project }: { project: Project }) {
   const [editing, setEditing] = useState(false);
+  const [showingEntries, setShowingEntries] = useState(false);
   const editMutation = useEditProject();
   const deleteMutation = useDeleteProject();
 
@@ -112,6 +114,7 @@ function ProjectRow({ project }: { project: Project }) {
         name={project.name}
         disabled={!isSettled(project.id)}
         items={[
+          { label: "Time entries", onSelect: () => setShowingEntries(true) },
           { label: "Edit", onSelect: () => setEditing(true) },
           {
             label: "Archive",
@@ -126,6 +129,9 @@ function ProjectRow({ project }: { project: Project }) {
           },
         ]}
       />
+      {showingEntries && (
+        <ProjectEntriesModal project={project} onClose={() => setShowingEntries(false)} />
+      )}
     </>
   );
 }

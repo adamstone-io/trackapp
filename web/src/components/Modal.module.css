@@ -1,0 +1,47 @@
+/* Centred dialog over a dimmed page. Shared by any feature that needs one. */
+.backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: var(--z-modal);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-4);
+  background: rgb(0 0 0 / 0.6);
+}
+
+.panel {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  width: min(40rem, 100%);
+  max-height: min(80vh, 44rem);
+  padding: var(--space-5);
+  background: var(--color-bg-raised);
+  border: var(--border-hairline) solid var(--color-border);
+  border-radius: var(--radius-lg);
+}
+
+.head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+
+.title {
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  font-weight: var(--font-weight-medium);
+  letter-spacing: var(--letter-spacing-wide);
+  text-transform: uppercase;
+  color: var(--color-text-muted);
+}
+
+.close {
+  composes: secondaryButton from "../features/timer/controls.module.css";
+}
+
+.body {
+  overflow-y: auto;
+}

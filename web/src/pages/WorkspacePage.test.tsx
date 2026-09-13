@@ -172,3 +172,83 @@ describe("deleting a project", () => {
     expect(screen.getByRole("button", { name: /more trackapp/i })).toBeInTheDocument();
   });
 });
+
+describe("a project's time entries", () => {
+  function entry(overrides: Record<string, unknown> = {}) {
+    return {
+      id: "te-1",
+      task: "task-1",
+      task_title: "Write spec",
+      started_at: "2026-09-12T10:00:00Z",
+      ended_at: "2026-09-12T11:30:00Z",
+      duration_seconds: 5400,
+      notes: "",
+      breaks: [],
+      ...overrides,
+    };
+  }
+
+  it("lists the project's entries in a modal from the ⋮ menu", async () => {
+    const user = userEvent.setup();
+    let requestedUrl = "";
+    serve([project()]);
+    server.use(
+      http.get(api("/time-entries/"), ({ request }) => {
+        requestedUrl = request.url;
+        return HttpResponse.json(page([entry(), entry({ id: "te-2", task_title: "Review" })]));
+      }),
+    );
+
+    renderApp("/workspace");
+    await user.click(await screen.findByRole("button", { name: /more trackapp/i }));
+    await user.click(screen.getByRole("button", { name: /time entries/i }));
+
+    const dialog = await screen.findByRole("dialog", { name: /trackapp/i });
+    expect(within(dialog).getByText("Write spec")).toBeInTheDocument();
+    expect(within(dialog).getByText("Review")).toBeInTheDocument();
+    expect(within(dialog).getAllByText("1h 30m")).toHaveLength(2);
+    // Scoped to this project, not the whole log.
+    expect(requestedUrl).toContain("project=project-1");
+  });
+
+  it("says so when the project has no entries, and closes on Escape", async () => {
+    const user = userEvent.setup();
+    serve([project()]);
+    server.use(http.get(api("/time-entries/"), () => HttpResponse.json(page([]))));
+
+    renderApp("/workspace");
+    await user.click(await screen.findByRole("button", { name: /more trackapp/i }));
+    await user.click(screen.getByRole("button", { name: /time entries/i }));
+
+    const dialog = await screen.findByRole("dialog", { name: /trackapp/i });
+    expect(within(dialog).getByText(/no time logged against this project yet/i)).toBeInTheDocument();
+
+    await user.keyboard("{Escape}");
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+  });
+
+  it("loads the next page when there is one", async () => {
+    const user = userEvent.setup();
+    const pagesSeen: string[] = [];
+    serve([project()]);
+    server.use(
+      http.get(api("/time-entries/"), ({ request }) => {
+        const pageParam = new URL(request.url).searchParams.get("page") ?? "1";
+        pagesSeen.push(pageParam);
+        return pageParam === "1"
+          ? HttpResponse.json(page([entry()], "http://next"))
+          : HttpResponse.json(page([entry({ id: "te-9", task_title: "Older work" })]));
+      }),
+    );
+
+    renderApp("/workspace");
+    await user.click(await screen.findByRole("button", { name: /more trackapp/i }));
+    await user.click(screen.getByRole("button", { name: /time entries/i }));
+
+    const dialog = await screen.findByRole("dialog", { name: /trackapp/i });
+    await user.click(within(dialog).getByRole("button", { name: /load more/i }));
+
+    expect(await within(dialog).findByText("Older work")).toBeInTheDocument();
+    expect(pagesSeen).toEqual(["1", "2"]);
+  });
+});

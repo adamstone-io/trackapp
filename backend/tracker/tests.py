@@ -641,6 +641,77 @@ class ProjectTotalsTests(WorkspaceApiTestCase):
         self.assertEqual(rows[0]["total_seconds"], 0)
 
 
+class TimeEntryFilterTests(WorkspaceApiTestCase):
+    """Ticket 05.5: a project's entries reach it through their task."""
+
+    def test_filtering_by_project_returns_only_that_projects_entries(self):
+        project = Project.objects.create(user=self.user, name="TrackApp")
+        other = Project.objects.create(user=self.user, name="Reading")
+        write = Task.objects.create(user=self.user, title="Write", project=project)
+        edit = Task.objects.create(user=self.user, title="Edit", project=project)
+        loose = Task.objects.create(user=self.user, title="Errand")
+        elsewhere = Task.objects.create(user=self.user, title="Chapter", project=other)
+        self.entry(write, 600)
+        self.entry(edit, 300)
+        self.entry(loose, 100)
+        self.entry(elsewhere, 100)
+
+        rows = self.client.get(
+            f"/api/time-entries/?project={project.id}", headers=self.headers
+        ).json()["results"]
+
+        self.assertEqual(len(rows), 2)
+        self.assertEqual({row["task_title"] for row in rows}, {"Write", "Edit"})
+
+    def test_filtering_by_task_returns_only_that_tasks_entries(self):
+        task = Task.objects.create(user=self.user, title="Write")
+        other = Task.objects.create(user=self.user, title="Edit")
+        self.entry(task, 600)
+        self.entry(other, 300)
+
+        rows = self.client.get(
+            f"/api/time-entries/?task={task.id}", headers=self.headers
+        ).json()["results"]
+
+        self.assertEqual(len(rows), 1)
+        self.assertEqual(rows[0]["task_title"], "Write")
+
+    def test_entries_come_back_newest_first(self):
+        task = Task.objects.create(user=self.user, title="Write")
+        older = TimeEntry.objects.create(
+            user=self.user,
+            task=task,
+            task_title="Write",
+            started_at=timezone.now() - timedelta(days=2),
+            ended_at=timezone.now() - timedelta(days=2, seconds=-60),
+            duration_seconds=60,
+        )
+        newer = self.entry(task, 600)
+
+        rows = self.client.get("/api/time-entries/", headers=self.headers).json()["results"]
+
+        self.assertEqual([row["id"] for row in rows], [str(newer.id), str(older.id)])
+
+    def test_another_users_entries_are_never_returned(self):
+        intruder = User.objects.create_user(username="mallory", password="hunter2")
+        project = Project.objects.create(user=intruder, name="Theirs")
+        task = Task.objects.create(user=intruder, title="Theirs", project=project)
+        TimeEntry.objects.create(
+            user=intruder,
+            task=task,
+            task_title="Theirs",
+            started_at=timezone.now(),
+            ended_at=timezone.now(),
+            duration_seconds=60,
+        )
+
+        rows = self.client.get(
+            f"/api/time-entries/?project={project.id}", headers=self.headers
+        ).json()["results"]
+
+        self.assertEqual(rows, [])
+
+
 class ProjectDeleteTests(WorkspaceApiTestCase):
     """R16: deleting a project leaves its tasks (and their history) intact."""
 

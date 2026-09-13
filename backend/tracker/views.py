@@ -298,6 +298,21 @@ class TimeEntryViewSet(UserOwnedViewSet):
     queryset = TimeEntry.objects.all()
     serializer_class = TimeEntrySerializer
 
+    def get_queryset(self):
+        """Optional ?project= and ?task= filters; a project's entries reach it
+        through their task, which is the only link an entry has to one."""
+        queryset = super().get_queryset().select_related('task', 'task__project')
+
+        project = self.request.query_params.get('project')
+        if project:
+            queryset = queryset.filter(task__project=project)
+
+        task = self.request.query_params.get('task')
+        if task:
+            queryset = queryset.filter(task=task)
+
+        return queryset.order_by('-started_at')
+
 
 class MomentViewSet(UserOwnedViewSet):
     queryset = Moment.objects.all()

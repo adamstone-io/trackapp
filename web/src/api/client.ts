@@ -121,7 +121,7 @@ function doFetch(path: string, options: ApiFetchOptions, accessToken: string | n
   });
 }
 
-interface PaginatedPage<T> {
+export interface PaginatedPage<T> {
   next: string | null;
   results: T[];
 }

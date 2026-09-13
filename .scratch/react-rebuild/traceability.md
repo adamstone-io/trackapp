@@ -20,7 +20,7 @@ original ticket was scoped too small, not something to restructure away.
 | 05 Projects & Workspace | done | R10, R11, R12, R13, R14, R60 (projects half), R61 |
 | 05.3 Workspace form rows | done | — (UI defect) |
 | 05.4 Time entry ↔ project | done | R10, R11 (time attributed to a project) |
-| 05.5 See a project's time entries | ready | R12 (project detail) |
+| 05.5 See a project's time entries | done | R12 (project detail) |
 | 06 Study page core | done | R24, R27, R27a, R28, R29, R30, R31s |
 | 06.1 Study item links | ready | R29a, R29b |
 | 06.2 Study prompt + note images | done | R24 (images half) |

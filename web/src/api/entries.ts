@@ -1,4 +1,4 @@
-import { apiFetch } from "./client";
+import { apiFetch, type PaginatedPage } from "./client";
 import type { Moment, TimeEntry, TodayEntry } from "./types";
 
 export function getTodayEntries(): Promise<TodayEntry[]> {
@@ -46,4 +46,12 @@ export function deleteTimeEntry(id: string): Promise<void> {
 
 export function deleteMoment(id: string): Promise<void> {
   return apiFetch<void>(`/moments/${id}/`, { method: "DELETE" });
+}
+
+/** One page of a project's entries, newest first (ticket 05.5's backend filter). */
+export function listProjectEntries(
+  projectId: string,
+  page: number,
+): Promise<PaginatedPage<TimeEntry>> {
+  return apiFetch<PaginatedPage<TimeEntry>>(`/time-entries/?project=${projectId}&page=${page}`);
 }
