@@ -1,13 +1,12 @@
 import type { Task } from "../../api/types";
 import { formatClockTime } from "../../lib/time";
+import { byPlannedStart } from "../scheduledTasks/useScheduledTasks";
 import { Card } from "./Card";
 import styles from "./dashboard.module.css";
 
 /** The day's scheduled tasks, earliest first — what is still ahead. */
 export function TodaysPlan({ tasks }: { tasks: Task[] }) {
-  const scheduled = tasks
-    .filter((task) => !task.archived && task.planned_start)
-    .sort((a, b) => Date.parse(a.planned_start!) - Date.parse(b.planned_start!));
+  const scheduled = byPlannedStart(tasks.filter((task) => !task.archived && task.planned_start));
 
   return (
     <Card title="Today's plan">

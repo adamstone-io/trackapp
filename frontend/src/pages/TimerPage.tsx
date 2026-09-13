@@ -4,6 +4,7 @@ import { AddMomentButton } from "../features/timer/AddMomentButton";
 import { ManualEntryForm } from "../features/timer/ManualEntryForm";
 import { TimerControls } from "../features/timer/TimerControls";
 import { TodayLog } from "../features/timer/TodayLog";
+import { TodaysSchedule } from "../features/scheduledTasks/TodaysSchedule";
 import styles from "./TimerPage.module.css";
 
 export function TimerPage() {
@@ -13,6 +14,7 @@ export function TimerPage() {
   return (
     <PageShell>
       <TimerControls taskTitle={taskTitle} onTaskTitleChange={setTaskTitle} />
+      <TodaysSchedule />
       <div className={styles.quickActions}>
         <ManualEntryForm />
         <AddMomentButton taskTitle={taskTitle} onAdded={() => setTaskTitle("")} />

@@ -1,0 +1,88 @@
+.section {
+  margin-top: var(--space-6);
+}
+
+.heading {
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  font-weight: var(--font-weight-medium);
+  letter-spacing: var(--letter-spacing-wide);
+  text-transform: uppercase;
+  color: var(--color-text-muted);
+  margin-bottom: var(--space-3);
+}
+
+.list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  border-top: var(--border-hairline) solid var(--color-border);
+}
+
+.row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  min-height: var(--touch-target);
+  padding: var(--space-2) 0;
+  border-bottom: var(--border-hairline) solid var(--color-border);
+}
+
+.slot {
+  flex: none;
+  font-family: var(--font-mono);
+  font-size: var(--text-sm);
+  color: var(--color-text-secondary);
+}
+
+/* Grows so the start button stays flush right. */
+.name {
+  flex: 1 1 auto;
+  min-width: 0;
+  font-size: var(--text-base);
+  color: var(--color-text);
+  overflow-wrap: anywhere;
+}
+
+/* A task already begun reads as behind you, not ahead. */
+.started .name,
+.started .slot {
+  color: var(--color-text-muted);
+}
+
+.start {
+  display: flex;
+  flex: none;
+  align-items: baseline;
+  gap: var(--space-2);
+  min-height: var(--touch-target);
+  padding: var(--space-2) var(--space-4);
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  letter-spacing: var(--letter-spacing-wide);
+  text-transform: uppercase;
+  color: var(--color-accent);
+  background: none;
+  border: var(--border-hairline) solid var(--color-accent);
+  border-radius: var(--radius-full);
+  cursor: pointer;
+  transition: background var(--transition-fast);
+}
+
+.start:hover:not(:disabled) {
+  background: var(--color-accent-muted);
+}
+
+.start:disabled {
+  color: var(--color-text-muted);
+  border-color: var(--color-border);
+  opacity: var(--opacity-disabled);
+  cursor: default;
+}
+
+.length {
+  font-size: var(--text-xs);
+  letter-spacing: normal;
+  text-transform: none;
+  color: var(--color-text-muted);
+}

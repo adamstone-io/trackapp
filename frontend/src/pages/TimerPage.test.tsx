@@ -1165,3 +1165,104 @@ describe("today's log", () => {
     expect(await screen.findByText(/nothing logged yet/i)).toBeInTheDocument();
   });
 });
+
+describe("today's schedule", () => {
+  /** A task planned for today at "HH:MM" local time. */
+  function planned(title: string, time: string, overrides: Record<string, unknown> = {}) {
+    const [hours, minutes] = time.split(":").map(Number);
+    const start = new Date();
+    start.setHours(hours, minutes, 0, 0);
+    return {
+      id: `task-${title}`,
+      title,
+      category: "other",
+      project: null,
+      notes: "",
+      archived: false,
+      total_seconds: 0,
+      entry_count: 0,
+      planned_start: start.toISOString(),
+      planned_duration: 1800,
+      first_started_at: null,
+      ...overrides,
+    };
+  }
+
+  function seedSchedule(tasks: object[]) {
+    server.use(
+      http.get(api("/tasks/"), () =>
+        HttpResponse.json({ count: tasks.length, next: null, previous: null, results: tasks }),
+      ),
+    );
+  }
+
+  it("lists the day's planned tasks under the timer, earliest first", async () => {
+    seedSchedule([planned("Write", "14:00"), planned("Stand-up", "09:30")]);
+
+    renderApp("/timer");
+
+    const schedule = await screen.findByRole("list", { name: "Today's schedule" });
+    const rows = within(schedule).getAllByRole("listitem");
+    expect(rows).toHaveLength(2);
+    expect(within(rows[0]).getByText("09:30")).toBeInTheDocument();
+    expect(within(rows[0]).getByText("Stand-up")).toBeInTheDocument();
+    expect(within(rows[1]).getByText("Write")).toBeInTheDocument();
+  });
+
+  it("stays out of the way when nothing is planned", async () => {
+    renderApp("/timer");
+
+    expect(await screen.findByRole("button", { name: "Start" })).toBeInTheDocument();
+    expect(screen.queryByRole("list", { name: "Today's schedule" })).not.toBeInTheDocument();
+  });
+
+  it("starts a planned task on the spot, without leaving the timer", async () => {
+    const started: Record<string, unknown>[] = [];
+    seedSchedule([planned("Stand-up", "09:30")]);
+    server.use(
+      http.post(api("/active-timer/"), async ({ request }) => {
+        const body = (await request.json()) as Record<string, unknown>;
+        started.push(body);
+        return HttpResponse.json({ ...body, id: 1, created_at: body.started_at }, { status: 201 });
+      }),
+    );
+
+    renderApp("/timer");
+
+    await userEvent.click(await screen.findByRole("button", { name: "Start Stand-up" }));
+
+    await waitFor(() => expect(started).toHaveLength(1));
+    expect(started[0]).toMatchObject({
+      task: "task-Stand-up",
+      task_title: "Stand-up",
+      // The planned half hour becomes the countdown.
+      mode: "countdown",
+      target_duration: 1800,
+    });
+    // Still on the timer page — the running timer took the form's place.
+    expect(await screen.findByRole("button", { name: "Stop" })).toBeInTheDocument();
+  });
+
+  it("refuses to start a second task over a running timer", async () => {
+    seedSchedule([planned("Stand-up", "09:30")]);
+    server.use(
+      http.get(api("/active-timer/"), () =>
+        HttpResponse.json({
+          id: 1,
+          task_title: "Deep work",
+          task: null,
+          started_at: new Date().toISOString(),
+          elapsed_seconds: 0,
+          is_paused: false,
+          mode: "stopwatch",
+          target_duration: null,
+          created_at: new Date().toISOString(),
+        }),
+      ),
+    );
+
+    renderApp("/timer");
+
+    expect(await screen.findByRole("button", { name: "Start Stand-up" })).toBeDisabled();
+  });
+});

@@ -26,6 +26,10 @@ export const defaultHandlers = [
   http.get(api("/projects/"), () =>
     HttpResponse.json({ count: 0, next: null, previous: null, results: [] }),
   ),
+  // ...and its schedule asks for the day's planned tasks.
+  http.get(api("/tasks/"), () =>
+    HttpResponse.json({ count: 0, next: null, previous: null, results: [] }),
+  ),
 ];
 
 export const server = setupServer(...defaultHandlers);

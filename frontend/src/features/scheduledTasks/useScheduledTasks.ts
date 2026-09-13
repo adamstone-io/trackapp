@@ -47,7 +47,7 @@ function message(error: unknown, fallback: string): string {
 }
 
 /** The list is ordered by planned start, so an optimistic row has to slot in. */
-function byPlannedStart(tasks: Task[]): Task[] {
+export function byPlannedStart(tasks: Task[]): Task[] {
   return [...tasks].sort(
     (a, b) => Date.parse(a.planned_start ?? "") - Date.parse(b.planned_start ?? ""),
   );

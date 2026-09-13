@@ -57,6 +57,21 @@ to tasks.
 }
 ```
 
+## Today's schedule (React app)
+Beneath the timer, `src/features/scheduledTasks/TodaysSchedule.tsx` lists the
+day's planned tasks with a Start button each, so a planned task begins on the
+page you already work from — the workspace is for building the plan, not for
+starting it. Start does not navigate: it POSTs the active timer in place, using
+the planned length as a countdown.
+
+Start is disabled while a timer is running. `POST /api/active-timer/` deletes
+any existing timer before creating the new one, so an unguarded press would
+discard time already on the clock without writing an entry. Stop first.
+
+The section renders nothing when the day has no planned tasks.
+
 ## Notes
 - Timer entries are API-backed via `/api/time-entries/`.
 - Countdown favorites are stored locally.
+- A timer started elsewhere shows up within `TIMER_POLL_MS` (2s); a window that
+  is visible but unfocused keeps polling, so a second monitor stays live.
