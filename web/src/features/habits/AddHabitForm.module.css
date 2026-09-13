@@ -3,12 +3,26 @@
   margin-top: var(--space-4);
 }
 
+/* Name on its own row, the three targets sharing one: a wrapping row stretched
+ * the name input to the row's height. */
 .form {
   display: flex;
-  flex-wrap: wrap;
-  align-items: flex-end;
-  gap: var(--space-3);
+  flex-direction: column;
+  align-items: stretch;
+  gap: var(--space-4);
   margin-top: var(--space-4);
+  max-width: 32rem;
+}
+
+.targets {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+}
+
+.buttons {
+  display: flex;
+  gap: var(--space-3);
 }
 
 .field {
@@ -25,7 +39,6 @@
 
 .nameInput {
   composes: input;
-  flex: 1 1 14rem;
 }
 
 .targetInput {

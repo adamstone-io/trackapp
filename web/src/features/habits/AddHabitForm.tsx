@@ -56,15 +56,19 @@ export function AddHabitForm() {
           required
         />
       </div>
-      <TargetField id="habit-daily" label="Daily target" value={daily} onChange={setDaily} />
-      <TargetField id="habit-weekly" label="Weekly target" value={weekly} onChange={setWeekly} />
-      <TargetField id="habit-monthly" label="Monthly target" value={monthly} onChange={setMonthly} />
-      <button className={styles.saveButton} type="submit">
-        Save
-      </button>
-      <button className={styles.cancelButton} type="button" onClick={handleClose}>
-        Cancel
-      </button>
+      <div className={styles.targets}>
+        <TargetField id="habit-daily" label="Daily target" value={daily} onChange={setDaily} />
+        <TargetField id="habit-weekly" label="Weekly target" value={weekly} onChange={setWeekly} />
+        <TargetField id="habit-monthly" label="Monthly target" value={monthly} onChange={setMonthly} />
+      </div>
+      <div className={styles.buttons}>
+        <button className={styles.saveButton} type="submit">
+          Save
+        </button>
+        <button className={styles.cancelButton} type="button" onClick={handleClose}>
+          Cancel
+        </button>
+      </div>
     </form>
   );
 }

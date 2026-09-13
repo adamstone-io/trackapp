@@ -183,15 +183,19 @@ function EditHabitForm({ habit, onDone }: { habit: Habit; onDone: () => void }) 
           required
         />
       </div>
-      <TargetField id={`edit-daily-${habit.id}`} label="Daily target" value={daily} onChange={setDaily} />
-      <TargetField id={`edit-weekly-${habit.id}`} label="Weekly target" value={weekly} onChange={setWeekly} />
-      <TargetField id={`edit-monthly-${habit.id}`} label="Monthly target" value={monthly} onChange={setMonthly} />
-      <button className={formStyles.saveButton} type="submit">
-        Save
-      </button>
-      <button className={formStyles.cancelButton} type="button" onClick={onDone}>
-        Cancel
-      </button>
+      <div className={formStyles.targets}>
+        <TargetField id={`edit-daily-${habit.id}`} label="Daily target" value={daily} onChange={setDaily} />
+        <TargetField id={`edit-weekly-${habit.id}`} label="Weekly target" value={weekly} onChange={setWeekly} />
+        <TargetField id={`edit-monthly-${habit.id}`} label="Monthly target" value={monthly} onChange={setMonthly} />
+      </div>
+      <div className={formStyles.buttons}>
+        <button className={formStyles.saveButton} type="submit">
+          Save
+        </button>
+        <button className={formStyles.cancelButton} type="button" onClick={onDone}>
+          Cancel
+        </button>
+      </div>
     </form>
   );
 }
