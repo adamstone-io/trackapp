@@ -1,4 +1,4 @@
-import { act, screen, waitFor, within } from "@testing-library/react";
+import { act, fireEvent, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { renderApp, seedSession } from "../test/render";
 import { server, http, HttpResponse, api } from "../test/server";
@@ -618,6 +618,95 @@ describe("renaming a time entry", () => {
 
     await waitFor(() => expect(patched).not.toBeNull());
     expect(patched).toMatchObject({ task_title: "Write the rebuild spec" });
+  });
+});
+
+describe("editing times on logged rows", () => {
+  it("corrects a time entry's start and end, recomputing its duration", async () => {
+    const user = userEvent.setup();
+    let patched: Record<string, unknown> | null = null;
+    server.use(
+      http.get(api("/today-entries/"), () => HttpResponse.json(todayEntriesFixture)),
+      http.patch(api("/time-entries/te-1/"), async ({ request }) => {
+        patched = (await request.json()) as Record<string, unknown>;
+        return HttpResponse.json({ id: "te-1", task_title: "Morning review", ...patched });
+      }),
+    );
+
+    renderApp("/timer");
+    const log = await screen.findByRole("list", { name: /today/i });
+    await user.click(within(log).getByRole("button", { name: "More Morning review" }));
+    await user.click(within(log).getByRole("button", { name: /^times$/i }));
+
+    const start = screen.getByLabelText(/start time/i);
+    const end = screen.getByLabelText(/end time/i);
+    fireEvent.change(start, { target: { value: "08:15" } });
+    fireEvent.change(end, { target: { value: "09:00" } });
+    fireEvent.blur(end);
+
+    await waitFor(() => expect(patched).not.toBeNull());
+    // 45 minutes, recomputed from the corrected times.
+    expect(patched).toMatchObject({ duration_seconds: 2700 });
+    expect(new Date(patched!.started_at as string).getHours()).toBe(8);
+    expect(new Date(patched!.started_at as string).getMinutes()).toBe(15);
+    expect(await within(log).findByText("45m")).toBeInTheDocument();
+  });
+
+  it("refuses an end before the start and leaves the entry alone", async () => {
+    const user = userEvent.setup();
+    let patched = false;
+    server.use(
+      http.get(api("/today-entries/"), () => HttpResponse.json(todayEntriesFixture)),
+      http.patch(api("/time-entries/te-1/"), () => {
+        patched = true;
+        return HttpResponse.json({ id: "te-1" });
+      }),
+    );
+
+    renderApp("/timer");
+    const log = await screen.findByRole("list", { name: /today/i });
+    await user.click(within(log).getByRole("button", { name: "More Morning review" }));
+    await user.click(within(log).getByRole("button", { name: /^times$/i }));
+
+    fireEvent.change(screen.getByLabelText(/start time/i), { target: { value: "10:00" } });
+    fireEvent.change(screen.getByLabelText(/end time/i), { target: { value: "09:00" } });
+    fireEvent.blur(screen.getByLabelText(/end time/i));
+
+    expect(await screen.findByText(/end time must be after start time/i)).toBeInTheDocument();
+    expect(patched).toBe(false);
+  });
+
+  it("corrects a moment's time", async () => {
+    const user = userEvent.setup();
+    let patched: Record<string, unknown> | null = null;
+    server.use(
+      http.get(api("/today-entries/"), () => HttpResponse.json(todayEntriesFixture)),
+      http.patch(api("/moments/m-1/"), async ({ request }) => {
+        patched = (await request.json()) as Record<string, unknown>;
+        return HttpResponse.json({
+          id: "m-1",
+          description: "Had an idea about spacing",
+          category: "general",
+          task: null,
+          task_title: "",
+          is_milestone: false,
+          ...patched,
+        });
+      }),
+    );
+
+    renderApp("/timer");
+    const log = await screen.findByRole("list", { name: /today/i });
+    await user.click(within(log).getByRole("button", { name: "More Had an idea about spacing" }));
+    await user.click(within(log).getByRole("button", { name: /^time$/i }));
+
+    const input = screen.getByLabelText(/moment time/i);
+    fireEvent.change(input, { target: { value: "11:45" } });
+    fireEvent.blur(input);
+
+    await waitFor(() => expect(patched).not.toBeNull());
+    expect(new Date(patched!.timestamp as string).getHours()).toBe(11);
+    expect(new Date(patched!.timestamp as string).getMinutes()).toBe(45);
   });
 });
 

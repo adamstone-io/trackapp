@@ -28,13 +28,15 @@ export function createMoment(payload: MomentCreate): Promise<Moment> {
   return apiFetch<Moment>("/moments/", { method: "POST", body: payload });
 }
 
-export type MomentPatch = Partial<Pick<Moment, "description" | "category">>;
+export type MomentPatch = Partial<Pick<Moment, "description" | "category" | "timestamp">>;
 
 export function patchMoment(id: string, patch: MomentPatch): Promise<Moment> {
   return apiFetch<Moment>(`/moments/${id}/`, { method: "PATCH", body: patch });
 }
 
-export type TimeEntryPatch = Partial<Pick<TimeEntry, "task_title" | "task">>;
+export type TimeEntryPatch = Partial<
+  Pick<TimeEntry, "task_title" | "task" | "started_at" | "ended_at" | "duration_seconds">
+>;
 
 export function patchTimeEntry(id: string, patch: TimeEntryPatch): Promise<TimeEntry> {
   return apiFetch<TimeEntry>(`/time-entries/${id}/`, { method: "PATCH", body: patch });

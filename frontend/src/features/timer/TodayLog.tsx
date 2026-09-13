@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useToast } from "../../components/toast/ToastProvider";
 import { useQuery } from "@tanstack/react-query";
 import { getTodayEntries } from "../../api/entries";
 import type { TodayEntry } from "../../api/types";
@@ -11,7 +12,7 @@ import {
   useDeleteTimeEntry,
   useEditMoment,
   useMoveEntryToProject,
-  useRenameTimeEntry,
+  useEditTimeEntry,
 } from "./useTimeEntries";
 import { ProjectSelect } from "../projects/ProjectSelect";
 import { useProjectsQuery } from "../projects/useProjects";
@@ -83,21 +84,101 @@ function EditText({
   );
 }
 
+/** "HH:MM" from an ISO timestamp, local. */
+function toTimeValue(iso: string): string {
+  const date = new Date(iso);
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return `${pad(date.getHours())}:${pad(date.getMinutes())}`;
+}
+
+/** "HH:MM" applied to the day an existing timestamp already falls on. */
+function withTime(iso: string, time: string): string {
+  const [hours, minutes] = time.split(":").map(Number);
+  const date = new Date(iso);
+  date.setHours(hours, minutes, 0, 0);
+  return date.toISOString();
+}
+
+/** Start/end editor for a logged entry. Duration is recomputed from the times
+ * the user sets — the backend stores it rather than deriving it. */
+function EditTimes({
+  startedAt,
+  endedAt,
+  onClose,
+  onCommit,
+}: {
+  startedAt: string;
+  endedAt: string | null;
+  onClose: () => void;
+  onCommit: (patch: { started_at: string; ended_at: string; duration_seconds: number }) => void;
+}) {
+  const [start, setStart] = useState(toTimeValue(startedAt));
+  const [end, setEnd] = useState(endedAt ? toTimeValue(endedAt) : "");
+  const { showToast } = useToast();
+
+  function commit() {
+    onClose();
+    if (!start || !end) return;
+    const nextStart = withTime(startedAt, start);
+    const nextEnd = withTime(endedAt ?? startedAt, end);
+    const seconds = Math.round((Date.parse(nextEnd) - Date.parse(nextStart)) / 1000);
+    if (seconds <= 0) {
+      showToast("End time must be after start time.");
+      return;
+    }
+    if (nextStart === startedAt && nextEnd === endedAt) return;
+    onCommit({ started_at: nextStart, ended_at: nextEnd, duration_seconds: seconds });
+  }
+
+  return (
+    <span className={styles.timeEditor} onBlur={(event) => {
+      // Leaving the pair entirely commits; moving between the two does not.
+      if (!event.currentTarget.contains(event.relatedTarget as Node)) commit();
+    }}>
+      <input
+        className={styles.timeInput}
+        type="time"
+        aria-label="Start time"
+        value={start}
+        autoFocus
+        onChange={(event) => setStart(event.target.value)}
+        onKeyDown={(event) => {
+          if (event.key === "Enter") commit();
+          if (event.key === "Escape") onClose();
+        }}
+      />
+      <input
+        className={styles.timeInput}
+        type="time"
+        aria-label="End time"
+        value={end}
+        onChange={(event) => setEnd(event.target.value)}
+        onKeyDown={(event) => {
+          if (event.key === "Enter") commit();
+          if (event.key === "Escape") onClose();
+        }}
+      />
+    </span>
+  );
+}
+
 /** Row text that also opens its editor on click (the ⋮ menu's Edit twin). */
 function ClickableText({
   value,
   className,
   editable,
   onClick,
+  title = "Rename",
 }: {
   value: string;
   className: string;
   editable: boolean;
   onClick: () => void;
+  title?: string;
 }) {
   if (!editable) return <span className={className}>{value}</span>;
   return (
-    <button className={className} type="button" title="Rename" onClick={onClick}>
+    <button className={className} type="button" title={title} onClick={onClick}>
       {value}
     </button>
   );
@@ -106,8 +187,9 @@ function ClickableText({
 function TimeEntryRow({ entry }: { entry: Extract<TodayEntry, { type: "time_entry" }> }) {
   const data = entry.data;
   const [editing, setEditing] = useState(false);
+  const [editingTimes, setEditingTimes] = useState(false);
   const [movingProject, setMovingProject] = useState(false);
-  const renameEntry = useRenameTimeEntry();
+  const editEntry = useEditTimeEntry();
   const deleteEntry = useDeleteTimeEntry();
   const moveEntry = useMoveEntryToProject();
   const { data: projects } = useProjectsQuery();
@@ -131,7 +213,9 @@ function TimeEntryRow({ entry }: { entry: Extract<TodayEntry, { type: "time_entr
             initial={data.task_title}
             ariaLabel="Entry title"
             onClose={() => setEditing(false)}
-            onCommit={(taskTitle) => renameEntry.mutate({ id: entry.id, taskTitle })}
+            onCommit={(taskTitle) =>
+              editEntry.mutate({ id: entry.id, patch: { task_title: taskTitle } })
+            }
           />
         ) : (
           <ClickableText
@@ -144,10 +228,24 @@ function TimeEntryRow({ entry }: { entry: Extract<TodayEntry, { type: "time_entr
         {data.project_name && <span className={styles.project}>{data.project_name}</span>}
       </div>
       <div className={styles.meta}>
-        <span>
-          {formatClockTime(data.started_at)}
-          {data.ended_at ? `–${formatClockTime(data.ended_at)}` : ""}
-        </span>
+        {editingTimes ? (
+          <EditTimes
+            startedAt={data.started_at}
+            endedAt={data.ended_at}
+            onClose={() => setEditingTimes(false)}
+            onCommit={(patch) => editEntry.mutate({ id: entry.id, patch })}
+          />
+        ) : (
+          <ClickableText
+            value={`${formatClockTime(data.started_at)}${
+              data.ended_at ? `–${formatClockTime(data.ended_at)}` : ""
+            }`}
+            className={styles.times}
+            title="Edit times"
+            editable={isSettled(entry.id)}
+            onClick={() => setEditingTimes(true)}
+          />
+        )}
         <span className={styles.duration}>{formatDuration(data.duration_seconds)}</span>
       </div>
       <RowMenu
@@ -155,6 +253,7 @@ function TimeEntryRow({ entry }: { entry: Extract<TodayEntry, { type: "time_entr
         disabled={!isSettled(entry.id)}
         items={[
           { label: "Edit", onSelect: () => setEditing(true) },
+          { label: "Times", onSelect: () => setEditingTimes(true) },
           { label: "Project", onSelect: () => setMovingProject(true) },
           // One press, no confirm step — the owner's call for the day log.
           { label: "Delete", danger: true, onSelect: () => deleteEntry.mutate(entry.id) },
@@ -235,6 +334,7 @@ function CategoryChip({
 function MomentRow({ entry }: { entry: Extract<TodayEntry, { type: "moment" }> }) {
   const data = entry.data;
   const [editing, setEditing] = useState(false);
+  const [editingTime, setEditingTime] = useState(false);
   const editMoment = useEditMoment();
   const deleteMoment = useDeleteMoment();
 
@@ -266,13 +366,40 @@ function MomentRow({ entry }: { entry: Extract<TodayEntry, { type: "moment" }> }
           editable={isSettled(entry.id)}
           onCommit={(category) => editMoment.mutate({ id: entry.id, patch: { category } })}
         />
-        <span>{formatClockTime(data.timestamp)}</span>
+        {editingTime ? (
+          <input
+            className={styles.timeInput}
+            type="time"
+            aria-label="Moment time"
+            defaultValue={toTimeValue(data.timestamp)}
+            autoFocus
+            onBlur={(event) => {
+              setEditingTime(false);
+              const next = event.target.value;
+              if (!next || next === toTimeValue(data.timestamp)) return;
+              editMoment.mutate({ id: entry.id, patch: { timestamp: withTime(data.timestamp, next) } });
+            }}
+            onKeyDown={(event) => {
+              if (event.key === "Enter") event.currentTarget.blur();
+              if (event.key === "Escape") setEditingTime(false);
+            }}
+          />
+        ) : (
+          <ClickableText
+            value={formatClockTime(data.timestamp)}
+            className={styles.times}
+            title="Edit time"
+            editable={isSettled(entry.id)}
+            onClick={() => setEditingTime(true)}
+          />
+        )}
       </div>
       <RowMenu
         name={data.description}
         disabled={!isSettled(entry.id)}
         items={[
           { label: "Edit", onSelect: () => setEditing(true) },
+          { label: "Time", onSelect: () => setEditingTime(true) },
           {
             label: "Delete",
             danger: true,

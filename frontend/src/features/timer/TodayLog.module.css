@@ -146,3 +146,32 @@ button.category:hover {
 .duration {
   color: var(--color-text-secondary);
 }
+
+/* Click-to-edit times: plain text until hovered, like the row's other editors. */
+.times {
+  appearance: none;
+  padding: 0;
+  background: none;
+  border: none;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+  text-align: left;
+}
+
+.times:hover {
+  color: var(--color-text);
+  text-decoration: underline dotted;
+}
+
+.timeEditor {
+  display: inline-flex;
+  gap: var(--space-2);
+}
+
+.timeInput {
+  composes: input from "./controls.module.css";
+  min-height: 0;
+  padding: 0 var(--space-2);
+  font-size: var(--text-sm);
+}

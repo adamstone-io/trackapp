@@ -44,7 +44,7 @@ original ticket was scoped too small, not something to restructure away.
 | 13.1 Time entry delete takes one press | done | — (UI) |
 | 14 Settings page (export/import) | ready | R38, R39, R40 |
 | 15 Midnight rollover | deferred (post-MVP) | R33e |
-| 16 Edit times on logged items | ready | R9f, R17b |
+| 16 Edit times on logged items | done | R9f, R17b |
 | 17 Countdown completion sound | done | R2b |
 
 Cross-cutting: **R57a** (optimistic UI on every mutation) is a checklist item on

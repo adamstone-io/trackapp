@@ -8,6 +8,7 @@ import {
   patchTimeEntry,
   type MomentCreate,
   type MomentPatch,
+  type TimeEntryPatch,
 } from "../../api/entries";
 import { ensureTaskId } from "../../api/tasks";
 import { PROJECTS_KEY } from "../projects/useProjects";
@@ -232,20 +233,26 @@ export function useMoveEntryToProject() {
   });
 }
 
-export function useRenameTimeEntry() {
+/** Rename an entry, move it between projects, or correct its times — one hook
+ * per row type, taking a patch, the same shape as useEditMoment. */
+export function useEditTimeEntry() {
   const queryClient = useQueryClient();
   const { showToast } = useToast();
 
   return useMutation({
-    mutationFn: ({ id, taskTitle }: { id: string; taskTitle: string }) =>
-      patchTimeEntry(id, { task_title: taskTitle }),
-    onMutate: async ({ id, taskTitle }) => {
+    mutationFn: ({ id, patch }: { id: string; patch: TimeEntryPatch }) => patchTimeEntry(id, patch),
+    onMutate: async ({ id, patch }) => {
       await queryClient.cancelQueries({ queryKey: TODAY_ENTRIES_KEY });
       const previousEntries = queryClient.getQueryData<TodayEntry[]>(TODAY_ENTRIES_KEY);
       queryClient.setQueryData<TodayEntry[]>(TODAY_ENTRIES_KEY, (current) =>
         current?.map((entry) =>
           entry.type === "time_entry" && entry.id === id
-            ? { ...entry, data: { ...entry.data, task_title: taskTitle } }
+            ? {
+                ...entry,
+                data: { ...entry.data, ...patch },
+                // Editing a start time can move the row within the day.
+                sort_time: patch.started_at ?? entry.sort_time,
+              }
             : entry,
         ),
       );
@@ -254,13 +261,15 @@ export function useRenameTimeEntry() {
     onSuccess: (saved) => {
       queryClient.setQueryData<TodayEntry[]>(TODAY_ENTRIES_KEY, (current) =>
         current?.map((entry) =>
-          entry.type === "time_entry" && entry.id === saved.id ? { ...entry, data: saved } : entry,
+          entry.type === "time_entry" && entry.id === saved.id
+            ? { ...entry, data: saved, sort_time: saved.started_at }
+            : entry,
         ),
       );
     },
     onError: (error, _variables, context) => {
       rollbackOptimisticEntry(queryClient, context?.previousEntries);
-      showToast(error instanceof Error ? error.message : "Could not rename the entry.");
+      showToast(error instanceof Error ? error.message : "Could not update the entry.");
     },
   });
 }
