@@ -48,10 +48,8 @@ export function StudySection() {
         {categories?.map(({ category }) => <option key={category} value={category} />)}
       </datalist>
       <section className={styles.section}>
+        {/* No heading — the highlighted nav link names the page. */}
         <div className={styles.sectionHead}>
-          <h2 id="study-items-heading" className={styles.heading}>
-            Study items
-          </h2>
           <input
             className={styles.filterInput}
             type="text"
@@ -70,7 +68,7 @@ export function StudySection() {
             {categoryFilter ? "No study items in this category." : "Add your first study item."}
           </p>
         ) : (
-          <ul className={styles.list} aria-labelledby="study-items-heading">
+          <ul className={styles.list} aria-label="Study items">
             {active.map((item) => (
               <li key={item.id} className={styles.item}>
                 <StudyItemRow item={item} />
