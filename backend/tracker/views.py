@@ -7,7 +7,7 @@ from django.conf import settings
 from django.utils import timezone
 from datetime import date, timedelta, timezone as dt_timezone
 from math import ceil
-from django.db.models import Case, Count, F, IntegerField, Q, Sum, Value, When
+from django.db.models import Case, Count, F, IntegerField, Min, Q, Sum, Value, When
 from django.db.models.functions import Coalesce
 from rest_framework.parsers import JSONParser, MultiPartParser, FormParser
 
@@ -283,15 +283,49 @@ class ProjectViewSet(UserOwnedViewSet):
         )
 
 
+def day_start_in_timezone(user_timezone, date_str=None):
+    """Start of a day at 00:00 in the user's timezone; today when no date."""
+    import zoneinfo
+    import datetime as dt
+
+    try:
+        tz = zoneinfo.ZoneInfo(user_timezone)
+    except Exception:
+        tz = zoneinfo.ZoneInfo('UTC')
+
+    if date_str:
+        try:
+            d = dt.date.fromisoformat(date_str)
+            return dt.datetime(d.year, d.month, d.day, 0, 0, 0, tzinfo=tz)
+        except ValueError:
+            pass
+
+    return timezone.now().astimezone(tz).replace(hour=0, minute=0, second=0, microsecond=0)
+
+
 class TaskViewSet(UserOwnedViewSet):
     queryset = Task.objects.all()
     serializer_class = TaskSerializer
 
     def get_queryset(self):
-        return Task.objects.filter(user=self.request.user).annotate(
+        queryset = Task.objects.filter(user=self.request.user).annotate(
             entry_count=Count("time_entries"),
             total_seconds=Coalesce(Sum("time_entries__duration_seconds"), 0),
+            # R64a: the actual start, to set against planned_start.
+            first_started_at=Min("time_entries__started_at"),
         )
+
+        # Scheduled tasks for one day, in the user's timezone (R63, R63a).
+        planned_date = self.request.query_params.get('planned_date')
+        if planned_date:
+            start = day_start_in_timezone(
+                self.request.headers.get('X-User-Timezone', 'UTC'), planned_date
+            )
+            queryset = queryset.filter(
+                planned_start__gte=start, planned_start__lt=start + timedelta(days=1)
+            ).order_by('planned_start')
+
+        return queryset
 
 
 class TimeEntryViewSet(UserOwnedViewSet):
@@ -680,27 +714,7 @@ class TodayEntriesView(APIView):
         return Response(combined_entries)
 
     def _get_day_start(self, user_timezone, date_str=None):
-        """
-        Get the start of a day at 00:00:00 in the user's timezone.
-        If date_str (YYYY-MM-DD) is provided, use that date; otherwise use today.
-        """
-        import zoneinfo
-        import datetime as dt
-
-        try:
-            tz = zoneinfo.ZoneInfo(user_timezone)
-        except Exception:
-            tz = zoneinfo.ZoneInfo('UTC')
-
-        if date_str:
-            try:
-                d = dt.date.fromisoformat(date_str)
-                return dt.datetime(d.year, d.month, d.day, 0, 0, 0, tzinfo=tz)
-            except ValueError:
-                pass
-
-        now_in_tz = timezone.now().astimezone(tz)
-        return now_in_tz.replace(hour=0, minute=0, second=0, microsecond=0)
+        return day_start_in_timezone(user_timezone, date_str)
 
     def _get_time_entries(self, user, start, end):
         """

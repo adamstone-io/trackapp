@@ -41,6 +41,10 @@ export interface Task {
   /** Annotations from the backend — total tracked time and entry count. */
   total_seconds: number;
   entry_count: number;
+  /** Scheduled tasks: the planned slot, and when it was actually first started. */
+  planned_start?: string | null;
+  planned_duration?: number | null;
+  first_started_at?: string | null;
   created_at?: string;
 }
 

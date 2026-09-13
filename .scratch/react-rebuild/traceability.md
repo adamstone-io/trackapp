@@ -35,7 +35,7 @@ original ticket was scoped too small, not something to restructure away.
 | 06.7 Prime/Study confirmation sound | done | R27a (legacy parity) |
 | 06.8 Add study item above the list | done | — (UI) |
 | 07 Dashboard (period selector; no separate /stats) | ready | R31, R32, R33, R33a |
-| 08 Scheduled tasks in the workspace | ready | R33b, R60 (scheduled-tasks half), R62, R62a, R63, R63a, R64, R64a, R64b |
+| 08 Scheduled tasks in the workspace | done | R33b, R60 (scheduled-tasks half), R62, R62a, R63, R63a, R64, R64a, R64b |
 | 09 Spaced repetition | ready | R31t, R31u, R31v |
 | 10 Audio recording for study items | ready | R24a, R24b, R24c, R24d, R24e |
 | 11 TTS generation + Play-all | ready | R24f, R24g |

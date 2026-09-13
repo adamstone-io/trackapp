@@ -712,6 +712,74 @@ class TimeEntryFilterTests(WorkspaceApiTestCase):
         self.assertEqual(rows, [])
 
 
+class ScheduledTaskTests(WorkspaceApiTestCase):
+    """Ticket 08: the workspace lists one day's scheduled tasks, in order."""
+
+    def scheduled(self, title, planned_start, **extra):
+        return Task.objects.create(
+            user=self.user, title=title, planned_start=planned_start, **extra
+        )
+
+    def test_planned_date_returns_that_days_tasks_in_ascending_order(self):
+        day = timezone.now().replace(hour=0, minute=0, second=0, microsecond=0)
+        self.scheduled("Afternoon", day + timedelta(hours=15))
+        self.scheduled("Morning", day + timedelta(hours=9))
+        self.scheduled("Tomorrow", day + timedelta(days=1, hours=9))
+        Task.objects.create(user=self.user, title="Unscheduled")
+
+        rows = self.client.get(
+            f"/api/tasks/?planned_date={day.date().isoformat()}",
+            headers={**self.headers, "X-User-Timezone": "UTC"},
+        ).json()["results"]
+
+        self.assertEqual([row["title"] for row in rows], ["Morning", "Afternoon"])
+
+    def test_day_boundaries_follow_the_users_timezone(self):
+        """23:00 UTC on the 1st is 09:00 on the 2nd in Brisbane (UTC+10)."""
+        planned = timezone.now().replace(
+            year=2026, month=9, day=1, hour=23, minute=0, second=0, microsecond=0
+        )
+        self.scheduled("Late", planned)
+
+        brisbane = {**self.headers, "X-User-Timezone": "Australia/Brisbane"}
+        second = self.client.get("/api/tasks/?planned_date=2026-09-02", headers=brisbane).json()
+        first = self.client.get("/api/tasks/?planned_date=2026-09-01", headers=brisbane).json()
+
+        self.assertEqual([row["title"] for row in second["results"]], ["Late"])
+        self.assertEqual(first["results"], [])
+
+    def test_task_reports_its_actual_first_start_against_the_plan(self):
+        day = timezone.now().replace(hour=0, minute=0, second=0, microsecond=0)
+        task = self.scheduled("Write", day + timedelta(hours=9))
+        TimeEntry.objects.create(
+            user=self.user,
+            task=task,
+            task_title="Write",
+            started_at=day + timedelta(hours=9, minutes=12),
+            ended_at=day + timedelta(hours=10),
+            duration_seconds=2880,
+        )
+
+        rows = self.client.get(
+            f"/api/tasks/?planned_date={day.date().isoformat()}",
+            headers={**self.headers, "X-User-Timezone": "UTC"},
+        ).json()["results"]
+
+        self.assertIsNotNone(rows[0]["first_started_at"])
+        self.assertIn("09:12", rows[0]["first_started_at"])
+
+    def test_a_task_never_started_reports_no_actual_start(self):
+        day = timezone.now().replace(hour=0, minute=0, second=0, microsecond=0)
+        self.scheduled("Write", day + timedelta(hours=9))
+
+        rows = self.client.get(
+            f"/api/tasks/?planned_date={day.date().isoformat()}",
+            headers={**self.headers, "X-User-Timezone": "UTC"},
+        ).json()["results"]
+
+        self.assertIsNone(rows[0]["first_started_at"])
+
+
 class ProjectDeleteTests(WorkspaceApiTestCase):
     """R16: deleting a project leaves its tasks (and their history) intact."""
 

@@ -130,7 +130,8 @@ export interface PaginatedPage<T> {
 export async function fetchAllPages<T>(path: string): Promise<T[]> {
   const items: T[] = [];
   for (let page = 1; ; page++) {
-    const data = await apiFetch<PaginatedPage<T>>(`${path}?page=${page}`);
+    const separator = path.includes("?") ? "&" : "?";
+    const data = await apiFetch<PaginatedPage<T>>(`${path}${separator}page=${page}`);
     items.push(...data.results);
     if (!data.next) return items;
   }

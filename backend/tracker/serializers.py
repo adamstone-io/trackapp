@@ -28,6 +28,8 @@ class ProjectSerializer(serializers.ModelSerializer):
 class TaskSerializer(serializers.ModelSerializer):
     entry_count = serializers.IntegerField(read_only=True, default=0)
     total_seconds = serializers.IntegerField(read_only=True, default=0)
+    # R64a: when the task was actually first started, against planned_start.
+    first_started_at = serializers.DateTimeField(read_only=True, required=False)
 
     class Meta:
         model = Task
