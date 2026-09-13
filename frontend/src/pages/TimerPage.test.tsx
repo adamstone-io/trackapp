@@ -190,6 +190,69 @@ describe("timer state persistence", () => {
   });
 });
 
+describe("a timer started on another device", () => {
+  it("appears here without a reload, and clears when it stops there", async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    try {
+      // What the server holds; a phone changes it, this tab never touches it.
+      let serverTimer: Record<string, unknown> | null = null;
+      let entries: object[] = [];
+      server.use(
+        http.get(api("/active-timer/"), () => HttpResponse.json(serverTimer)),
+        http.get(api("/today-entries/"), () => HttpResponse.json(entries)),
+      );
+
+      renderApp("/timer");
+      // Nothing running: the start form is showing.
+      expect(await screen.findByRole("button", { name: /start/i })).toBeInTheDocument();
+
+      serverTimer = runningTimer({
+        task_title: "Started on the phone",
+        started_at: new Date(Date.now() - 5_000).toISOString(),
+        created_at: new Date(Date.now() - 5_000).toISOString(),
+      });
+      await act(async () => {
+        vi.advanceTimersByTime(2_500);
+      });
+
+      // Picked up by polling — no reload, no interaction.
+      expect(await screen.findByRole("timer")).toBeInTheDocument();
+      expect(screen.getByText("Started on the phone")).toBeInTheDocument();
+
+      // The phone stops it, which produces an entry this tab has never seen.
+      serverTimer = null;
+      entries = [
+        {
+          type: "time_entry",
+          id: "te-phone",
+          sort_time: new Date().toISOString(),
+          data: {
+            id: "te-phone",
+            task: "task-1",
+            task_title: "Started on the phone",
+            started_at: new Date(Date.now() - 5_000).toISOString(),
+            ended_at: new Date().toISOString(),
+            duration_seconds: 5,
+            notes: "",
+            breaks: [],
+          },
+        },
+      ];
+      await act(async () => {
+        vi.advanceTimersByTime(2_500);
+      });
+
+      expect(await screen.findByRole("button", { name: /start/i })).toBeInTheDocument();
+      const log = await screen.findByRole("list", { name: /today/i });
+      await waitFor(() =>
+        expect(within(log).getByText("Started on the phone")).toBeInTheDocument(),
+      );
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+});
+
 describe("pause and resume", () => {
   it("checkpoints elapsed time on pause and restarts the segment on resume", async () => {
     vi.useFakeTimers({ shouldAdvanceTime: true });
@@ -255,7 +318,9 @@ function stopHandlers({
       created_at: new Date(Date.now() - 30_000).toISOString(),
     });
   server.use(
-    http.get(api("/active-timer/"), () => HttpResponse.json(activeTimer)),
+    // Once the timer is deleted the server has none — the app polls this
+    // endpoint, so a mock that answers with a stopped timer would resurrect it.
+    http.get(api("/active-timer/"), () => HttpResponse.json(calls.deleted ? null : activeTimer)),
     http.delete(api("/active-timer/"), () => {
       calls.deleted = true;
       return new HttpResponse(null, { status: 204 });

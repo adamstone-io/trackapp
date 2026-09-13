@@ -15,7 +15,12 @@ import { PROJECTS_KEY } from "../projects/useProjects";
 import { deleteActiveTimer } from "../../api/timer";
 import type { ActiveTimer, Project, TimeEntry, TodayEntry } from "../../api/types";
 import { useToast } from "../../components/toast/ToastProvider";
-import { ACTIVE_TIMER_KEY, computeElapsedSeconds } from "./useActiveTimer";
+import {
+  ACTIVE_TIMER_KEY,
+  TIMER_MUTATION_KEY,
+  computeElapsedSeconds,
+  markLocalTimerStop,
+} from "./useActiveTimer";
 
 export const TODAY_ENTRIES_KEY = ["today-entries"];
 
@@ -342,6 +347,7 @@ export function useStopTimer() {
   const { showToast } = useToast();
 
   return useMutation({
+    mutationKey: TIMER_MUTATION_KEY,
     mutationFn: async (request: StopRequest) => {
       const saved = await persistEntry(stopDraft(request));
       // Only clear the server-side timer once the entry is safely recorded; a
@@ -350,6 +356,7 @@ export function useStopTimer() {
       return saved;
     },
     onMutate: async (request) => {
+      markLocalTimerStop();
       await queryClient.cancelQueries({ queryKey: ACTIVE_TIMER_KEY });
       const previousTimer = queryClient.getQueryData<ActiveTimer | null>(ACTIVE_TIMER_KEY);
       queryClient.setQueryData<ActiveTimer | null>(ACTIVE_TIMER_KEY, null);

@@ -1,5 +1,5 @@
-import { useEffect, useState } from "react";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useEffect, useRef, useState } from "react";
+import { useIsMutating, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   createActiveTimer,
   getActiveTimer,
@@ -12,11 +12,60 @@ import { useToast } from "../../components/toast/ToastProvider";
 
 export const ACTIVE_TIMER_KEY = ["active-timer"];
 
+/** Shared by every timer mutation, so polling can stand down while one runs. */
+export const TIMER_MUTATION_KEY = [...ACTIVE_TIMER_KEY, "mutate"];
+
+/** R9c: a timer started on another device has to show up here. The server row
+ * is the only shared truth, so it is polled — push would mean ASGI, Channels
+ * and a broker this project doesn't run. */
+const TIMER_POLL_MS = 2000;
+
 export function useActiveTimerQuery() {
+  // A poll that lands mid-mutation would answer with state the user has
+  // already moved past, rewinding an optimistic pause or resurrecting a
+  // stopped timer. Stand down until the mutation settles.
+  const mutating = useIsMutating({ mutationKey: TIMER_MUTATION_KEY });
+
   return useQuery({
     queryKey: ACTIVE_TIMER_KEY,
     queryFn: getActiveTimer,
+    // refetchIntervalInBackground stays false: a hidden tab polls nothing.
+    refetchInterval: mutating > 0 ? false : TIMER_POLL_MS,
+    staleTime: 0,
   });
+}
+
+/**
+ * A timer that disappears between polls was stopped somewhere else, and that
+ * stop produced a time entry this tab has never seen — so the day's log has to
+ * be refetched. Mounted once, in the app layout.
+ */
+/** A stop *here* clears the timer too, and that path writes its own entry into
+ * the log — so it says so, rather than the sync hook inferring it from mutation
+ * state, which depends on render timing. */
+let stoppedLocally = false;
+
+export function markLocalTimerStop() {
+  stoppedLocally = true;
+}
+
+export function useTimerSync() {
+  const queryClient = useQueryClient();
+  const { data: timer } = useActiveTimerQuery();
+  const hadTimer = useRef(false);
+
+  useEffect(() => {
+    const hasTimer = Boolean(timer);
+    if (hadTimer.current && !hasTimer) {
+      if (stoppedLocally) {
+        stoppedLocally = false;
+      } else {
+        // Stopped on another device: the entry it produced is news to this tab.
+        queryClient.invalidateQueries({ queryKey: ["today-entries"] });
+      }
+    }
+    hadTimer.current = hasTimer;
+  }, [timer, queryClient]);
 }
 
 /** Starting with a project resolves the task up front so the association
@@ -31,6 +80,7 @@ export function useStartTimer() {
   const queryClient = useQueryClient();
   const { showToast } = useToast();
   return useMutation({
+    mutationKey: TIMER_MUTATION_KEY,
     mutationFn: async ({ payload, projectId }: StartTimerRequest) =>
       createActiveTimer(
         projectId
@@ -63,6 +113,7 @@ function usePatchTimer() {
   const queryClient = useQueryClient();
   const { showToast } = useToast();
   return useMutation({
+    mutationKey: TIMER_MUTATION_KEY,
     mutationFn: (patch: Partial<ActiveTimerCreate>) => patchActiveTimer(patch),
     onMutate: async (patch) => {
       await queryClient.cancelQueries({ queryKey: ACTIVE_TIMER_KEY });
