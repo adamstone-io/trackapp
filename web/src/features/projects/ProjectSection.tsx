@@ -2,11 +2,11 @@ import { useState, type FormEvent } from "react";
 import type { Project } from "../../api/types";
 import type { ProjectCreate } from "../../api/projects";
 import { formatDuration } from "../../lib/time";
-import { useCreateProject, useDeleteProject, useEditProject, useProjectsQuery } from "./useWorkspace";
+import { useCreateProject, useDeleteProject, useEditProject, useProjectsQuery } from "./useProjects";
 import { isSettled } from "../../lib/optimistic";
 import { RowMenu } from "../../components/RowMenu";
 import { ProjectEntriesModal } from "./ProjectEntriesModal";
-import styles from "./workspace.module.css";
+import styles from "./projects.module.css";
 import formStyles from "./forms.module.css";
 
 /** Preset palette; a swatch picker beats a raw hex field for a quick pick. */

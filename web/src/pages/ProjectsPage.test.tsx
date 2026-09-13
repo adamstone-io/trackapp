@@ -37,7 +37,7 @@ describe("projects list", () => {
   it("shows each project with description, tracked time, and its color", async () => {
     serve([project()]);
 
-    renderApp("/workspace");
+    renderApp("/projects");
 
     expect(await screen.findByText("TrackApp")).toBeInTheDocument();
     const card = row("TrackApp");
@@ -60,7 +60,7 @@ describe("creating a project", () => {
       }),
     );
 
-    renderApp("/workspace");
+    renderApp("/projects");
 
     await user.click(await screen.findByRole("button", { name: /add project/i }));
     await user.type(screen.getByLabelText(/name/i), "Writing");
@@ -89,7 +89,7 @@ describe("editing a project", () => {
       }),
     );
 
-    renderApp("/workspace");
+    renderApp("/projects");
     await user.click(await screen.findByRole("button", { name: /more trackapp/i }));
     await user.click(screen.getByRole("button", { name: /^edit$/i }));
 
@@ -117,7 +117,7 @@ describe("archiving and restoring", () => {
       }),
     );
 
-    renderApp("/workspace");
+    renderApp("/projects");
     await user.click(await screen.findByRole("button", { name: /more trackapp/i }));
     await user.click(screen.getByRole("button", { name: /^archive$/i }));
 
@@ -143,7 +143,7 @@ describe("deleting a project", () => {
       }),
     );
 
-    renderApp("/workspace");
+    renderApp("/projects");
     await user.click(await screen.findByRole("button", { name: /more trackapp/i }));
     await user.click(screen.getByRole("button", { name: /^delete$/i }));
     // Nothing happens until the confirmation click.
@@ -163,7 +163,7 @@ describe("deleting a project", () => {
       ),
     );
 
-    renderApp("/workspace");
+    renderApp("/projects");
     await user.click(await screen.findByRole("button", { name: /more trackapp/i }));
     await user.click(screen.getByRole("button", { name: /^delete$/i }));
     await user.click(screen.getByRole("button", { name: /confirm delete/i }));
@@ -199,7 +199,7 @@ describe("a project's time entries", () => {
       }),
     );
 
-    renderApp("/workspace");
+    renderApp("/projects");
     await user.click(await screen.findByRole("button", { name: /more trackapp/i }));
     await user.click(screen.getByRole("button", { name: /time entries/i }));
 
@@ -216,7 +216,7 @@ describe("a project's time entries", () => {
     serve([project()]);
     server.use(http.get(api("/time-entries/"), () => HttpResponse.json(page([]))));
 
-    renderApp("/workspace");
+    renderApp("/projects");
     await user.click(await screen.findByRole("button", { name: /more trackapp/i }));
     await user.click(screen.getByRole("button", { name: /time entries/i }));
 
@@ -241,7 +241,7 @@ describe("a project's time entries", () => {
       }),
     );
 
-    renderApp("/workspace");
+    renderApp("/projects");
     await user.click(await screen.findByRole("button", { name: /more trackapp/i }));
     await user.click(screen.getByRole("button", { name: /time entries/i }));
 

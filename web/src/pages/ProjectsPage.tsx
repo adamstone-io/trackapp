@@ -1,7 +1,7 @@
 import { PageShell } from "../components/PageShell";
-import { ProjectSection } from "../features/workspace/ProjectSection";
+import { ProjectSection } from "../features/projects/ProjectSection";
 
-export function WorkspacePage() {
+export function ProjectsPage() {
   return (
     <PageShell>
       <ProjectSection />

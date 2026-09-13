@@ -5,11 +5,9 @@ import { renderApp, seedSession } from "../test/render";
 const PAGES = [
   ["Dashboard", "/"],
   ["Timer", "/timer"],
-  ["Workspace", "/workspace"],
-  ["Calendar", "/calendar"],
+  ["Projects", "/projects"],
   ["Study", "/study"],
   ["Habits", "/habits"],
-  ["Stats", "/stats"],
   ["Settings", "/settings"],
 ] as const;
 

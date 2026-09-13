@@ -10,7 +10,7 @@ import {
   type MomentPatch,
 } from "../../api/entries";
 import { ensureTaskId } from "../../api/tasks";
-import { PROJECTS_KEY } from "../workspace/useWorkspace";
+import { PROJECTS_KEY } from "../projects/useProjects";
 import { deleteActiveTimer } from "../../api/timer";
 import type { ActiveTimer, Project, TimeEntry, TodayEntry } from "../../api/types";
 import { useToast } from "../../components/toast/ToastProvider";

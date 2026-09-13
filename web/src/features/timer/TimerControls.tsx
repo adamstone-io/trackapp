@@ -15,7 +15,7 @@ import {
   useStartTimer,
 } from "./useActiveTimer";
 import { buildStopRequest, useStopTimer } from "./useTimeEntries";
-import { ProjectSelect } from "../workspace/ProjectSelect";
+import { ProjectSelect } from "../projects/ProjectSelect";
 import styles from "./TimerControls.module.css";
 
 interface TimerControlsProps {

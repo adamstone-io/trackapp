@@ -6,11 +6,9 @@ import { ToastProvider } from "./components/toast/ToastProvider";
 import { RequireAuth } from "./auth/RequireAuth";
 import { DashboardPage } from "./pages/DashboardPage";
 import { TimerPage } from "./pages/TimerPage";
-import { WorkspacePage } from "./pages/WorkspacePage";
-import { CalendarPage } from "./pages/CalendarPage";
+import { ProjectsPage } from "./pages/ProjectsPage";
 import { StudyPage } from "./pages/StudyPage";
 import { HabitsPage } from "./pages/HabitsPage";
-import { StatsPage } from "./pages/StatsPage";
 import { SettingsPage } from "./pages/SettingsPage";
 import { LoginPage } from "./pages/LoginPage";
 import { VerifyEmailPage } from "./pages/VerifyEmailPage";
@@ -51,11 +49,9 @@ export function App({ queryClient }: AppProps) {
         >
           <Route path="/" element={<DashboardPage />} />
           <Route path="/timer" element={<TimerPage />} />
-          <Route path="/workspace" element={<WorkspacePage />} />
-          <Route path="/calendar" element={<CalendarPage />} />
+          <Route path="/projects" element={<ProjectsPage />} />
           <Route path="/study" element={<StudyPage />} />
           <Route path="/habits" element={<HabitsPage />} />
-          <Route path="/stats" element={<StatsPage />} />
           <Route path="/settings" element={<SettingsPage />} />
         </Route>
           <Route path="*" element={<Navigate to="/" replace />} />

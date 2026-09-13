@@ -1,4 +1,4 @@
-import { useProjectsQuery } from "./useWorkspace";
+import { useProjectsQuery } from "./useProjects";
 
 /** Project picker shared by the timer, the manual entry form and the day log.
  * Archived projects are left out: they aren't somewhere to log new time. */

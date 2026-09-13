@@ -17,9 +17,10 @@ original ticket was scoped too small, not something to restructure away.
 | 03 Moments (in the day log) | done | R15, R15a, R17 (edit only — removal moved to 13), R9g (landed with 03's follow-up commits, 599d1a5) |
 | 04 Habits page | done | R18, R19, R20, R21, R22, R23, R23b, R23c |
 | 04.1 Undo a back-filled habit day | needs-triage | R23b (back-fill half) |
-| 05 Projects & Workspace | done | R10, R11, R12, R13, R14, R60 (projects half), R61 |
+| 05 Projects page (was "Workspace") | done | R10, R11, R12, R13, R14, R60 (projects half), R61 |
 | 05.3 Workspace form rows | done | — (UI defect) |
 | 05.4 Time entry ↔ project | done | R10, R11 (time attributed to a project) |
+| 05.6 Workspace becomes Projects | done | R60 (projects half) |
 | 05.5 See a project's time entries | done | R12 (project detail) |
 | 06 Study page core | done | R24, R27, R27a, R28, R29, R30, R31s |
 | 06.1 Study item links | ready | R29a, R29b |
@@ -29,8 +30,8 @@ original ticket was scoped too small, not something to restructure away.
 | 06.5 Study images fill the row | done | R24 (images half) |
 | 06.6 Prompt is text or an image | done | R24 (prompt half) |
 | 06.7 Prime/Study confirmation sound | done | R27a (legacy parity) |
-| 07 Dashboard + Stats | ready | R31, R32, R33, R33a |
-| 08 Scheduled tasks + Calendar | ready | R33b, R60 (scheduled-tasks half), R62, R62a, R63, R63a, R64, R64a, R64b |
+| 07 Dashboard (period selector; no separate /stats) | ready | R31, R32, R33, R33a |
+| 08 Scheduled tasks + Calendar | **wontfix — out of rebuild scope** | R33b, R60 (scheduled-tasks half), R62, R62a, R63, R63a, R64, R64a, R64b |
 | 09 Spaced repetition | ready | R31t, R31u, R31v |
 | 10 Audio recording for study items | ready | R24a, R24b, R24c, R24d, R24e |
 | 11 TTS generation + Play-all | ready | R24f, R24g |
@@ -54,6 +55,22 @@ tickets 02–13 rather than one ticket's scope.
 
 *(Resolved 2026-09-13: R5 → ticket 02.1; R29a/R29b → ticket 06.1. Tickets 12 and 15
 gained requirements R17c and R33e.)*
+
+## Dropped from the rebuild (2026-09-13, owner's scope call)
+
+The app's surface is now: Dashboard, Timer (with moments in the day log),
+Projects, Habits, Study, Settings.
+
+- **Scheduled tasks + daily calendar** (ticket 08, wontfix) — **R33b, R62, R62a,
+  R63, R63a, R64, R64a, R64b**, and R60's scheduled-tasks half, have no ticket
+  and are not implemented. A calendar is its own feature; the part worth keeping
+  is R64a (scheduled vs actual start), which needs a list rather than a calendar
+  and can return as a new ticket.
+- **Separate /stats page** — folded into the dashboard (ticket 07). R31/R32/R33
+  are still met there via the period selector; only the extra page is gone.
+- **R60 wording** — "the workspace is where projects and scheduled tasks are
+  created" no longer matches: the page is /projects and holds projects only.
+  Needs rewording in the Obsidian requirements doc.
 
 ## Not applicable to the web rebuild
 

@@ -13,8 +13,8 @@ import {
   useMoveEntryToProject,
   useRenameTimeEntry,
 } from "./useTimeEntries";
-import { ProjectSelect } from "../workspace/ProjectSelect";
-import { useProjectsQuery } from "../workspace/useWorkspace";
+import { ProjectSelect } from "../projects/ProjectSelect";
+import { useProjectsQuery } from "../projects/useProjects";
 import styles from "./TodayLog.module.css";
 
 export function TodayLog() {

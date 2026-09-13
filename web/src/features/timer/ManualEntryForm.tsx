@@ -3,7 +3,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import type { TodayEntry } from "../../api/types";
 import { useToast } from "../../components/toast/ToastProvider";
 import { TODAY_ENTRIES_KEY, useAddManualEntry } from "./useTimeEntries";
-import { ProjectSelect } from "../workspace/ProjectSelect";
+import { ProjectSelect } from "../projects/ProjectSelect";
 import styles from "./ManualEntryForm.module.css";
 
 function toTimeValue(date: Date): string {

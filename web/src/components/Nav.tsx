@@ -5,11 +5,9 @@ import styles from "./Nav.module.css";
 const LINKS = [
   { to: "/", label: "Dashboard" },
   { to: "/timer", label: "Timer" },
-  { to: "/workspace", label: "Workspace" },
-  { to: "/calendar", label: "Calendar" },
+  { to: "/projects", label: "Projects" },
   { to: "/study", label: "Study" },
   { to: "/habits", label: "Habits" },
-  { to: "/stats", label: "Stats" },
   { to: "/settings", label: "Settings" },
 ];
 

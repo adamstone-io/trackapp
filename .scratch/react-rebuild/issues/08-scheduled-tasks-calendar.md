@@ -4,7 +4,14 @@
 
 **Blocked by:** 02 (Timer page), 05 (Projects & Workspace)
 
-**Status:** ready-for-agent
+**Status:** wontfix — out of scope for the rebuild (2026-09-13, owner)
+
+**Why:** a calendar is a feature in its own right, and the rebuild reads better
+with depth elsewhere (ticket 09, spaced repetition) than with a thin calendar.
+Kept on file rather than deleted: the valuable part is the scheduled-vs-actual
+start comparison, which needs a list — not a calendar — and can return as its
+own ticket later. Requirements R62, R62a, R63, R63a, R64, R64a, R64b and R60's
+scheduled-tasks half are unimplemented by design; see traceability.md.
 
 - [ ] Backend: ScheduledTask model (title, scheduled_start, scheduled_end, notes, project FK nullable, user FK) + CRUD endpoints
 - [ ] Backend: TimeEntry extended with nullable scheduled_task FK, is_scheduled boolean, scheduled_start field
