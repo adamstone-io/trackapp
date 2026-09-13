@@ -2,10 +2,14 @@ import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { renderApp, seedSession } from "../test/render";
 import { server, http, HttpResponse, api } from "../test/server";
+import { playInteractionLoggedSound } from "../lib/sounds";
+
+vi.mock("../lib/sounds", () => ({ playInteractionLoggedSound: vi.fn() }));
 
 beforeEach(() => {
   seedSession();
   serveCategories([]);
+  vi.mocked(playInteractionLoggedSound).mockClear();
 });
 
 /** Backend shape: GET /api/study-items/ is paginated. */
@@ -237,6 +241,37 @@ describe("logging interactions", () => {
     expect(screen.getByRole("button", { name: /show the answer for kanji: 水/i })).toBeDisabled();
     expect(screen.getByRole("button", { name: /log prime for kanji: 水/i })).toBeEnabled();
     expect(screen.getByRole("button", { name: /show the answer for kanji: 火/i })).toBeEnabled();
+  });
+
+  it("plays the confirmation sound once the interaction is recorded", async () => {
+    const user = userEvent.setup();
+    serve([item()]);
+    server.use(
+      http.post(api("/study-items/item-1/log_interaction/"), () =>
+        HttpResponse.json(item({ prime_count: 4 })),
+      ),
+    );
+
+    renderApp("/study");
+    await user.click(await screen.findByRole("button", { name: /log prime for kanji: 水/i }));
+
+    await waitFor(() => expect(playInteractionLoggedSound).toHaveBeenCalled());
+  });
+
+  it("stays silent when the interaction is rejected", async () => {
+    const user = userEvent.setup();
+    serve([item()]);
+    server.use(
+      http.post(api("/study-items/item-1/log_interaction/"), () =>
+        HttpResponse.json({ detail: "Could not log the interaction." }, { status: 500 }),
+      ),
+    );
+
+    renderApp("/study");
+    await user.click(await screen.findByRole("button", { name: /log prime for kanji: 水/i }));
+
+    await screen.findByText("Could not log the interaction.");
+    expect(playInteractionLoggedSound).not.toHaveBeenCalled();
   });
 
   it("rolls the count back and shows a toast when logging fails", async () => {

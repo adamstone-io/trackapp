@@ -14,6 +14,7 @@ import {
 } from "../../api/studyItems";
 import type { StudyItem } from "../../api/types";
 import { useToast } from "../../components/toast/ToastProvider";
+import { playInteractionLoggedSound } from "../../lib/sounds";
 
 export const STUDY_ITEMS_KEY = ["study-items"];
 export const STUDY_CATEGORIES_KEY = [...STUDY_ITEMS_KEY, "categories"];
@@ -277,6 +278,9 @@ export function useLogInteraction() {
         ),
       };
     },
+    // Legacy parity: the tone confirms a recorded interaction, so it waits for
+    // the request rather than riding the optimistic count.
+    onSuccess: () => playInteractionLoggedSound(),
     onSettled: (saved, _error, { id }) => syncFromServer(queryClient, saved, id),
     onError: (error, _variables, context) => {
       rollback(queryClient, context?.previous);
