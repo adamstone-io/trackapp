@@ -6,7 +6,7 @@ import { ToastProvider } from "./components/toast/ToastProvider";
 import { RequireAuth } from "./auth/RequireAuth";
 import { DashboardPage } from "./pages/DashboardPage";
 import { TimerPage } from "./pages/TimerPage";
-import { ProjectsPage } from "./pages/ProjectsPage";
+import { WorkspacePage } from "./pages/WorkspacePage";
 import { StudyPage } from "./pages/StudyPage";
 import { HabitsPage } from "./pages/HabitsPage";
 import { SettingsPage } from "./pages/SettingsPage";
@@ -49,7 +49,7 @@ export function App({ queryClient }: AppProps) {
         >
           <Route path="/" element={<DashboardPage />} />
           <Route path="/timer" element={<TimerPage />} />
-          <Route path="/projects" element={<ProjectsPage />} />
+          <Route path="/workspace" element={<WorkspacePage />} />
           <Route path="/study" element={<StudyPage />} />
           <Route path="/habits" element={<HabitsPage />} />
           <Route path="/settings" element={<SettingsPage />} />

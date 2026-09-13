@@ -84,18 +84,17 @@ Rebuild the frontend as a single-page TypeScript + React application. The Django
 57. As an account holder, I want prime/study interaction counts in the same period view, so that I see all activity together.
 58. As an account holder, I want all period boundaries computed in my timezone, so that "today" means my today.
 59. As an account holder, I want habits shown in compact mode on the dashboard (daily count, weekly count, streak), so that I get a quick status.
-60. ~~As an account holder, I want scheduled tasks listed in ascending chronological order on the dashboard, so that I see what's coming up.~~ *(out of scope — see Scheduled Tasks)*
+60. As an account holder, I want scheduled tasks listed in ascending chronological order, so that I see what's coming up.
 
-### Scheduled Tasks — OUT OF SCOPE (2026-09-13)
-*Dropped from the rebuild by the owner: a calendar is a feature in its own
-right, and the rebuild is better served by depth elsewhere (spaced repetition).
-The stories below stay recorded so the feature can be picked up later; the
-interesting part is 65 (scheduled vs actual start), which needs a list, not a
-calendar. Requirements R62–R64b and R60's scheduled-tasks half go with them.*
+### Scheduled Tasks
+*In scope as a **daily task scheduler in the workspace**, not a calendar
+(2026-09-13). No grid, no week or month view: pick a day, list its tasks in
+order, start one. A page called "Calendar" would promise a feature set this
+isn't building.*
 
 61. As an account holder, I want to create a scheduled task with a title, start time, end time, optional project assignment, and optional notes, so that I can plan my day.
 62. As an account holder, I want a workspace page where I create and manage projects and scheduled tasks, so that I have a planning hub.
-63. As an account holder, I want a daily calendar page showing today's scheduled tasks in chronological order, so that I can see my day at a glance.
+63. As an account holder, I want the workspace to show a chosen day's scheduled tasks in chronological order, so that I can see my day at a glance.
 64. As an account holder, I want a start button on each scheduled task that immediately starts a timer, so that I can begin working with one tap.
 65. As an account holder, I want the system to log both scheduled start time and actual start time when I begin a scheduled task, so that I can compare plan vs reality.
 66. As an account holder, I want the time entry from a completed scheduled task to appear alongside other entries in the day's log, so that my record is complete.
@@ -146,7 +145,7 @@ calendar. Requirements R62–R64b and R60's scheduled-tasks half go with them.*
 |---|---|
 | / | Dashboard (period selector: today / yesterday / week / month) |
 | /timer | Timer + today's log |
-| /projects | Projects |
+| /workspace | Projects + scheduled tasks for a day |
 | /study | Study items (Spaced / All toggle) |
 | /habits | Habit management and logging |
 | /settings | Account, export/import |

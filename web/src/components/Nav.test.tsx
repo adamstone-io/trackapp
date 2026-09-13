@@ -5,7 +5,7 @@ import { renderApp, seedSession } from "../test/render";
 const PAGES = [
   ["Dashboard", "/"],
   ["Timer", "/timer"],
-  ["Projects", "/projects"],
+  ["Workspace", "/workspace"],
   ["Study", "/study"],
   ["Habits", "/habits"],
   ["Settings", "/settings"],
