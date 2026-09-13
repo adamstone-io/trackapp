@@ -103,6 +103,12 @@
   composes: moreAction from "../projects/projects.module.css";
 }
 
+/* The add affordance sits above the list, so its spacing goes below it —
+ * covers both the button and the form it opens. */
+.addSlot {
+  margin-bottom: var(--space-5);
+}
+
 .times {
   display: flex;
   flex-wrap: wrap;

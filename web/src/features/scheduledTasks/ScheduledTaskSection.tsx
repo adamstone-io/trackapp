@@ -55,7 +55,9 @@ export function ScheduledTaskSection() {
           onChange={(event) => setDay(event.target.value || todayIso())}
         />
       </div>
-      <AddScheduledTaskForm day={day} />
+      <div className={styles.addSlot}>
+        <AddScheduledTaskForm day={day} />
+      </div>
       {scheduled.length === 0 ? (
         <p className={styles.empty}>Nothing scheduled for this day.</p>
       ) : (
