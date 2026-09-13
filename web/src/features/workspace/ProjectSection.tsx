@@ -4,6 +4,7 @@ import type { ProjectCreate } from "../../api/projects";
 import { formatDuration } from "../../lib/time";
 import { useCreateProject, useDeleteProject, useEditProject, useProjectsQuery } from "./useWorkspace";
 import { isSettled } from "../../lib/optimistic";
+import { RowMenu } from "../../components/RowMenu";
 import styles from "./workspace.module.css";
 import formStyles from "./forms.module.css";
 
@@ -81,9 +82,7 @@ function ArchivedProjects({ projects }: { projects: Project[] }) {
 }
 
 function ProjectRow({ project }: { project: Project }) {
-  const [moreOpen, setMoreOpen] = useState(false);
   const [editing, setEditing] = useState(false);
-  const [confirmingDelete, setConfirmingDelete] = useState(false);
   const editMutation = useEditProject();
   const deleteMutation = useDeleteProject();
 
@@ -109,63 +108,24 @@ function ProjectRow({ project }: { project: Project }) {
         {project.description && <span className={styles.description}>{project.description}</span>}
       </div>
       <span className={styles.time}>{formatDuration(project.total_seconds)}</span>
-      <div className={styles.actions}>
-        <button
-          className={styles.moreButton}
-          type="button"
-          aria-label={`More ${project.name}`}
-          aria-expanded={moreOpen}
-          disabled={!isSettled(project.id)}
-          onClick={() => {
-            setMoreOpen((open) => !open);
-            setConfirmingDelete(false);
-          }}
-        >
-          ⋯
-        </button>
-      </div>
-      {moreOpen &&
-        (confirmingDelete ? (
-          <div className={styles.moreRow}>
-            <span className={styles.confirmNote}>
-              Tasks keep their history and become unassigned.
-            </span>
-            <button
-              className={styles.dangerAction}
-              type="button"
-              onClick={() => deleteMutation.mutate(project.id)}
-            >
-              Confirm delete
-            </button>
-            <button
-              className={styles.moreAction}
-              type="button"
-              onClick={() => setConfirmingDelete(false)}
-            >
-              Cancel
-            </button>
-          </div>
-        ) : (
-          <div className={styles.moreRow}>
-            <button className={styles.moreAction} type="button" onClick={() => setEditing(true)}>
-              Edit
-            </button>
-            <button
-              className={styles.moreAction}
-              type="button"
-              onClick={() => editMutation.mutate({ id: project.id, patch: { archived: true } })}
-            >
-              Archive
-            </button>
-            <button
-              className={styles.dangerAction}
-              type="button"
-              onClick={() => setConfirmingDelete(true)}
-            >
-              Delete
-            </button>
-          </div>
-        ))}
+      <RowMenu
+        name={project.name}
+        disabled={!isSettled(project.id)}
+        items={[
+          { label: "Edit", onSelect: () => setEditing(true) },
+          {
+            label: "Archive",
+            onSelect: () => editMutation.mutate({ id: project.id, patch: { archived: true } }),
+          },
+          {
+            label: "Delete",
+            danger: true,
+            confirm: "Confirm delete",
+            confirmNote: "Tasks keep their history and become unassigned.",
+            onSelect: () => deleteMutation.mutate(project.id),
+          },
+        ]}
+      />
     </>
   );
 }

@@ -76,6 +76,7 @@
 
   /* ---- Layers ---- */
   --z-nav: 100;
+  --z-dropdown: 150;
   --z-toast: 200;
 
   /* ---- Radius ---- */

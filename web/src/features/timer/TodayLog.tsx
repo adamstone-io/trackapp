@@ -4,6 +4,7 @@ import { getTodayEntries } from "../../api/entries";
 import type { TodayEntry } from "../../api/types";
 import { formatClockTime, formatDuration } from "../../lib/time";
 import { isSettled } from "../../lib/optimistic";
+import { RowMenu } from "../../components/RowMenu";
 import { TODAY_ENTRIES_KEY, useEditMoment, useRenameTimeEntry } from "./useTimeEntries";
 import styles from "./TodayLog.module.css";
 
@@ -73,49 +74,6 @@ function EditText({
   );
 }
 
-/** The ⋮ toggle plus its revealed action row. */
-function RowMenu({
-  name,
-  disabled,
-  onEdit,
-}: {
-  name: string;
-  disabled: boolean;
-  onEdit: () => void;
-}) {
-  const [open, setOpen] = useState(false);
-  return (
-    <>
-      <div className={styles.menu}>
-        <button
-          className={styles.menuButton}
-          type="button"
-          aria-label={`More ${name}`}
-          aria-expanded={open}
-          disabled={disabled}
-          onClick={() => setOpen((current) => !current)}
-        >
-          ⋮
-        </button>
-      </div>
-      {open && (
-        <div className={styles.menuRow}>
-          <button
-            className={styles.menuAction}
-            type="button"
-            onClick={() => {
-              setOpen(false);
-              onEdit();
-            }}
-          >
-            Edit
-          </button>
-        </div>
-      )}
-    </>
-  );
-}
-
 function TimeEntryRow({ entry }: { entry: Extract<TodayEntry, { type: "time_entry" }> }) {
   const data = entry.data;
   const [editing, setEditing] = useState(false);
@@ -145,7 +103,7 @@ function TimeEntryRow({ entry }: { entry: Extract<TodayEntry, { type: "time_entr
       <RowMenu
         name={data.task_title}
         disabled={!isSettled(entry.id)}
-        onEdit={() => setEditing(true)}
+        items={[{ label: "Edit", onSelect: () => setEditing(true) }]}
       />
     </>
   );
@@ -234,7 +192,7 @@ function MomentRow({ entry }: { entry: Extract<TodayEntry, { type: "moment" }> }
       <RowMenu
         name={data.description}
         disabled={!isSettled(entry.id)}
-        onEdit={() => setEditing(true)}
+        items={[{ label: "Edit", onSelect: () => setEditing(true) }]}
       />
     </>
   );

@@ -11,6 +11,7 @@ import styles from "./HabitList.module.css";
 import formStyles from "./AddHabitForm.module.css";
 import { TargetField } from "./AddHabitForm";
 import { isSettled } from "../../lib/optimistic";
+import { RowMenu } from "../../components/RowMenu";
 
 /** Latest back-fillable date: yesterday, as a local "YYYY-MM-DD". */
 function yesterdayIso(): string {
@@ -78,8 +79,8 @@ function ArchivedHabits({ habits }: { habits: Habit[] }) {
 }
 
 function HabitRow({ habit }: { habit: Habit }) {
-  const [moreOpen, setMoreOpen] = useState(false);
   const [editing, setEditing] = useState(false);
+  const [backfillOpen, setBackfillOpen] = useState(false);
   const logMutation = useLogHabit();
   const unlogMutation = useUnlogHabit();
   const editMutation = useEditHabit();
@@ -113,39 +114,21 @@ function HabitRow({ habit }: { habit: Habit }) {
         >
           +1
         </button>
-        <button
-          className={styles.moreButton}
-          type="button"
-          aria-label={`More ${habit.name}`}
-          aria-expanded={moreOpen}
+        <RowMenu
+          name={habit.name}
           disabled={!isSettled(habit.id)}
-          onClick={() => setMoreOpen((open) => !open)}
-        >
-          ⋯
-        </button>
+          items={[
+            { label: "Undo log", onSelect: () => unlogMutation.mutate(habit.id) },
+            { label: "Log a past day", onSelect: () => setBackfillOpen(true) },
+            { label: "Edit", onSelect: () => setEditing(true) },
+            {
+              label: "Archive",
+              onSelect: () => editMutation.mutate({ id: habit.id, patch: { is_active: false } }),
+            },
+          ]}
+        />
       </div>
-      {moreOpen && (
-        <div className={styles.moreRow}>
-          <button
-            className={styles.moreAction}
-            type="button"
-            onClick={() => unlogMutation.mutate(habit.id)}
-          >
-            Undo log
-          </button>
-          <BackfillForm habit={habit} />
-          <button className={styles.moreAction} type="button" onClick={() => setEditing(true)}>
-            Edit
-          </button>
-          <button
-            className={styles.moreAction}
-            type="button"
-            onClick={() => editMutation.mutate({ id: habit.id, patch: { is_active: false } })}
-          >
-            Archive
-          </button>
-        </div>
-      )}
+      {backfillOpen && <BackfillForm habit={habit} onDone={() => setBackfillOpen(false)} />}
     </>
   );
 }
@@ -204,9 +187,8 @@ function EditHabitForm({ habit, onDone }: { habit: Habit; onDone: () => void }) 
   );
 }
 
-/** "Log a past day" toggle plus the date form it reveals. */
-function BackfillForm({ habit }: { habit: Habit }) {
-  const [open, setOpen] = useState(false);
+/** Back-fill date form, revealed by the row menu's "Log a past day". */
+function BackfillForm({ habit, onDone }: { habit: Habit; onDone: () => void }) {
   const [date, setDate] = useState("");
   const [count, setCount] = useState("1");
   const backfillMutation = useBackfillHabit();
@@ -216,17 +198,7 @@ function BackfillForm({ habit }: { habit: Habit }) {
     const amount = parseInt(count, 10) || 0;
     if (!date || amount <= 0) return;
     backfillMutation.mutate({ id: habit.id, date, amount });
-    setOpen(false);
-    setDate("");
-    setCount("1");
-  }
-
-  if (!open) {
-    return (
-      <button className={styles.moreAction} type="button" onClick={() => setOpen(true)}>
-        Log a past day
-      </button>
-    );
+    onDone();
   }
 
   return (
@@ -259,7 +231,7 @@ function BackfillForm({ habit }: { habit: Habit }) {
       <button className={styles.moreAction} type="submit">
         Log
       </button>
-      <button className={styles.moreAction} type="button" onClick={() => setOpen(false)}>
+      <button className={styles.moreAction} type="button" onClick={onDone}>
         Cancel
       </button>
     </form>

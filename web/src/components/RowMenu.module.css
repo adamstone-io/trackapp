@@ -1,0 +1,81 @@
+.menu {
+  position: relative;
+  align-self: center;
+  display: flex;
+}
+
+.trigger {
+  min-height: var(--touch-target);
+  min-width: var(--touch-target);
+  background: transparent;
+  border: none;
+  border-radius: var(--radius-md);
+  color: var(--color-text-muted);
+  font-size: var(--text-base);
+  cursor: pointer;
+}
+
+.trigger:hover,
+.trigger[aria-expanded="true"] {
+  color: var(--color-text);
+}
+
+.trigger:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.panel {
+  position: absolute;
+  top: 100%;
+  right: 0;
+  z-index: var(--z-dropdown);
+  display: flex;
+  flex-direction: column;
+  min-width: 11rem;
+  padding: var(--space-1);
+  background: var(--color-bg-overlay);
+  border: var(--border-hairline) solid var(--color-border);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-md);
+}
+
+.item {
+  min-height: var(--touch-target);
+  padding: 0 var(--space-3);
+  background: transparent;
+  border: none;
+  border-radius: var(--radius-sm);
+  color: var(--color-text-secondary);
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  letter-spacing: var(--letter-spacing-wide);
+  text-transform: uppercase;
+  text-align: left;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: color var(--transition-fast), background var(--transition-fast);
+}
+
+.item:hover {
+  color: var(--color-text);
+  background: var(--color-bg-raised);
+}
+
+.dangerItem {
+  composes: item;
+  color: var(--color-danger);
+}
+
+.dangerItem:hover {
+  color: var(--color-danger);
+  background: var(--color-danger-muted);
+}
+
+.note {
+  max-width: 16rem;
+  padding: var(--space-2) var(--space-3);
+  font-size: var(--text-xs);
+  color: var(--color-text-muted);
+  white-space: normal;
+}
