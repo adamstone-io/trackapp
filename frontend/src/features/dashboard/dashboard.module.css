@@ -314,7 +314,7 @@
   flex: none;
   font-family: var(--font-mono);
   font-size: var(--text-xs);
-  color: var(--color-accent);
+  color: var(--color-accent-green);
 }
 
 .chainBroken {
@@ -348,8 +348,10 @@
   transform: translate(-50%, -50%);
 }
 
+/* A day that was carried, in a chain that has since broken: history, not a
+   live run, so it reads as neither missed nor lit. */
 .chainDone .chainDot {
-  background: var(--color-accent);
+  background: var(--color-text-muted);
 }
 
 /* The chain itself: drawn only between two carried days, so a skipped day
@@ -361,8 +363,15 @@
   right: 50%;
   left: -50%;
   height: var(--underline-width);
-  background: var(--color-accent);
+  background: var(--color-text-muted);
   transform: translateY(-50%);
+}
+
+/* A chain still running goes green — the one signal on the page that says
+   the habit is currently held. */
+.live .chainDone .chainDot,
+.live .chainLinked::before {
+  background: var(--color-accent-green);
 }
 
 /* ---- Today's plan ---- */

@@ -54,7 +54,7 @@ function ChainRow({ habit, days }: { habit: Habit; days: string[] }) {
         </span>
       </div>
       <div
-        className={styles.chainStrip}
+        className={chain > 0 ? `${styles.chainStrip} ${styles.live}` : styles.chainStrip}
         role="img"
         aria-label={`${habit.name}: carried on ${carriedDays} of the last ${days.length} days`}
       >

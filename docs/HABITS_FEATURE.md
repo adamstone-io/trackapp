@@ -60,6 +60,10 @@ Unlogging is destructive to the chain: it withdraws today's link outright
 rather than archiving it, and only today's — a mistaken back-fill of a past day
 cannot be taken back.
 
+A live chain is drawn in `--color-accent-green`, the accent's luminance-matched
+green peer; once it breaks, the carried days fall back to muted grey. Green on
+the row is the page's one signal that a habit is currently held.
+
 The chain is not the streak. `streak_count` remembers only its own live run and
 reads zero during a gap; the chain keeps the gaps, which is the point of it.
 
