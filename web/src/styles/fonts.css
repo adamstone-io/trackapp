@@ -1,8 +1,8 @@
-/* Font files are shared with the legacy frontend at frontend/fonts/. */
+/* Font files live with the app, in src/assets/fonts/. */
 
 @font-face {
   font-family: "Inter";
-  src: url("../../../frontend/fonts/inter/InterVariable.woff2") format("woff2");
+  src: url("../assets/fonts/inter/InterVariable.woff2") format("woff2");
   font-weight: 100 900;
   font-style: normal;
   font-display: swap;
@@ -10,7 +10,7 @@
 
 @font-face {
   font-family: "Inter";
-  src: url("../../../frontend/fonts/inter/InterVariable-Italic.woff2") format("woff2");
+  src: url("../assets/fonts/inter/InterVariable-Italic.woff2") format("woff2");
   font-weight: 100 900;
   font-style: italic;
   font-display: swap;
@@ -18,7 +18,7 @@
 
 @font-face {
   font-family: "JetBrains Mono";
-  src: url("../../../frontend/fonts/jetbrains-mono/JetBrainsMono-Regular.woff2") format("woff2");
+  src: url("../assets/fonts/jetbrains-mono/JetBrainsMono-Regular.woff2") format("woff2");
   font-weight: 400;
   font-style: normal;
   font-display: swap;
@@ -26,7 +26,7 @@
 
 @font-face {
   font-family: "JetBrains Mono";
-  src: url("../../../frontend/fonts/jetbrains-mono/JetBrainsMono-Medium.woff2") format("woff2");
+  src: url("../assets/fonts/jetbrains-mono/JetBrainsMono-Medium.woff2") format("woff2");
   font-weight: 500;
   font-style: normal;
   font-display: swap;
@@ -34,7 +34,7 @@
 
 @font-face {
   font-family: "JetBrains Mono";
-  src: url("../../../frontend/fonts/jetbrains-mono/JetBrainsMono-Bold.woff2") format("woff2");
+  src: url("../assets/fonts/jetbrains-mono/JetBrainsMono-Bold.woff2") format("woff2");
   font-weight: 700;
   font-style: normal;
   font-display: swap;

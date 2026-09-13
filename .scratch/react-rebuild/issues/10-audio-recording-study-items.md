@@ -4,7 +4,11 @@
 
 **Blocked by:** 06 (Study page core)
 
-**Status:** ready-for-agent
+**Status:** deferred — after the portfolio MVP (2026-09-13, owner)
+
+**Why:** wanted, not dropped. The owner's priority is a showable MVP; this
+comes off the back burner once that ships. Distinct from ticket 08's old
+wontfix: nothing here has been decided against.
 
 - [ ] Backend: AudioRecording model (study_item FK nullable, moment FK nullable, audio_file, is_primary, is_generated, duration_seconds, playback_count, last_played_at, created_at)
 - [ ] Backend: one-primary-per-parent constraint enforced at DB level

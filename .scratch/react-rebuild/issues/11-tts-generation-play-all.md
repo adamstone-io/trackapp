@@ -4,7 +4,11 @@
 
 **Blocked by:** 10 (Audio recording for study items)
 
-**Status:** ready-for-agent
+**Status:** deferred — after the portfolio MVP (2026-09-13, owner)
+
+**Why:** wanted, not dropped. The owner's priority is a showable MVP; this
+comes off the back burner once that ships. Distinct from ticket 08's old
+wontfix: nothing here has been decided against.
 
 - [ ] Backend: TTS generation endpoint — accepts study item ID, calls OpenAI TTS API (voice: nova, quality: tts-1), generates audio from item's notes, saves as AudioRecording with is_generated=True and is_primary=True
 - [ ] Backend: TTS endpoint returns the audio file for immediate playback

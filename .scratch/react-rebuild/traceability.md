@@ -37,13 +37,13 @@ original ticket was scoped too small, not something to restructure away.
 | 07 Dashboard (period selector; no separate /stats) | ready | R31, R32, R33, R33a |
 | 08 Scheduled tasks in the workspace | done | R33b, R60 (scheduled-tasks half), R62, R62a, R63, R63a, R64, R64a, R64b |
 | 09 Spaced repetition | ready | R31t, R31u, R31v |
-| 10 Audio recording for study items | ready | R24a, R24b, R24c, R24d, R24e |
-| 11 TTS generation + Play-all | ready | R24f, R24g |
-| 12 Voice moments | ready | R17c |
+| 10 Audio recording for study items | deferred (post-MVP) | R24a, R24b, R24c, R24d, R24e |
+| 11 TTS generation + Play-all | deferred (post-MVP) | R24f, R24g |
+| 12 Voice moments | deferred (post-MVP) | R17c |
 | 13 Archive/delete TimeEntry + Moment | ready | R9h, R17 (removal half) |
 | 13.1 Time entry delete takes one press | done | — (UI) |
 | 14 Settings page (export/import) | ready | R38, R39, R40 |
-| 15 Midnight rollover | ready | R33e |
+| 15 Midnight rollover | deferred (post-MVP) | R33e |
 | 16 Edit times on logged items | ready | R9f, R17b |
 | 17 Countdown completion sound | done | R2b |
 

@@ -4,7 +4,11 @@
 
 **Blocked by:** 02 (Timer page)
 
-**Status:** ready-for-agent
+**Status:** deferred — after the portfolio MVP (2026-09-13, owner)
+
+**Why:** wanted, not dropped. The owner's priority is a showable MVP; this
+comes off the back burner once that ships. Distinct from ticket 08's old
+wontfix: nothing here has been decided against.
 
 - [ ] On app load, calculate milliseconds until midnight in the user's timezone
 - [ ] Set a setTimeout that fires at midnight
