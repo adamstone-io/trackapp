@@ -296,7 +296,7 @@ describe("deleting a project", () => {
 });
 
 describe("deleting a task", () => {
-  it("warns that logged time goes with it, then deletes on confirmation", async () => {
+  it("deletes on confirmation", async () => {
     const user = userEvent.setup();
     let deleted = false;
     serve([project()], [task()]);
@@ -310,8 +310,6 @@ describe("deleting a task", () => {
     renderApp("/workspace");
     await user.click(await screen.findByRole("button", { name: /more write docs/i }));
     await user.click(screen.getByRole("button", { name: /^delete$/i }));
-
-    expect(screen.getByText(/2 logged entries/i)).toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: /confirm delete/i }));
 
     expect(screen.queryByText("Write docs")).not.toBeInTheDocument();

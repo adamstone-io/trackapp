@@ -69,13 +69,6 @@ function ArchivedTasks({ tasks }: { tasks: Task[] }) {
   );
 }
 
-/** "2 logged entries are deleted with it." — the task-delete cascade warning. */
-function deleteWarning(entryCount: number): string {
-  if (entryCount === 0) return "No time is logged on this task.";
-  if (entryCount === 1) return "1 logged entry is deleted with it.";
-  return `${entryCount} logged entries are deleted with it.`;
-}
-
 function TaskRow({ task, projects }: { task: Task; projects: Project[] }) {
   const [moreOpen, setMoreOpen] = useState(false);
   const [editing, setEditing] = useState(false);
@@ -132,7 +125,6 @@ function TaskRow({ task, projects }: { task: Task; projects: Project[] }) {
       {moreOpen &&
         (confirmingDelete ? (
           <div className={styles.moreRow}>
-            <span className={styles.confirmNote}>{deleteWarning(task.entry_count)}</span>
             <button
               className={styles.dangerAction}
               type="button"
