@@ -27,7 +27,7 @@ tightening; the timer-bar and edit-field fixes stand.
       part if it does not fit as-is
 - [ ] The panel closes on navigation — a menu still open over the page you just
       moved to is the classic bug here
-- [ ] Decide and record what stays outside the burger (see open question below)
+- [ ] Keep the timer readout in the bar, outside the burger (see below)
 - [ ] `viewport-fit=cover` in `index.html` plus `env(safe-area-inset-*)` on the
       fixed nav and the page's bottom padding. Right now a notched iPhone can
       put the nav under the status bar and the last row under the home indicator
@@ -52,14 +52,8 @@ requirements. Record them in `02-requirements.md` in the Obsidian vault first
 (section 2.6 or a new mobile section), then reference the R numbers here — the
 vault is canonical, this file is not.
 
-**Open question — what stays outside the burger?** Two candidates, and the
-answer changes the layout:
-
-1. *Nothing.* Burger on the left, page name beside it. Cleanest, but the
-   always-visible timer readout is lost on mobile, and that readout is the whole
-   reason `TimerBar` lives in the nav.
-2. *The timer readout.* Burger left, readout right. Keeps the one piece of
-   live state worth seeing from any page, costs ~70px of bar.
-
-Recommend 2: the timer bar exists to be glanceable from anywhere, and a burger
-that swallows it defeats the R9c work in ticket 18.
+**Implementer's call, not the owner's — overturnable:** the burger holds the six
+destinations and nothing else; the timer readout stays in the bar beside it.
+`TimerBar` lives in the nav so a running timer is glanceable from any page, and
+a burger that swallows it defeats R9c and ticket 18. Costs ~70px of bar, which
+is affordable once six labels are behind the trigger.
