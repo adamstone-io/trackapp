@@ -24,8 +24,8 @@ chain is holding.
   the current run stated as a streak. R21a, R33a.
 
 Order down the page: the two day-scoped cards abreast at the top, then the
-period block (selector, Top tasks, Activity), then today's plan and the habit
-streaks, with the fortnight trend last.
+habit streaks, then the period block (selector, Top tasks, Activity), then
+today's plan, with the fortnight trend last.
 
 The period selector (Today / Yesterday / This week / This month) governs the
 Top tasks and Activity cards only, and travels directly above them; every other
