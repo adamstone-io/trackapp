@@ -190,7 +190,13 @@
   display: flex;
   flex-wrap: wrap;
   gap: var(--space-2);
-  margin-top: var(--space-7);
+  margin-top: var(--space-5);
+}
+
+/* The selector already separates the day-scoped cards above it from the
+   period block below, so the first card under it need not separate them again. */
+.periods + .card {
+  margin-top: var(--space-4);
 }
 
 .period {
