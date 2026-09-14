@@ -9,6 +9,8 @@ export const activeUser = {
   id: 1,
   username: "adam",
   email: "adam@example.com",
+  first_name: "",
+  last_name: "",
   subscription: {
     is_grandfathered: false,
     is_subscribed: false,

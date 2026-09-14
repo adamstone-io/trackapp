@@ -11,6 +11,7 @@ import { StudyPage } from "./pages/StudyPage";
 import { HabitsPage } from "./pages/HabitsPage";
 import { SettingsPage } from "./pages/SettingsPage";
 import { LoginPage } from "./pages/LoginPage";
+import { SignUpPage } from "./pages/SignUpPage";
 import { VerifyEmailPage } from "./pages/VerifyEmailPage";
 import { TrialExpiredPage } from "./pages/TrialExpiredPage";
 
@@ -38,6 +39,7 @@ export function App({ queryClient }: AppProps) {
       <ToastProvider>
         <Routes>
         <Route path="/login" element={<LoginPage />} />
+        <Route path="/register" element={<SignUpPage />} />
         <Route path="/verify-email" element={<VerifyEmailPage />} />
         <Route path="/trial-expired" element={<TrialExpiredPage />} />
         <Route

@@ -1,11 +1,13 @@
 import { useState, type FormEvent } from "react";
-import { useNavigate, useSearchParams } from "react-router-dom";
+import { Link, useLocation, useNavigate, useSearchParams } from "react-router-dom";
 import { login } from "../api/auth";
 import styles from "./AuthPages.module.css";
 
 export function LoginPage() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
+  // Set by anything that ends a session deliberately — a password change, say.
+  const notice = (useLocation().state as { notice?: string } | null)?.notice;
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -35,6 +37,7 @@ export function LoginPage() {
     <main className={styles.page}>
       <div className={styles.card}>
         <h1>Sign in</h1>
+        {notice && <p className={styles.message}>{notice}</p>}
         <form onSubmit={handleSubmit} className={styles.form}>
           <div className={styles.field}>
             <label className={styles.label} htmlFor="login-username">
@@ -68,6 +71,9 @@ export function LoginPage() {
             {submitting ? "Signing in…" : "Sign in"}
           </button>
         </form>
+        <p className={styles.hint}>
+          No account yet? <Link to="/register">Sign up</Link>
+        </p>
       </div>
     </main>
   );

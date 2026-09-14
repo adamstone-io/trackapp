@@ -45,6 +45,8 @@ INSTALLED_APPS = [
     'tracker',
     'rest_framework',
     'rest_framework_simplejwt',
+    # Lets a password change evict the sessions that knew the old password.
+    'rest_framework_simplejwt.token_blacklist',
     'corsheaders',
 ]
 
@@ -135,7 +137,9 @@ STATIC_ROOT = BASE_DIR / "staticfiles"
 # Email (Resend)
 RESEND_API_KEY = os.environ.get("RESEND_API_KEY", "")
 RESEND_FROM_EMAIL = os.environ.get("RESEND_FROM_EMAIL", "noreply@tempotrack.app")
-FRONTEND_URL = os.environ.get("FRONTEND_URL", "http://localhost:5500")
+# Where the emailed links point. 5173 is Vite's dev server (5500 was the
+# deleted vanilla-JS frontend's).
+FRONTEND_URL = os.environ.get("FRONTEND_URL", "http://localhost:5173")
 
 MEDIA_URL = '/media/'
 MEDIA_ROOT = BASE_DIR / "media"
@@ -159,6 +163,14 @@ REST_FRAMEWORK = {
     ],
     'DEFAULT_PAGINATION_CLASS': 'rest_framework.pagination.PageNumberPagination',
     'PAGE_SIZE': 20,
+    # Applies only to views that name a scope below; the rest are unthrottled.
+    'DEFAULT_THROTTLE_CLASSES': ['rest_framework.throttling.ScopedRateThrottle'],
+    'DEFAULT_THROTTLE_RATES': {
+        # Account creation and password guessing are the two endpoints worth
+        # rate-limiting: both are reachable without already holding an account.
+        'auth-register': '30/hour',
+        'auth-password': '30/hour',
+    },
 }
 
 SIMPLE_JWT = {

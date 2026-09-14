@@ -2,7 +2,7 @@ import type { ReactNode } from "react";
 import { Navigate, useLocation } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { AuthExpiredError, TrialExpiredError } from "../api/client";
-import { fetchCurrentUser } from "../api/auth";
+import { CURRENT_USER_KEY, fetchCurrentUser } from "../api/auth";
 import { isAuthenticated } from "./tokens";
 import styles from "../pages/AuthPages.module.css";
 
@@ -16,7 +16,7 @@ export function RequireAuth({ children }: { children: ReactNode }) {
   const authed = isAuthenticated();
 
   const userQuery = useQuery({
-    queryKey: ["auth", "user"],
+    queryKey: CURRENT_USER_KEY,
     queryFn: fetchCurrentUser,
     enabled: authed,
   });

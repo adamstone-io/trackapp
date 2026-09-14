@@ -2,9 +2,18 @@ import resend
 from django.conf import settings
 
 
+def verification_url(token):
+    """The link a verification email carries.
+
+    This addressed the vanilla-JS app's /html/verify-email.html until that
+    frontend was deleted; the React route is /verify-email.
+    """
+    return f"{settings.FRONTEND_URL}/verify-email?token={token}"
+
+
 def send_verification_email(user, token):
     """Send an email verification link to a newly registered user."""
-    verify_url = f"{settings.FRONTEND_URL}/html/verify-email.html?token={token}"
+    verify_url = verification_url(token)
     resend.api_key = settings.RESEND_API_KEY
 
     resend.Emails.send({

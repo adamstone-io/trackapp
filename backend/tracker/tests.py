@@ -1,5 +1,6 @@
 from datetime import datetime, timedelta, timezone as dt_timezone
 
+from django.conf import settings
 from django.contrib.auth.models import User
 from django.test import TestCase
 from django.utils import timezone
@@ -1117,3 +1118,231 @@ class DailyStatsTests(StatsApiTestCase):
 
         self.assertEqual(today["total_seconds"], 0)
         self.assertEqual(today["entry_count"], 0)
+
+
+class AccountApiTestCase(TestCase):
+    """The settings page's account section, over the HTTP API."""
+
+    def setUp(self):
+        self.user = User.objects.create_user(
+            username="adam", email="adam@example.com", password="hunter2please"
+        )
+        self.headers = {"authorization": f"Bearer {self.token('hunter2please')}"}
+
+    def token(self, password, username="adam"):
+        response = self.client.post(
+            "/api/auth/token/",
+            {"username": username, "password": password},
+            content_type="application/json",
+        )
+        self.assertEqual(response.status_code, 200, response.content)
+        return response.json()["access"]
+
+    def get_account(self):
+        response = self.client.get("/api/auth/user/", headers=self.headers)
+        self.assertEqual(response.status_code, 200)
+        return response.json()
+
+    def patch_account(self, body):
+        return self.client.patch(
+            "/api/auth/user/", body, content_type="application/json", headers=self.headers
+        )
+
+
+class AccountNameTests(AccountApiTestCase):
+    """R45d: a person can correct the name on their account."""
+
+    def test_the_account_carries_a_first_and_last_name(self):
+        account = self.get_account()
+
+        self.assertEqual(account["first_name"], "")
+        self.assertEqual(account["last_name"], "")
+
+    def test_both_names_can_be_changed(self):
+        response = self.patch_account({"first_name": "Adam", "last_name": "Stone"})
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json()["first_name"], "Adam")
+        self.assertEqual(response.json()["last_name"], "Stone")
+        self.user.refresh_from_db()
+        self.assertEqual(self.user.first_name, "Adam")
+
+    def test_a_name_change_leaves_the_email_alone(self):
+        """A partial patch is partial: names on their own must not need an email."""
+        response = self.patch_account({"first_name": "Adam"})
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json()["email"], "adam@example.com")
+
+    def test_the_email_can_still_be_changed_on_its_own(self):
+        response = self.patch_account({"email": "new@example.com"})
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json()["email"], "new@example.com")
+
+    def test_an_empty_email_is_still_refused(self):
+        response = self.patch_account({"email": ""})
+
+        self.assertEqual(response.status_code, 400)
+        self.user.refresh_from_db()
+        self.assertEqual(self.user.email, "adam@example.com")
+
+    def test_an_email_another_account_holds_is_refused(self):
+        User.objects.create_user(username="eve", email="taken@example.com", password="hunter2please")
+
+        response = self.patch_account({"email": "taken@example.com"})
+
+        self.assertEqual(response.status_code, 400)
+
+    def test_the_username_stays_fixed(self):
+        response = self.patch_account({"username": "somebody-else"})
+
+        self.assertEqual(response.status_code, 400)
+        self.user.refresh_from_db()
+        self.assertEqual(self.user.username, "adam")
+
+    def test_names_are_trimmed(self):
+        response = self.patch_account({"first_name": "  Adam  "})
+
+        self.assertEqual(response.json()["first_name"], "Adam")
+
+
+class PasswordChangeTests(AccountApiTestCase):
+    """R45e: a person can change their password from settings."""
+
+    def change(self, body, headers=None):
+        return self.client.patch(
+            "/api/auth/password/",
+            body,
+            content_type="application/json",
+            headers=self.headers if headers is None else headers,
+        )
+
+    def test_the_new_password_logs_in_and_the_old_one_stops(self):
+        response = self.change(
+            {"current_password": "hunter2please", "new_password": "quite-another-one"}
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.token("quite-another-one")
+        failed = self.client.post(
+            "/api/auth/token/",
+            {"username": "adam", "password": "hunter2please"},
+            content_type="application/json",
+        )
+        self.assertEqual(failed.status_code, 401)
+
+    def test_the_wrong_current_password_changes_nothing(self):
+        response = self.change(
+            {"current_password": "not-it", "new_password": "quite-another-one"}
+        )
+
+        self.assertEqual(response.status_code, 400)
+        self.token("hunter2please")
+
+    def test_a_password_the_validators_reject_is_refused(self):
+        response = self.change({"current_password": "hunter2please", "new_password": "abc"})
+
+        self.assertEqual(response.status_code, 400)
+        self.assertIn("detail", response.json())
+        self.token("hunter2please")
+
+    def test_both_fields_are_required(self):
+        self.assertEqual(self.change({"new_password": "quite-another-one"}).status_code, 400)
+        self.assertEqual(self.change({"current_password": "hunter2please"}).status_code, 400)
+
+    def test_a_stranger_cannot_change_a_password(self):
+        response = self.change(
+            {"current_password": "hunter2please", "new_password": "quite-another-one"},
+            headers={},
+        )
+
+        self.assertEqual(response.status_code, 401)
+        self.token("hunter2please")
+
+
+class VerificationEmailTests(TestCase):
+    """The link in the email has to land on a route that exists."""
+
+    def test_the_link_points_at_the_react_verify_route(self):
+        from .emails import verification_url
+
+        url = verification_url("abc-123")
+
+        self.assertTrue(url.endswith("/verify-email?token=abc-123"), url)
+        self.assertNotIn("/html/", url)
+
+
+class RegistrationPasswordTests(TestCase):
+    """A password refused at the settings page must be refused at sign-up too."""
+
+    def register(self, password):
+        return self.client.post(
+            "/api/auth/register/",
+            {
+                "username": "adam",
+                "email": "adam@example.com",
+                "password": password,
+                "registration_code": settings.REGISTRATION_CODE,
+            },
+            content_type="application/json",
+        )
+
+    def test_a_password_the_validators_reject_is_refused(self):
+        response = self.register("abc")
+
+        self.assertEqual(response.status_code, 400)
+        self.assertFalse(User.objects.filter(username="adam").exists())
+
+    def test_a_sound_password_is_accepted(self):
+        response = self.register("quite-a-password")
+
+        self.assertEqual(response.status_code, 201)
+        self.assertTrue(User.objects.filter(username="adam").exists())
+
+
+class PasswordChangeEvictsSessionsTests(AccountApiTestCase):
+    """R45e: changing a password must end the sessions that knew the old one.
+
+    Otherwise a stolen refresh token outlives the change by its own lifetime,
+    which is a year — so changing the password after a compromise would not
+    actually evict anyone.
+    """
+
+    def refresh_token(self):
+        response = self.client.post(
+            "/api/auth/token/",
+            {"username": "adam", "password": "hunter2please"},
+            content_type="application/json",
+        )
+        return response.json()["refresh"]
+
+    def test_an_old_refresh_token_stops_working(self):
+        stolen = self.refresh_token()
+
+        self.client.patch(
+            "/api/auth/password/",
+            {"current_password": "hunter2please", "new_password": "quite-another-one"},
+            content_type="application/json",
+            headers=self.headers,
+        )
+
+        response = self.client.post(
+            "/api/auth/token/refresh/", {"refresh": stolen}, content_type="application/json"
+        )
+        self.assertEqual(response.status_code, 401)
+
+    def test_a_refused_change_leaves_the_session_alone(self):
+        mine = self.refresh_token()
+
+        self.client.patch(
+            "/api/auth/password/",
+            {"current_password": "wrong", "new_password": "quite-another-one"},
+            content_type="application/json",
+            headers=self.headers,
+        )
+
+        response = self.client.post(
+            "/api/auth/token/refresh/", {"refresh": mine}, content_type="application/json"
+        )
+        self.assertEqual(response.status_code, 200)

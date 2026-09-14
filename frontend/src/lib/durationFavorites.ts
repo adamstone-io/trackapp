@@ -62,3 +62,8 @@ export function addDurationFavorite(minutes: number): DurationFavorite[] {
 export function removeDurationFavorite(id: number): DurationFavorite[] {
   return save(loadDurationFavorites().filter((favorite) => favorite.id !== id));
 }
+
+/** Drop the favorites on logout: they belong to the account that is leaving. */
+export function clearDurationFavorites(): void {
+  localStorage.removeItem(STORAGE_KEY);
+}

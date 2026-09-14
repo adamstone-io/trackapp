@@ -13,6 +13,7 @@ from rest_framework.parsers import JSONParser, MultiPartParser, FormParser
 
 from django.core.validators import validate_email
 from django.core.exceptions import ValidationError as DjangoValidationError
+from django.contrib.auth.password_validation import validate_password
 
 from .emails import send_verification_email
 from .models import (
@@ -27,6 +28,8 @@ from .models import (
     TimeEntry,
     UserSubscription,
 )
+from rest_framework_simplejwt.token_blacklist.models import BlacklistedToken, OutstandingToken
+
 from .permissions import HasAppAccess
 from .subscription_utils import ensure_user_subscription
 from .serializers import (
@@ -70,6 +73,7 @@ class UserOwnedViewSet(viewsets.ModelViewSet):
 
 class RegisterView(APIView):
     permission_classes = [permissions.AllowAny]
+    throttle_scope = "auth-register"
 
     def post(self, request):
         username = (request.data.get("username") or "").strip()
@@ -106,6 +110,14 @@ class RegisterView(APIView):
         if User.objects.filter(email=email).exists():
             return Response(
                 {"detail": "An account with that email already exists."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        try:
+            validate_password(password)
+        except DjangoValidationError as error:
+            return Response(
+                {"detail": " ".join(error.messages)},
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
@@ -209,21 +221,29 @@ class ResendVerificationView(APIView):
         return generic_ok
 
 
+def _account_payload(user):
+    return {
+        "id": user.id,
+        "username": user.username,
+        "email": user.email,
+        "first_name": user.first_name,
+        "last_name": user.last_name,
+        "subscription": _subscription_payload(user),
+    }
+
+
 class CurrentUserView(APIView):
     permission_classes = [permissions.IsAuthenticated]
 
+    # The username is the login identifier, so it is read-only; the names and
+    # the email are the settings page's to edit.
+    NAME_FIELDS = ("first_name", "last_name")
+
     def get(self, request):
-        return Response(
-            {
-                "id": request.user.id,
-                "username": request.user.username,
-                "email": request.user.email,
-                "subscription": _subscription_payload(request.user),
-            },
-            status=status.HTTP_200_OK,
-        )
+        return Response(_account_payload(request.user), status=status.HTTP_200_OK)
 
     def patch(self, request):
+        """A true partial patch: a field absent from the body is left alone."""
         if "username" in request.data:
             requested_username = (request.data.get("username") or "").strip()
             if requested_username and requested_username != request.user.username:
@@ -232,41 +252,50 @@ class CurrentUserView(APIView):
                     status=status.HTTP_400_BAD_REQUEST,
                 )
 
-        email = (request.data.get("email") or "").strip().lower()
-        if not email:
-            return Response(
-                {"detail": "Email is required."},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
+        changed = []
 
-        try:
-            validate_email(email)
-        except DjangoValidationError:
-            return Response(
-                {"detail": "Enter a valid email address."},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
+        for field in self.NAME_FIELDS:
+            if field not in request.data:
+                continue
+            value = (request.data.get(field) or "").strip()
+            if len(value) > 150:
+                return Response(
+                    {"detail": "That name is too long."},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+            setattr(request.user, field, value)
+            changed.append(field)
 
-        email_owner = User.objects.filter(email=email).exclude(pk=request.user.pk).exists()
-        if email_owner:
-            return Response(
-                {"detail": "An account with that email already exists."},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
+        if "email" in request.data:
+            email = (request.data.get("email") or "").strip().lower()
+            if not email:
+                return Response(
+                    {"detail": "Email is required."},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
 
-        if request.user.email != email:
-            request.user.email = email
-            request.user.save(update_fields=["email"])
+            try:
+                validate_email(email)
+            except DjangoValidationError:
+                return Response(
+                    {"detail": "Enter a valid email address."},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
 
-        return Response(
-            {
-                "id": request.user.id,
-                "username": request.user.username,
-                "email": request.user.email,
-                "subscription": _subscription_payload(request.user),
-            },
-            status=status.HTTP_200_OK,
-        )
+            if User.objects.filter(email=email).exclude(pk=request.user.pk).exists():
+                return Response(
+                    {"detail": "An account with that email already exists."},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+
+            if request.user.email != email:
+                request.user.email = email
+                changed.append("email")
+
+        if changed:
+            request.user.save(update_fields=changed)
+
+        return Response(_account_payload(request.user), status=status.HTTP_200_OK)
 
     def delete(self, request):
         request.user.delete()
@@ -690,6 +719,48 @@ class StudyItemViewSet(UserOwnedViewSet):
         item.remove_note_image()
         serializer = self.get_serializer(item)
         return Response(serializer.data)
+
+def _revoke_refresh_tokens(user):
+    """End every session that knew the old password.
+
+    Changing a password is what someone does when they think it is known, so
+    the old sessions have to go with it. Access tokens are self-contained and
+    live out their hour; refresh tokens are the ones worth a year.
+    """
+    for token in OutstandingToken.objects.filter(user=user):
+        BlacklistedToken.objects.get_or_create(token=token)
+
+
+class PasswordChangeView(APIView):
+    """PATCH /api/auth/password/ — change the signed-in account's password.
+
+    The current password is required: a borrowed session should not be able to
+    lock the owner out of their own account.
+    """
+    permission_classes = [permissions.IsAuthenticated]
+    throttle_scope = "auth-password"
+
+    def patch(self, request):
+        current_password = request.data.get("current_password") or ""
+        new_password = request.data.get("new_password") or ""
+
+        if not current_password or not new_password:
+            return _bad_request("Both the current and the new password are required.")
+
+        if not request.user.check_password(current_password):
+            return _bad_request("That is not your current password.")
+
+        try:
+            validate_password(new_password, user=request.user)
+        except DjangoValidationError as error:
+            return _bad_request(" ".join(error.messages))
+
+        request.user.set_password(new_password)
+        request.user.save(update_fields=["password"])
+        _revoke_refresh_tokens(request.user)
+
+        return Response({"detail": "Password changed."}, status=status.HTTP_200_OK)
+
 
 class TodayEntriesView(APIView):
     """
