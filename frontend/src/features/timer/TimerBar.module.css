@@ -23,3 +23,16 @@
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+
+/* On a phone the nav has no room to spare: the readout is the part worth
+   keeping, the task title is not. */
+@media (max-width: 640px) {
+  .bar {
+    max-width: none;
+    gap: var(--space-1);
+  }
+
+  .title {
+    display: none;
+  }
+}
