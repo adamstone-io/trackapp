@@ -1,0 +1,93 @@
+# Render blueprint for the React rebuild's development deployment.
+#
+# This defines a SEPARATE environment: its own database, its own Django
+# service, its own static site. It touches nothing belonging to the existing
+# production deployment, which was configured by hand in Render's dashboard and
+# is not described here. Nothing in this file should ever be pointed at the
+# production database.
+#
+# Apply with: Render dashboard -> Blueprints -> New Blueprint Instance.
+# Review the placeholders marked TODO before applying.
+
+databases:
+  - name: trackapp-dev-db
+    databaseName: trackapp_dev
+    plan: free
+
+services:
+  # ---- Django: the API only. It does not serve the frontend. ----
+  - type: web
+    name: trackapp-dev-api
+    runtime: python
+    plan: free
+    region: oregon # TODO: match the production region if latency matters
+    buildCommand: >-
+      pip install -r backend/requirements.txt &&
+      python backend/manage.py collectstatic --noinput &&
+      python backend/manage.py migrate --noinput
+    # --chdir so config.wsgi resolves; WhiteNoise serves Django's own static
+    # files (the admin and DRF's browsable API), not the React build.
+    startCommand: gunicorn config.wsgi:application --chdir backend
+    envVars:
+      - key: DATABASE_URL
+        fromDatabase:
+          name: trackapp-dev-db
+          property: connectionString
+      - key: DJANGO_SECRET_KEY
+        generateValue: true
+      - key: DEBUG
+        value: "False"
+      - key: ALLOWED_HOSTS
+        # Render injects the service's own hostname; keep this in step if a
+        # custom domain is added later.
+        fromService:
+          type: web
+          name: trackapp-dev-api
+          envVarKey: RENDER_EXTERNAL_HOSTNAME
+      - key: CORS_ALLOWED_ORIGINS
+        # The static site is a different origin, so the API has to name it.
+        # Empty when DEBUG is false means every browser request is refused.
+        fromService:
+          type: web
+          name: trackapp-dev-web
+          envVarKey: RENDER_EXTERNAL_URL
+      - key: FRONTEND_URL
+        # Where the verification email's link points. Wrong value here is the
+        # failure that has already bitten once: the link 404s or refuses to
+        # connect, and no account can be activated.
+        fromService:
+          type: web
+          name: trackapp-dev-web
+          envVarKey: RENDER_EXTERNAL_URL
+      - key: REGISTRATION_CODE
+        # MUST be set. settings.py falls back to "4595", which is committed to
+        # this repo — an unset value means open sign-up with a published code.
+        sync: false # TODO: set in the dashboard, do not commit it
+      - key: RESEND_API_KEY
+        sync: false # TODO: set in the dashboard
+      - key: RESEND_FROM_EMAIL
+        value: noreply@bitadam.net # the domain already verified with Resend
+      - key: TRIAL_DAYS
+        value: "7"
+
+  # ---- The React app: a static bundle, as the legacy frontend was. ----
+  - type: web
+    name: trackapp-dev-web
+    runtime: static
+    buildCommand: npm ci --prefix frontend && npm run build --prefix frontend
+    staticPublishPath: ./frontend/dist
+    envVars:
+      - key: VITE_API_ORIGIN
+        # Baked into the bundle at build time. The VITE_ prefix is required —
+        # Vite exposes nothing else to client code.
+        fromService:
+          type: web
+          name: trackapp-dev-api
+          property: url
+    routes:
+      # React Router owns the paths. Without this, /settings serves a 404 on a
+      # hard refresh, because there is no settings.html to find — the legacy
+      # app was real .html files and needed no such rule.
+      - type: rewrite
+        source: /*
+        destination: /index.html
