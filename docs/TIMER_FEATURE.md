@@ -70,6 +70,25 @@ discard time already on the clock without writing an entry. Stop first.
 
 The section renders nothing when the day has no planned tasks.
 
+## Title case
+Titles are stored **lowercase** — `Task.title`, `TimeEntry.task_title` and
+`ActiveTimer.task_title`, normalised by `serializers.lowercase_title()`. Case is
+a display decision, not data: "Write spec" and "write spec" are one task, which
+is also why `ensureTaskId` has always matched case-insensitively.
+
+The UI capitalises the first letter for reading (`lib/text.ts`,
+`capitalizeFirst`) wherever a title is listed — the day log, the timer bar and
+readout, the project entries modal, the dashboard's top tasks and plan, and both
+scheduled-task lists. Only the first letter, so a proper noun mid-title keeps
+the case it was typed in.
+
+The click-to-edit field seeds from the capitalised text, so a title does not
+visibly flip to lowercase the moment you click it; whatever is typed is
+lowercased again on save.
+
+Migration `0017_lowercase_titles` brought existing rows to the rule. It is
+irreversible in substance — the original casing is not recoverable.
+
 ## Notes
 - Timer entries are API-backed via `/api/time-entries/`.
 - Countdown favorites are stored locally.

@@ -17,6 +17,7 @@ import {
 import { buildStopRequest, useStopTimer } from "./useTimeEntries";
 import { ProjectSelect } from "../projects/ProjectSelect";
 import styles from "./TimerControls.module.css";
+import { capitalizeFirst } from "../../lib/text";
 
 interface TimerControlsProps {
   /** The task title field is owned by the page so "Add moment" can read it too. */
@@ -194,7 +195,7 @@ function RunningTimer({ timer }: { timer: ActiveTimer }) {
         {formatTimerReadout(remaining ?? elapsed)}
       </div>
       {percentUsed !== null && <div className={styles.percentUsed}>{percentUsed}% used</div>}
-      <div className={styles.runningTitle}>{timer.task_title}</div>
+      <div className={styles.runningTitle}>{capitalizeFirst(timer.task_title)}</div>
       <div className={styles.actions}>
         {timer.is_paused ? (
           <button className={styles.secondaryButton} type="button" onClick={() => resumeTimer.resume(timer)}>

@@ -3,6 +3,7 @@ import { formatClockTime } from "../../lib/time";
 import { byPlannedStart } from "../scheduledTasks/useScheduledTasks";
 import { Card } from "./Card";
 import styles from "./dashboard.module.css";
+import { capitalizeFirst } from "../../lib/text";
 
 /** The day's scheduled tasks, earliest first — what is still ahead. */
 export function TodaysPlan({ tasks }: { tasks: Task[] }) {
@@ -20,7 +21,7 @@ export function TodaysPlan({ tasks }: { tasks: Task[] }) {
               className={task.first_started_at ? `${styles.planRow} ${styles.planDone}` : styles.planRow}
             >
               <span className={styles.planTime}>{formatClockTime(task.planned_start!)}</span>
-              <span className={styles.planTitle}>{task.title}</span>
+              <span className={styles.planTitle}>{capitalizeFirst(task.title)}</span>
             </li>
           ))}
         </ul>

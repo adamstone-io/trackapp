@@ -1266,3 +1266,65 @@ describe("today's schedule", () => {
     expect(await screen.findByRole("button", { name: "Start Stand-up" })).toBeDisabled();
   });
 });
+
+describe("title case", () => {
+  /** The backend stores titles lowercase; reading is where the capital goes. */
+  it("capitalises a stored lowercase entry title, and only its first letter", async () => {
+    server.use(
+      http.get(api("/today-entries/"), () =>
+        HttpResponse.json([
+          {
+            type: "time_entry",
+            id: "te-lower",
+            sort_time: "2026-09-20T10:00:00Z",
+            data: {
+              id: "te-lower",
+              task: "task-1",
+              task_title: "write the spec",
+              started_at: "2026-09-20T10:00:00Z",
+              ended_at: "2026-09-20T11:00:00Z",
+              duration_seconds: 3600,
+              notes: "",
+              breaks: [],
+            },
+          },
+        ]),
+      ),
+    );
+
+    renderApp("/timer");
+
+    expect(await screen.findByText("Write the spec")).toBeInTheDocument();
+    // Not "Write The Spec" — mid-title words keep the case they were typed in.
+    expect(screen.queryByText("Write The Spec")).not.toBeInTheDocument();
+  });
+
+  it("puts the capitalised title into the editor, so it does not flip on click", async () => {
+    server.use(
+      http.get(api("/today-entries/"), () =>
+        HttpResponse.json([
+          {
+            type: "time_entry",
+            id: "te-lower",
+            sort_time: "2026-09-20T10:00:00Z",
+            data: {
+              id: "te-lower",
+              task: "task-1",
+              task_title: "write the spec",
+              started_at: "2026-09-20T10:00:00Z",
+              ended_at: "2026-09-20T11:00:00Z",
+              duration_seconds: 3600,
+              notes: "",
+              breaks: [],
+            },
+          },
+        ]),
+      ),
+    );
+
+    renderApp("/timer");
+    await userEvent.click(await screen.findByText("Write the spec"));
+
+    expect(screen.getByRole("textbox", { name: "Entry title" })).toHaveValue("Write the spec");
+  });
+});

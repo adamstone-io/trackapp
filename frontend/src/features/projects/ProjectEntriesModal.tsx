@@ -4,6 +4,7 @@ import type { Project } from "../../api/types";
 import { Modal } from "../../components/Modal";
 import { formatClockTime, formatDayMonthYear, formatDuration } from "../../lib/time";
 import styles from "./ProjectEntriesModal.module.css";
+import { capitalizeFirst } from "../../lib/text";
 
 /** Every time entry logged against one project — what makes its total up. */
 export function ProjectEntriesModal({
@@ -37,7 +38,7 @@ export function ProjectEntriesModal({
           <ul className={styles.list}>
             {entries.map((entry) => (
               <li key={entry.id} className={styles.item}>
-                <span className={styles.title}>{entry.task_title}</span>
+                <span className={styles.title}>{capitalizeFirst(entry.task_title)}</span>
                 <span className={styles.when}>
                   {formatDayMonthYear(entry.started_at)} · {formatClockTime(entry.started_at)}
                   {entry.ended_at ? `–${formatClockTime(entry.ended_at)}` : ""}

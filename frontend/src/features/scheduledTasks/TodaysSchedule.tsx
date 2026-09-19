@@ -4,6 +4,7 @@ import { isSettled } from "../../lib/optimistic";
 import { useActiveTimerQuery, useStartTimer } from "../timer/useActiveTimer";
 import { byPlannedStart, useScheduledTasksQuery } from "./useScheduledTasks";
 import styles from "./todaysSchedule.module.css";
+import { capitalizeFirst } from "../../lib/text";
 
 /**
  * The day's plan on the page you work from: see what is next and start it
@@ -33,7 +34,7 @@ export function TodaysSchedule() {
             className={task.first_started_at ? `${styles.row} ${styles.started}` : styles.row}
           >
             <span className={styles.slot}>{formatClockTime(task.planned_start!)}</span>
-            <span className={styles.name}>{task.title}</span>
+            <span className={styles.name}>{capitalizeFirst(task.title)}</span>
             <StartButton task={task} timerRunning={Boolean(timer)} />
           </li>
         ))}

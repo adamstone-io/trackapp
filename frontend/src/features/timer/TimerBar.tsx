@@ -2,6 +2,7 @@ import { NavLink, useLocation } from "react-router-dom";
 import { formatTimerReadout } from "../../lib/time";
 import { useActiveTimerQuery, useElapsedSeconds } from "./useActiveTimer";
 import styles from "./TimerBar.module.css";
+import { capitalizeFirst } from "../../lib/text";
 
 /**
  * Compact live readout shown in the nav while a timer runs — except on the
@@ -22,7 +23,7 @@ export function TimerBar() {
   return (
     <NavLink to="/timer" className={styles.bar} aria-label="Active timer">
       <span className={styles.readout}>{formatTimerReadout(remaining ?? elapsed)}</span>
-      <span className={styles.title}>{timer.task_title}</span>
+      <span className={styles.title}>{capitalizeFirst(timer.task_title)}</span>
     </NavLink>
   );
 }

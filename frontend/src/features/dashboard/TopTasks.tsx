@@ -3,6 +3,7 @@ import { formatDuration } from "../../lib/time";
 import { BarList } from "./BarList";
 import { Card } from "./Card";
 import styles from "./dashboard.module.css";
+import { capitalizeFirst } from "../../lib/text";
 
 const TOP_TASKS = 5;
 
@@ -19,7 +20,7 @@ export function TopTasks({ stats }: { stats: PeriodStats }) {
         <BarList
           label="Top tasks"
           rows={tasks.map((task) => ({
-            name: task.title,
+            name: capitalizeFirst(task.title),
             value: task.total_seconds,
             display: formatDuration(task.total_seconds),
           }))}

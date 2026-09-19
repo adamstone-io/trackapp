@@ -16,6 +16,17 @@ from .models import (
 )
 
 
+def lowercase_title(value):
+    """Titles are stored lowercase, so the same work reads the same everywhere.
+
+    Case is a display decision, not data: "Write spec" and "write spec" are one
+    task, and the UI capitalises for reading. Task titles and the copy a time
+    entry keeps both follow this, or the dashboard (which reads the task's) and
+    the day log (which reads the entry's) disagree about one piece of work.
+    """
+    return (value or "").strip().lower()
+
+
 class ProjectSerializer(serializers.ModelSerializer):
     total_seconds = serializers.IntegerField(read_only=True, default=0)
 
@@ -28,6 +39,12 @@ class ProjectSerializer(serializers.ModelSerializer):
 class TaskSerializer(serializers.ModelSerializer):
     entry_count = serializers.IntegerField(read_only=True, default=0)
     total_seconds = serializers.IntegerField(read_only=True, default=0)
+
+    def validate_title(self, value):
+        title = lowercase_title(value)
+        if not title:
+            raise serializers.ValidationError("A title is required.")
+        return title
     # R64a: when the task was actually first started, against planned_start.
     first_started_at = serializers.DateTimeField(read_only=True, required=False)
 
@@ -38,6 +55,9 @@ class TaskSerializer(serializers.ModelSerializer):
 
 
 class ActiveTimerSerializer(serializers.ModelSerializer):
+    def validate_task_title(self, value):
+        return lowercase_title(value)
+
     class Meta:
         model = ActiveTimer
         fields = "__all__"
@@ -45,6 +65,9 @@ class ActiveTimerSerializer(serializers.ModelSerializer):
 
 
 class TimeEntrySerializer(serializers.ModelSerializer):
+    def validate_task_title(self, value):
+        return lowercase_title(value)
+
     def validate(self, data):
         started_at = data.get("started_at")
         ended_at = data.get("ended_at")

@@ -17,6 +17,7 @@ import {
 import { ProjectSelect } from "../projects/ProjectSelect";
 import { useProjectsQuery } from "../projects/useProjects";
 import styles from "./TodayLog.module.css";
+import { capitalizeFirst } from "../../lib/text";
 
 export function TodayLog() {
   const { data: entries } = useQuery({
@@ -210,7 +211,7 @@ function TimeEntryRow({ entry }: { entry: Extract<TodayEntry, { type: "time_entr
       <div className={styles.main}>
         {editing ? (
           <EditText
-            initial={data.task_title}
+            initial={capitalizeFirst(data.task_title)}
             ariaLabel="Entry title"
             onClose={() => setEditing(false)}
             onCommit={(taskTitle) =>
@@ -219,7 +220,7 @@ function TimeEntryRow({ entry }: { entry: Extract<TodayEntry, { type: "time_entr
           />
         ) : (
           <ClickableText
-            value={data.task_title}
+            value={capitalizeFirst(data.task_title)}
             className={styles.title}
             editable={isSettled(entry.id)}
             onClick={() => setEditing(true)}

@@ -15,6 +15,7 @@ import {
 } from "./useScheduledTasks";
 import styles from "./scheduledTasks.module.css";
 import formStyles from "../projects/forms.module.css";
+import { capitalizeFirst } from "../../lib/text";
 
 /** Local "YYYY-MM-DD" — the day the list is showing. */
 function todayIso(): string {
@@ -123,7 +124,7 @@ function ScheduledTaskRow({ task, day }: { task: Task; day: string }) {
       </span>
       <div className={styles.main}>
         <div className={styles.titleLine}>
-          <span className={styles.name}>{task.title}</span>
+          <span className={styles.name}>{capitalizeFirst(task.title)}</span>
           {project && <span className={styles.chip}>{project.name}</span>}
           <Punctuality task={task} />
         </div>

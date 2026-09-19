@@ -1346,3 +1346,93 @@ class PasswordChangeEvictsSessionsTests(AccountApiTestCase):
             "/api/auth/token/refresh/", {"refresh": mine}, content_type="application/json"
         )
         self.assertEqual(response.status_code, 200)
+
+
+class TitleCaseTests(TestCase):
+    """R7a: titles are stored lowercase; the UI capitalises them for reading.
+
+    `TimeEntry.task_title` is a copy of its `Task.title`, and the stats
+    endpoint reads the task's, so both have to follow the same rule or the
+    dashboard and the day log disagree about the same piece of work.
+    """
+
+    def setUp(self):
+        self.user = User.objects.create_user(
+            username="adam", email="adam@example.com", password="hunter2please"
+        )
+        token = self.client.post(
+            "/api/auth/token/",
+            {"username": "adam", "password": "hunter2please"},
+            content_type="application/json",
+        ).json()["access"]
+        self.headers = {"authorization": f"Bearer {token}"}
+
+    def post(self, path, body):
+        return self.client.post(path, body, content_type="application/json", headers=self.headers)
+
+    def test_a_task_title_is_stored_lowercase(self):
+        response = self.post("/api/tasks/", {"title": "Write The Spec"})
+
+        self.assertEqual(response.status_code, 201)
+        self.assertEqual(response.json()["title"], "write the spec")
+
+    def test_a_time_entry_title_is_stored_lowercase(self):
+        task = Task.objects.create(user=self.user, title="write the spec")
+
+        response = self.post(
+            "/api/time-entries/",
+            {
+                "task": str(task.id),
+                "task_title": "Write The Spec",
+                "started_at": (timezone.now() - timedelta(hours=2)).isoformat(),
+                "ended_at": (timezone.now() - timedelta(hours=1)).isoformat(),
+                "duration_seconds": 3600,
+            },
+        )
+
+        self.assertEqual(response.status_code, 201, response.content)
+        self.assertEqual(response.json()["task_title"], "write the spec")
+
+    def test_a_running_timer_title_is_stored_lowercase(self):
+        response = self.post(
+            "/api/active-timer/",
+            {
+                "task_title": "Write The Spec",
+                "started_at": (timezone.now() - timedelta(minutes=5)).isoformat(),
+                "elapsed_seconds": 0,
+                "is_paused": False,
+                "mode": "stopwatch",
+            },
+        )
+
+        self.assertEqual(response.status_code, 201)
+        self.assertEqual(response.json()["task_title"], "write the spec")
+
+    def test_renaming_an_entry_lowercases_the_new_title(self):
+        task = Task.objects.create(user=self.user, title="write the spec")
+        entry = TimeEntry.objects.create(
+            user=self.user,
+            task=task,
+            task_title="write the spec",
+            started_at=timezone.now(),
+            duration_seconds=60,
+        )
+
+        response = self.client.patch(
+            f"/api/time-entries/{entry.id}/",
+            {"task_title": "Rewrite The Spec"},
+            content_type="application/json",
+            headers=self.headers,
+        )
+
+        self.assertEqual(response.json()["task_title"], "rewrite the spec")
+
+    def test_surrounding_space_goes_with_the_case(self):
+        response = self.post("/api/tasks/", {"title": "  Write The Spec  "})
+
+        self.assertEqual(response.json()["title"], "write the spec")
+
+    def test_a_title_that_is_only_space_is_still_refused(self):
+        response = self.post("/api/tasks/", {"title": "   "})
+
+        self.assertEqual(response.status_code, 400)
