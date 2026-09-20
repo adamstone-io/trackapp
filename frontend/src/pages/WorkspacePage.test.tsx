@@ -105,44 +105,79 @@ describe("editing a project", () => {
 });
 
 describe("archiving and restoring", () => {
-  it("archives a project into the archived section and restores it back", async () => {
+  /** The workspace shows only live projects; the retired ones are a page away. */
+  async function openArchive(user: ReturnType<typeof userEvent.setup>) {
+    await user.click(await screen.findByRole("button", { name: /page actions/i }));
+    await user.click(screen.getByRole("button", { name: /^archived$/i }));
+  }
+
+  it("archives a project off the workspace and restores it from the archive", async () => {
     const user = userEvent.setup();
     const patches: Record<string, unknown>[] = [];
-    serve([project()]);
+    let archived = false;
     server.use(
+      http.get(api("/projects/"), () =>
+        HttpResponse.json({
+          count: 1,
+          next: null,
+          previous: null,
+          results: [project({ archived })],
+        }),
+      ),
       http.patch(api("/projects/project-1/"), async ({ request }) => {
         const body = (await request.json()) as Record<string, unknown>;
         patches.push(body);
-        return HttpResponse.json(project({ archived: body.archived }));
+        archived = Boolean(body.archived);
+        return HttpResponse.json(project({ archived }));
       }),
     );
 
     renderApp("/workspace");
     await user.click(await screen.findByRole("button", { name: /more trackapp/i }));
     await user.click(screen.getByRole("button", { name: /^archive$/i }));
+    await waitFor(() => expect(screen.queryByText("TrackApp")).not.toBeInTheDocument());
 
-    // The section is folded away; only its count says anything happened.
-    await user.click(await screen.findByRole("button", { name: /archived projects \(1\)/i }));
-
-    const archived = screen.getByRole("list", { name: /archived projects/i });
-    expect(within(archived).getByText("TrackApp")).toBeInTheDocument();
+    await openArchive(user);
+    expect(await screen.findByText("TrackApp")).toBeInTheDocument();
 
     await user.click(screen.getByRole("button", { name: /restore trackapp/i }));
+    await user.click(screen.getByRole("link", { name: "← Workspace" }));
+
     expect(await screen.findByRole("button", { name: /more trackapp/i })).toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: /archived projects/i })).not.toBeInTheDocument();
     expect(patches).toEqual([{ archived: true }, { archived: false }]);
   });
 
-  it("keeps retired projects folded away on arrival", async () => {
+  it("keeps retired projects off the workspace entirely", async () => {
     serve([project(), project({ id: "project-2", name: "Old thing", archived: true })]);
 
     renderApp("/workspace");
     await screen.findByText("TrackApp");
 
-    expect(
-      screen.getByRole("button", { name: /archived projects \(1\)/i }),
-    ).toHaveAttribute("aria-expanded", "false");
     expect(screen.queryByText("Old thing")).not.toBeInTheDocument();
+  });
+
+  it("deletes an archived project for good, but only after confirming", async () => {
+    const user = userEvent.setup();
+    let deleted: string | null = null;
+    serve([project({ archived: true })]);
+    server.use(
+      http.delete(api("/projects/project-1/"), () => {
+        deleted = "project-1";
+        return new HttpResponse(null, { status: 204 });
+      }),
+    );
+
+    renderApp("/workspace");
+    await openArchive(user);
+
+    await user.click(await screen.findByRole("button", { name: /more project trackapp/i }));
+    await user.click(screen.getByRole("button", { name: /delete permanently/i }));
+    // Armed, and saying what it costs — nothing has gone yet.
+    expect(screen.getByText(/tasks keep their history/i)).toBeInTheDocument();
+    expect(deleted).toBeNull();
+
+    await user.click(screen.getByRole("button", { name: /confirm delete/i }));
+    await waitFor(() => expect(deleted).toBe("project-1"));
   });
 });
 

@@ -1,10 +1,12 @@
 import { useState, type FormEvent } from "react";
+import { useNavigate } from "react-router-dom";
 import type { Project } from "../../api/types";
 import type { ProjectCreate } from "../../api/projects";
 import { formatDuration } from "../../lib/time";
 import { useCreateProject, useDeleteProject, useEditProject, useProjectsQuery } from "./useProjects";
 import { isSettled } from "../../lib/optimistic";
 import { RowMenu } from "../../components/RowMenu";
+import { PageMenu } from "../../components/PageMenu";
 import { ProjectEntriesModal } from "./ProjectEntriesModal";
 import styles from "./projects.module.css";
 import formStyles from "./forms.module.css";
@@ -23,18 +25,22 @@ export const PROJECT_COLORS = [
 
 export function ProjectSection() {
   const { data: projects } = useProjectsQuery();
-  const [showArchived, setShowArchived] = useState(false);
+  const navigate = useNavigate();
 
   if (!projects) return null;
   const active = projects.filter((project) => !project.archived);
-  const archived = projects.filter((project) => project.archived);
 
   return (
     <>
       <section className={styles.section}>
-        <h2 id="projects-heading" className={styles.heading}>
-          Projects
-        </h2>
+        <div className={styles.sectionHead}>
+          <h2 id="projects-heading" className={styles.heading}>
+            Projects
+          </h2>
+          <PageMenu
+            items={[{ label: "Archived", onSelect: () => navigate("/workspace/archived") }]}
+          />
+        </div>
         {active.length === 0 ? (
           <p className={styles.empty}>Create your first project.</p>
         ) : (
@@ -48,65 +54,7 @@ export function ProjectSection() {
         )}
         <AddProjectForm />
       </section>
-      {archived.length > 0 && (
-        <ArchivedProjects
-          projects={archived}
-          open={showArchived}
-          onToggle={() => setShowArchived((wasOpen) => !wasOpen)}
-        />
-      )}
     </>
-  );
-}
-
-/**
- * Retired projects, folded away — the same treatment the study page's
- * archived items get. They are somewhere to go looking when you want one
- * back, not a list to scroll past every time you open the workspace.
- */
-function ArchivedProjects({
-  projects,
-  open,
-  onToggle,
-}: {
-  projects: Project[];
-  open: boolean;
-  onToggle: () => void;
-}) {
-  const editMutation = useEditProject();
-  return (
-    <section className={styles.section}>
-      <button
-        className={styles.archivedToggle}
-        type="button"
-        aria-expanded={open}
-        aria-controls="archived-projects"
-        onClick={onToggle}
-      >
-        Archived projects ({projects.length})
-      </button>
-      {open && (
-        <ul id="archived-projects" className={styles.list} aria-label="Archived projects">
-          {projects.map((project) => (
-            <li key={project.id} className={styles.item}>
-              <div className={styles.main}>
-                <ColorDot color={project.color} />
-                <span className={styles.archivedName}>{project.name}</span>
-              </div>
-              <button
-                className={styles.moreAction}
-                type="button"
-                aria-label={`Restore ${project.name}`}
-                disabled={!isSettled(project.id)}
-                onClick={() => editMutation.mutate({ id: project.id, patch: { archived: false } })}
-              >
-                Restore
-              </button>
-            </li>
-          ))}
-        </ul>
-      )}
-    </section>
   );
 }
 

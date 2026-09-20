@@ -1,4 +1,5 @@
 import { useState, type FormEvent } from "react";
+import { useNavigate } from "react-router-dom";
 import type { Habit } from "../../api/types";
 import {
   useBackfillHabit,
@@ -13,6 +14,7 @@ import formStyles from "./AddHabitForm.module.css";
 import { TargetField } from "./AddHabitForm";
 import { isSettled } from "../../lib/optimistic";
 import { RowMenu } from "../../components/RowMenu";
+import { PageMenu } from "../../components/PageMenu";
 import { toIsoDay } from "../../lib/time";
 
 /** Latest back-fillable date: yesterday, as a local "YYYY-MM-DD". */
@@ -24,14 +26,18 @@ function yesterdayIso(): string {
 
 export function HabitList() {
   const { data: habits } = useHabitsQuery();
+  const navigate = useNavigate();
 
   if (!habits) return null;
   const active = habits.filter((habit) => habit.is_active);
-  const archived = habits.filter((habit) => !habit.is_active);
 
   return (
     <>
-      {/* No heading — the highlighted nav link names the page. */}
+      {/* No heading — the highlighted nav link names the page. The menu is
+          the way to what the page does not show: the retired habits. */}
+      <div className={styles.sectionHead}>
+        <PageMenu items={[{ label: "Archived", onSelect: () => navigate("/habits/archived") }]} />
+      </div>
       <section className={styles.section}>
         {active.length === 0 ? (
           <p className={styles.empty}>Start tracking your first habit.</p>
@@ -45,37 +51,7 @@ export function HabitList() {
           </ul>
         )}
       </section>
-      {archived.length > 0 && <ArchivedHabits habits={archived} />}
     </>
-  );
-}
-
-function ArchivedHabits({ habits }: { habits: Habit[] }) {
-  const editMutation = useEditHabit();
-  return (
-    <section className={styles.section}>
-      <h2 id="archived-heading" className={styles.heading}>
-        Archived
-      </h2>
-      <ul className={styles.list} aria-labelledby="archived-heading">
-        {habits.map((habit) => (
-          <li key={habit.id} className={styles.item}>
-            <div className={styles.main}>
-              <span className={styles.archivedName}>{habit.name}</span>
-            </div>
-            <button
-              className={styles.moreAction}
-              type="button"
-              aria-label={`Restore ${habit.name}`}
-              disabled={!isSettled(habit.id)}
-              onClick={() => editMutation.mutate({ id: habit.id, patch: { is_active: true } })}
-            >
-              Restore
-            </button>
-          </li>
-        ))}
-      </ul>
-    </section>
   );
 }
 

@@ -9,6 +9,7 @@ import {
 } from "@tanstack/react-query";
 import {
   createStudyItem,
+  deleteStudyItem,
   listStudyCategories,
   listStudyItems,
   logInteraction,
@@ -480,6 +481,27 @@ export function useLogInteraction() {
     onError: (error, _variables, context) => {
       rollback(queryClient, context?.previous);
       showToast(errorMessage(error, "Could not log the interaction."));
+    },
+  });
+}
+
+/** Remove an archived item for good. There is no undo, which is why it is
+ * offered only from the archive and only behind a confirm step. */
+export function useDeleteStudyItem() {
+  const queryClient = useQueryClient();
+  const { showToast } = useToast();
+
+  return useMutation({
+    mutationFn: (id: string) => deleteStudyItem(id),
+    onMutate: async (id) => {
+      const previous = await snapshotLists(queryClient);
+      applyToLists(queryClient, dropRow(id));
+      return { previous };
+    },
+    onSuccess: () => invalidateCategories(queryClient),
+    onError: (error, _id, context) => {
+      rollback(queryClient, context?.previous);
+      showToast(errorMessage(error, "Could not delete the study item."));
     },
   });
 }

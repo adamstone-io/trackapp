@@ -166,3 +166,10 @@
   composes: backfillDate;
   width: 4.5rem;
 }
+
+/* The page has no heading, so the ⋮ sits alone at the right of its own row. */
+.sectionHead {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+}

@@ -99,21 +99,16 @@
   border-color: var(--color-border-strong);
 }
 
-/* Reads as the section's heading, behaves as the control that unfolds it —
-   matching the study page's archived items. */
-.archivedToggle {
-  background: none;
-  border: none;
-  color: var(--color-text-muted);
-  cursor: pointer;
-  font-family: var(--font-mono);
-  font-size: var(--text-sm);
-  letter-spacing: 0.04em;
-  padding: var(--space-2) 0;
-  text-align: left;
-  text-transform: uppercase;
+
+/* The section's name on the left, the page's ⋮ on the right. */
+.sectionHead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  margin-bottom: var(--space-3);
 }
 
-.archivedToggle:hover {
-  color: var(--color-text);
+.sectionHead .heading {
+  margin-bottom: 0;
 }

@@ -201,15 +201,17 @@ describe("study items list", () => {
   });
 
   it("asks for the active side only, one page at a time", async () => {
-    serve([item()]);
+    serve([item(), item({ id: "old", prompt: "Retired", is_archived: true })]);
 
     renderApp("/study");
     await screen.findByText("Kanji: 水");
 
     const active = requested.find((params) => params.get("archived") === "false")!;
     expect(active.get("page")).toBe("1");
-    // Both sides are asked for, but as separate lists.
-    expect(requested.some((params) => params.get("archived") === "true")).toBe(true);
+    // The archive is a page of its own; this one does not fetch it, and the
+    // retired rows are nowhere on it.
+    expect(requested.some((params) => params.get("archived") === "true")).toBe(false);
+    expect(screen.queryByText("Retired")).not.toBeInTheDocument();
   });
 
   it("loads the next page when the foot of the list comes into view", async () => {
@@ -753,47 +755,69 @@ describe("the answer is text or an image, never both", () => {
 });
 
 describe("archiving and restoring", () => {
-  it("archives an item into the archived section and restores it back", async () => {
+  /** The live page shows only live items; the retired ones are a page away. */
+  async function openArchive(user: ReturnType<typeof userEvent.setup>) {
+    await user.click(await screen.findByRole("button", { name: /page actions/i }));
+    await user.click(screen.getByRole("button", { name: /^archived$/i }));
+  }
+
+  it("archives an item off the list and restores it from the archive", async () => {
     const user = userEvent.setup();
     const patches: Record<string, unknown>[] = [];
+    let archived = false;
     serve([item()]);
     server.use(
+      http.get(api("/study-items/"), ({ request }) => {
+        const wantArchived = new URL(request.url).searchParams.get("archived") === "true";
+        const rows = wantArchived === archived ? [item({ is_archived: archived })] : [];
+        return HttpResponse.json({ count: rows.length, next: null, previous: null, results: rows });
+      }),
       http.patch(api("/study-items/item-1/"), async ({ request }) => {
         const body = (await request.json()) as Record<string, unknown>;
         patches.push(body);
-        return HttpResponse.json(item({ is_archived: body.is_archived }));
+        archived = Boolean(body.is_archived);
+        return HttpResponse.json(item({ is_archived: archived }));
       }),
     );
 
     renderApp("/study");
     await user.click(await screen.findByRole("button", { name: /more kanji: 水/i }));
     await user.click(screen.getByRole("button", { name: /^archive$/i }));
+    await waitFor(() => expect(screen.queryByText("Kanji: 水")).not.toBeInTheDocument());
 
-    // The archived section is folded away; the count on it is the only thing
-    // that changes until it is opened.
-    const toggle = await screen.findByRole("button", { name: /archived study items \(1\)/i });
-    await user.click(toggle);
-
-    const archived = screen.getByRole("list", { name: /archived study items/i });
-    expect(within(archived).getByText("Kanji: 水")).toBeInTheDocument();
+    await openArchive(user);
+    expect(await screen.findByText("Kanji: 水")).toBeInTheDocument();
 
     await user.click(screen.getByRole("button", { name: /restore kanji: 水/i }));
+    await user.click(screen.getByRole("link", { name: "← Study" }));
+
     expect(await screen.findByRole("button", { name: /more kanji: 水/i })).toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: /archived study items/i })).not.toBeInTheDocument();
     expect(patches).toEqual([{ is_archived: true }, { is_archived: false }]);
   });
 
-  it("keeps retired items folded away rather than at the foot of the list", async () => {
-    serve([item(), item({ id: "old", prompt: "Retired", is_archived: true })]);
+  it("deletes an archived item for good, but only after confirming", async () => {
+    const user = userEvent.setup();
+    let deleted: string | null = null;
+    serve([item({ is_archived: true })]);
+    server.use(
+      http.delete(api("/study-items/item-1/"), () => {
+        deleted = "item-1";
+        return new HttpResponse(null, { status: 204 });
+      }),
+    );
 
     renderApp("/study");
-    await screen.findByText("Kanji: 水");
+    await openArchive(user);
 
-    // The section announces itself and its size, but not its contents.
-    expect(
-      screen.getByRole("button", { name: /archived study items \(1\)/i }),
-    ).toHaveAttribute("aria-expanded", "false");
-    expect(screen.queryByText("Retired")).not.toBeInTheDocument();
+    await user.click(await screen.findByRole("button", { name: /more study item kanji: 水/i }));
+    await user.click(screen.getByRole("button", { name: /delete permanently/i }));
+    // Armed, and saying what it costs — nothing has gone yet.
+    expect(screen.getByText(/go for good/i)).toBeInTheDocument();
+    expect(deleted).toBeNull();
+
+    await user.click(screen.getByRole("button", { name: /confirm delete/i }));
+    await waitFor(() => expect(deleted).toBe("item-1"));
+    await waitFor(() => expect(screen.queryByText("Kanji: 水")).not.toBeInTheDocument());
   });
 });
 

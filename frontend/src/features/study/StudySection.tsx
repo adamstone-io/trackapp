@@ -1,15 +1,16 @@
 import { useState, type FormEvent } from "react";
+import { useNavigate } from "react-router-dom";
 import type { StudyItem } from "../../api/types";
 import type { StudyItemCreate } from "../../api/studyItems";
 import { formatDayMonthYear, formatDaysAgo } from "../../lib/time";
 import { isSettled } from "../../lib/optimistic";
 import { useDebounced } from "../../lib/useDebounced";
 import { RowMenu } from "../../components/RowMenu";
-import { useScrollSentinel } from "./useScrollSentinel";
+import { ListFoot } from "./ListFoot";
+import { PageMenu } from "../../components/PageMenu";
 import {
   type StudyImageChange,
   type StudyImageChanges,
-  type StudyList,
   useCreateStudyItem,
   useEditStudyItem,
   useLogInteraction,
@@ -32,16 +33,14 @@ function itemLabel(item: StudyItem): string {
 const FILTER_DEBOUNCE_MS = 250;
 
 export function StudySection() {
+  const navigate = useNavigate();
   const [categoryFilter, setCategoryFilter] = useState("");
-  const [showArchived, setShowArchived] = useState(false);
   // The filter is the server's business now, so it waits for the typing to
   // stop rather than sending a request per keystroke.
   const category = useDebounced(categoryFilter.trim(), FILTER_DEBOUNCE_MS);
   const { data: categories } = useStudyCategoriesQuery();
-  // Two lists on screen, two paged queries: interleaving them in one stream
-  // would drag pages of archived rows through the active list.
+  // Only the live list is on the page now; the retired ones have their own.
   const active = useStudyList({ category, archived: false });
-  const archived = useStudyList({ category, archived: true });
 
   return (
     <>
@@ -60,6 +59,7 @@ export function StudySection() {
             value={categoryFilter}
             onChange={(event) => setCategoryFilter(event.target.value)}
           />
+          <PageMenu items={[{ label: "Archived", onSelect: () => navigate("/study/archived") }]} />
         </div>
         {/* Above the list: with a long list, adding an item shouldn't mean
             scrolling past everything you already have. */}
@@ -86,93 +86,7 @@ export function StudySection() {
         )}
         <ListFoot list={active} label="study items" />
       </section>
-      {archived.count > 0 && (
-        <ArchivedStudyItems
-          list={archived}
-          open={showArchived}
-          onToggle={() => setShowArchived((wasOpen) => !wasOpen)}
-        />
-      )}
     </>
-  );
-}
-
-/**
- * The end of a paged list. It offers nothing to press: coming into view is
- * itself the request for the next page.
- */
-function ListFoot({ list, label }: { list: StudyList; label: string }) {
-  const sentinel = useScrollSentinel(
-    list.fetchNextPage,
-    list.hasNextPage && !list.isFetchingNextPage,
-  );
-
-  if (!list.hasNextPage) return null;
-  return (
-    <div ref={sentinel} className={styles.loadMore}>
-      {list.isFetchingNextPage && (
-        <p className={styles.loadingMore} role="status">{`Loading more ${label}…`}</p>
-      )}
-    </div>
-  );
-}
-
-/**
- * Retired items, folded away. They are somewhere to go looking when you want
- * one back, not something to scroll past on the way down the active list —
- * which is what they became once the active list stopped loading whole.
- */
-function ArchivedStudyItems({
-  list,
-  open,
-  onToggle,
-}: {
-  list: StudyList;
-  open: boolean;
-  onToggle: () => void;
-}) {
-  const editMutation = useEditStudyItem();
-  return (
-    <section className={styles.section}>
-      <button
-        className={styles.archivedToggle}
-        type="button"
-        aria-expanded={open}
-        aria-controls="archived-study-items"
-        onClick={onToggle}
-      >
-        Archived study items ({list.count})
-      </button>
-      {open && (
-        <>
-          <ul
-            id="archived-study-items"
-            className={styles.list}
-            aria-label="Archived study items"
-          >
-            {list.items.map((item) => (
-              <li key={item.id} className={styles.item}>
-                <div className={styles.main}>
-                  <span className={styles.archivedName}>{itemLabel(item)}</span>
-                </div>
-                <button
-                  className={styles.moreAction}
-                  type="button"
-                  aria-label={`Restore ${itemLabel(item)}`}
-                  disabled={!isSettled(item.id)}
-                  onClick={() =>
-                    editMutation.mutate({ id: item.id, patch: { is_archived: false } })
-                  }
-                >
-                  Restore
-                </button>
-              </li>
-            ))}
-          </ul>
-          <ListFoot list={list} label="archived study items" />
-        </>
-      )}
-    </section>
   );
 }
 

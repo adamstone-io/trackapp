@@ -2,6 +2,9 @@ import { useState } from "react";
 import { Navigate, Route, Routes } from "react-router-dom";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { AppLayout } from "./components/AppLayout";
+import { ArchivedHabitsPage } from "./pages/ArchivedHabitsPage";
+import { ArchivedProjectsPage } from "./pages/ArchivedProjectsPage";
+import { ArchivedStudyPage } from "./pages/ArchivedStudyPage";
 import { ToastProvider } from "./components/toast/ToastProvider";
 import { RequireAuth } from "./auth/RequireAuth";
 import { DashboardPage } from "./pages/DashboardPage";
@@ -51,6 +54,9 @@ export function App({ queryClient }: AppProps) {
         >
           <Route path="/" element={<DashboardPage />} />
           <Route path="/timer" element={<TimerPage />} />
+          <Route path="/workspace/archived" element={<ArchivedProjectsPage />} />
+          <Route path="/study/archived" element={<ArchivedStudyPage />} />
+          <Route path="/habits/archived" element={<ArchivedHabitsPage />} />
           <Route path="/workspace" element={<WorkspacePage />} />
           <Route path="/study" element={<StudyPage />} />
           <Route path="/habits" element={<HabitsPage />} />

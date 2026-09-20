@@ -45,6 +45,11 @@ export function createStudyItem(payload: StudyItemCreate, image?: File): Promise
   return apiFetch<StudyItem>("/study-items/", { method: "POST", body: form });
 }
 
+/** Permanent delete. Offered only on an already-archived item. */
+export function deleteStudyItem(id: string): Promise<void> {
+  return apiFetch<void>(`/study-items/${id}/`, { method: "DELETE" });
+}
+
 export type StudyItemPatch = Partial<
   Pick<StudyItem, "prompt" | "notes" | "category" | "is_archived">
 >;

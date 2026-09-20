@@ -1,4 +1,4 @@
-import { screen, within } from "@testing-library/react";
+import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { renderApp, seedSession } from "../test/render";
 import { server, http, HttpResponse, api } from "../test/server";
@@ -280,7 +280,13 @@ describe("back-filling a past date", () => {
 });
 
 describe("archiving and restoring", () => {
-  it("archive moves the habit to the archived section and tells the server", async () => {
+  /** The page shows only live habits now; the retired ones are a page away. */
+  async function openArchive(user: ReturnType<typeof userEvent.setup>) {
+    await user.click(await screen.findByRole("button", { name: /page actions/i }));
+    await user.click(screen.getByRole("button", { name: /^archived$/i }));
+  }
+
+  it("archive takes the habit off the list and tells the server", async () => {
     const user = userEvent.setup();
     let patched: Record<string, unknown> | null = null;
     server.use(
@@ -295,27 +301,62 @@ describe("archiving and restoring", () => {
     await user.click(await screen.findByRole("button", { name: /more meditate/i }));
     await user.click(screen.getByRole("button", { name: /archive/i }));
 
-    const archived = await screen.findByRole("list", { name: /archived/i });
-    expect(within(archived).getByText("Meditate")).toBeInTheDocument();
-    // An archived habit cannot be logged.
+    // Gone from the page, and no longer something that can be logged.
+    await waitFor(() => expect(screen.queryByText("Meditate")).not.toBeInTheDocument());
     expect(screen.queryByRole("button", { name: /log meditate/i })).not.toBeInTheDocument();
     expect(patched).toMatchObject({ is_active: false });
   });
 
-  it("restore brings an archived habit back to the active list", async () => {
+  it("restores a habit from the archived page", async () => {
     const user = userEvent.setup();
+    // Stateful, so navigating back asks the server and gets the restored
+    // habit rather than the archived one it started as.
+    let active = false;
+    server.use(
+      http.get(api("/habits/"), () =>
+        HttpResponse.json(habitsPage([habit({ is_active: active })])),
+      ),
+      http.patch(api("/habits/habit-1/"), async ({ request }) => {
+        active = Boolean((await request.json() as Record<string, unknown>).is_active);
+        return HttpResponse.json(habit({ is_active: active }));
+      }),
+    );
+
+    renderApp("/habits");
+    await openArchive(user);
+
+    await user.click(await screen.findByRole("button", { name: /restore meditate/i }));
+
+    // It leaves the archive, and the way back finds it live again.
+    await waitFor(() => expect(screen.queryByText("Meditate")).not.toBeInTheDocument());
+    await user.click(screen.getByRole("link", { name: "← Habits" }));
+    expect(await screen.findByRole("button", { name: /log meditate/i })).toBeInTheDocument();
+  });
+
+  it("deletes an archived habit for good, but only after confirming", async () => {
+    const user = userEvent.setup();
+    let deleted: string | null = null;
     server.use(
       http.get(api("/habits/"), () =>
         HttpResponse.json(habitsPage([habit({ is_active: false })])),
       ),
-      http.patch(api("/habits/habit-1/"), () => HttpResponse.json(habit())),
+      http.delete(api("/habits/habit-1/"), () => {
+        deleted = "habit-1";
+        return new HttpResponse(null, { status: 204 });
+      }),
     );
 
     renderApp("/habits");
-    await user.click(await screen.findByRole("button", { name: /restore meditate/i }));
+    await openArchive(user);
 
-    expect(await screen.findByRole("button", { name: /log meditate/i })).toBeInTheDocument();
-    expect(screen.queryByRole("list", { name: /archived/i })).not.toBeInTheDocument();
+    await user.click(await screen.findByRole("button", { name: /more habit meditate/i }));
+    // One press arms it and says what it costs; the second does it.
+    await user.click(screen.getByRole("button", { name: /delete permanently/i }));
+    expect(screen.getByText(/go for good/i)).toBeInTheDocument();
+    expect(deleted).toBeNull();
+
+    await user.click(screen.getByRole("button", { name: /confirm delete/i }));
+    await waitFor(() => expect(deleted).toBe("habit-1"));
   });
 });
 
