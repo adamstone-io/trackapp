@@ -10,6 +10,14 @@
   align-items: flex-start;
 }
 
+/* The band opens the page, so its cards drop the gap that separates one card
+ * from the one above it — there is nothing above them but the nav, and the
+ * page's own top padding already answers for that. Stacked, the two came to
+ * 3.5rem of empty space under the bar. */
+.topRow .card {
+  margin-top: 0;
+}
+
 .topRow > * {
   flex: 1 1 15rem;
 }
