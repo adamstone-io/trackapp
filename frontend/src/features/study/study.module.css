@@ -42,9 +42,13 @@
   border-top: var(--border-hairline) solid var(--color-border);
 }
 
+/* The actions keep the right-hand edge whatever the prompt does. They used
+   to wrap under it: a flex line is broken on the items' content widths
+   before any of them is allowed to shrink, so a long prompt pushed them to
+   a line of their own even though the text could have wrapped instead. */
 .item {
   display: flex;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
   align-items: center;
   justify-content: space-between;
   gap: var(--space-3);
@@ -67,7 +71,9 @@
   flex-direction: column;
   gap: var(--space-1);
   min-width: 0;
-  flex: 1 1 auto;
+  /* Basis 0, not auto: the column takes the room the actions leave rather
+     than asking for the width of its longest line. */
+  flex: 1 1 0;
 }
 
 .titleLine {
@@ -133,11 +139,15 @@
   display: flex;
   align-items: center;
   gap: var(--space-2);
+  /* Never shrink: the labels are the affordance, and a squeezed Prime is
+     worse than a narrower text column. */
+  flex: 0 0 auto;
 }
 
 .moreAction {
   min-height: var(--touch-target);
   padding: 0 var(--space-3);
+  white-space: nowrap;
   background: transparent;
   border: var(--border-hairline) solid var(--color-border);
   border-radius: var(--radius-md);

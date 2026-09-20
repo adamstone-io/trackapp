@@ -6,14 +6,18 @@
 }
 
 /* One field per row: the fields are different heights (a textarea, a file
- * picker, a radio group), and sharing rows left them stretched and ragged. */
+ * picker, a radio group), and sharing rows left them stretched and ragged.
+ *
+ * No width cap of its own — the form lines up with the list it sits above,
+ * and the page's own container is what decides how wide that is. Held at
+ * half the page it read as a panel that had wandered in from somewhere else. */
 .form {
   display: flex;
   flex-direction: column;
   align-items: stretch;
   gap: var(--space-4);
   margin-bottom: var(--space-5);
-  max-width: 32rem;
+  width: 100%;
 }
 
 /* An edit form replaces its list row, so it fills the row's width. */
