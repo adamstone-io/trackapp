@@ -48,6 +48,7 @@ original ticket was scoped too small, not something to restructure away.
 | 15 Midnight rollover | deferred (post-MVP) | R33e |
 | 16 Edit times on logged items | done | R9f, R17b |
 | 17 Countdown completion sound | done | R2b |
+| 17.1 Countdown expires off the timer page | done | R2b (wherever the person is) |
 | 18 Live timer sync across devices | done | R9c |
 | 21 ensureTaskId fetches every task | ready | R59 (500ms interaction budget) |
 

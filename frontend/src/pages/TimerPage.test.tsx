@@ -561,6 +561,94 @@ describe("countdown mode", () => {
   });
 });
 
+describe("a countdown that runs out while you are on another page", () => {
+  /** Ten minutes set, 590 seconds gone: ten seconds from the end. */
+  function nearlyExpired(id: number) {
+    return runningTimer({
+      id,
+      mode: "countdown",
+      target_duration: 600,
+      started_at: new Date(Date.now() - 590_000).toISOString(),
+      created_at: new Date(Date.now() - 590_000).toISOString(),
+    });
+  }
+
+  it("sounds the alarm, records the entry, and clears the nav readout", async () => {
+    vi.mocked(playTimerFinishedSound).mockClear();
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    try {
+      const calls = stopHandlers({
+        timer: nearlyExpired(77),
+        tasks: [{ id: "task-9", title: "Deep work", category: "other", project: null }],
+      });
+
+      // Anywhere but the timer page. The session is still the session.
+      renderApp("/settings");
+      expect(await screen.findByRole("link", { name: /active timer/i })).toBeInTheDocument();
+
+      await act(async () => {
+        vi.advanceTimersByTime(12_000);
+      });
+
+      await waitFor(() => expect(playTimerFinishedSound).toHaveBeenCalledTimes(1));
+      await waitFor(() => expect(calls.createdEntry).not.toBeNull());
+      // The countdown's own length, not however long it took to be noticed.
+      expect(calls.createdEntry!.duration_seconds).toBe(600);
+      // Symptom three: the readout in the bar outlived the timer it reported.
+      // Give the poll a cycle to notice the session is gone.
+      await act(async () => {
+        vi.advanceTimersByTime(3_000);
+      });
+      await waitFor(() =>
+        expect(screen.queryByRole("link", { name: /active timer/i })).not.toBeInTheDocument(),
+      );
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("writes one entry however many times the timer page is revisited", async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
+    try {
+      const entries: Record<string, unknown>[] = [];
+      stopHandlers({
+        timer: nearlyExpired(78),
+        tasks: [{ id: "task-9", title: "Deep work", category: "other", project: null }],
+      });
+      server.use(
+        // The timer survives its own stop: the session stays on the server, so
+        // anything watching for an expiry keeps finding one.
+        http.delete(api("/active-timer/"), () => new HttpResponse(null, { status: 500 })),
+        http.post(api("/time-entries/"), async ({ request }) => {
+          const body = (await request.json()) as Record<string, unknown>;
+          entries.push(body);
+          return HttpResponse.json({ id: `entry-${entries.length}`, notes: "", breaks: [], ...body }, { status: 201 });
+        }),
+      );
+
+      renderApp("/timer");
+      await screen.findByRole("timer");
+      await act(async () => {
+        vi.advanceTimersByTime(12_000);
+      });
+      await waitFor(() => expect(entries).toHaveLength(1));
+
+      await user.click(screen.getByRole("link", { name: /^settings$/i }));
+      await user.click(await screen.findByRole("link", { name: /^timer$/i }));
+      await act(async () => {
+        vi.advanceTimersByTime(5_000);
+      });
+
+      // The guard used to reset with the component that held it, so every
+      // return to the page wrote the same entry again.
+      expect(entries).toHaveLength(1);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+});
+
 describe("duration favorites", () => {
   const FAVORITES_KEY = "tempotrack_favorites_duration";
 

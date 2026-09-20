@@ -1,11 +1,10 @@
-import { useEffect, useRef, useState, type FormEvent } from "react";
+import { useState, type FormEvent } from "react";
 import type { ActiveTimer, TimerMode } from "../../api/types";
 import {
   addDurationFavorite,
   loadDurationFavorites,
   removeDurationFavorite,
 } from "../../lib/durationFavorites";
-import { playTimerFinishedSound } from "../../lib/sounds";
 import { formatTimerReadout } from "../../lib/time";
 import {
   useActiveTimerQuery,
@@ -179,15 +178,9 @@ function RunningTimer({ timer }: { timer: ActiveTimer }) {
   const remaining = target ? Math.max(0, target - elapsed) : null;
   const percentUsed = target ? Math.min(100, Math.floor((elapsed / target) * 100)) : null;
 
-  // A countdown that runs out ends the session on its own.
-  const expired = remaining === 0 && !timer.is_paused;
-  const autoStopFired = useRef(false);
-  useEffect(() => {
-    if (!expired || autoStopFired.current) return;
-    autoStopFired.current = true;
-    playTimerFinishedSound();
-    stopTimer.mutate(buildStopRequest(timer));
-  }, [expired]); // eslint-disable-line react-hooks/exhaustive-deps
+  // The countdown's own ending is watched app-wide (useCountdownExpiry), not
+  // here: this readout only exists while /timer is open, and a session does
+  // not stop being over because the person navigated away from it.
 
   return (
     <div className={styles.running}>
