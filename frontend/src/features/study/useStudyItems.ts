@@ -56,6 +56,8 @@ type StudyPages = InfiniteData<PaginatedPage<StudyItem>, number>;
 /** A list the page can render: the rows loaded so far, and how to get more. */
 export interface StudyList {
   items: StudyItem[];
+  /** The whole collection's size, which is more than has been loaded. */
+  count: number;
   /** Nothing to show yet — the first page is still in flight. */
   isPending: boolean;
   hasNextPage: boolean;
@@ -85,7 +87,14 @@ export function useStudyList(query: StudyItemQuery): StudyList {
 
   const items = useMemo(() => data?.pages.flatMap((page) => page.results) ?? [], [data]);
 
-  return { items, isPending, hasNextPage, isFetchingNextPage, fetchNextPage };
+  return {
+    items,
+    count: data?.pages[0]?.count ?? 0,
+    isPending,
+    hasNextPage,
+    isFetchingNextPage,
+    fetchNextPage,
+  };
 }
 
 export function useStudyCategoriesQuery() {
@@ -142,25 +151,70 @@ function patchRow(id: string, patch: (item: StudyItem) => Partial<StudyItem>) {
   return mapRows((item) => (item.id === id ? { ...item, ...patch(item) } : item));
 }
 
-function dropRow(id: string) {
-  return (pages: StudyPages): StudyPages => ({
+function withoutRow(pages: StudyPages, id: string): StudyPages {
+  return {
     ...pages,
     pages: pages.pages.map((page) => ({
       ...page,
       results: page.results.filter((item) => item.id !== id),
     })),
-  });
+  };
+}
+
+/** DRF reports the whole collection's size on every page, and the archived
+ * heading counts off it — so a row joining or leaving has to move it too, or
+ * the count sits wrong until the next fetch. */
+function withCount(pages: StudyPages, delta: number): StudyPages {
+  return {
+    ...pages,
+    pages: pages.pages.map((page) => ({ ...page, count: Math.max(0, page.count + delta) })),
+  };
+}
+
+/** Take a row out of this list altogether — it has moved to the other one. */
+function dropRow(id: string) {
+  return (pages: StudyPages): StudyPages => withCount(withoutRow(pages, id), -1);
 }
 
 /** The first page's head — where a never-touched item sorts, and where a
  * restored one is worth showing even if the server would file it deeper. */
 function prependRow(item: StudyItem) {
-  return (pages: StudyPages): StudyPages => ({
-    ...pages,
-    pages: pages.pages.map((page, index) =>
-      index === 0 ? { ...page, results: [item, ...page.results] } : page,
-    ),
-  });
+  return (pages: StudyPages): StudyPages =>
+    withCount(
+      {
+        ...pages,
+        pages: pages.pages.map((page, index) =>
+          index === 0 ? { ...page, results: [item, ...page.results] } : page,
+        ),
+      },
+      1,
+    );
+}
+
+/**
+ * A logged prime or study is the item's most recent touch, so it sorts to the
+ * very back of the queue (R31w) — the disappearing act the list used to
+ * perform by re-sorting itself in the browser.
+ *
+ * Where the back is depends on how far the list has been walked. With the
+ * last page loaded the row moves to the end of it; without, it drops out of
+ * view, which is exactly where it now belongs. Either way it stays in the
+ * collection, so the count does not move.
+ */
+function moveToBackOfQueue(id: string, patch: (item: StudyItem) => Partial<StudyItem>) {
+  return (pages: StudyPages): StudyPages => {
+    const row = pages.pages.flatMap((page) => page.results).find((item) => item.id === id);
+    if (!row) return pages;
+    const remaining = withoutRow(pages, id);
+    const last = remaining.pages.length - 1;
+    if (last < 0 || remaining.pages[last].next !== null) return remaining;
+    return {
+      ...remaining,
+      pages: remaining.pages.map((page, index) =>
+        index === last ? { ...page, results: [...page.results, { ...row, ...patch(row) }] } : page,
+      ),
+    };
+  };
 }
 
 /** Mirrors the server's own filtering, so an optimistic row lands only in the
@@ -403,7 +457,7 @@ export function useLogInteraction() {
       return {
         previous: await snapshotAndApply(
           queryClient,
-          patchRow(id, (item) =>
+          moveToBackOfQueue(id, (item) =>
             kind === "prime"
               ? {
                   prime_count: item.prime_count + 1,

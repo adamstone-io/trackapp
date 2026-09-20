@@ -122,6 +122,8 @@ function doFetch(path: string, options: ApiFetchOptions, accessToken: string | n
 }
 
 export interface PaginatedPage<T> {
+  /** The size of the whole collection, not of this page. */
+  count: number;
   next: string | null;
   results: T[];
 }

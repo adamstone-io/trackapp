@@ -288,6 +288,58 @@ describe("logging interactions", () => {
     expect(screen.queryByText("water; the radical in 泳")).not.toBeInTheDocument();
   });
 
+  it("sends a studied item to the back of the queue, out of the loaded list", async () => {
+    const user = userEvent.setup();
+    const many = Array.from({ length: 25 }, (_, index) =>
+      item({ id: `item-${index}`, prompt: `Item ${index}` }),
+    );
+    serve(many);
+    server.use(
+      http.post(api("/study-items/item-0/log_interaction/"), () =>
+        HttpResponse.json(item({ id: "item-0", prompt: "Item 0", study_count: 2 })),
+      ),
+    );
+
+    renderApp("/study");
+    await screen.findByText("Item 0");
+
+    // Study reveals the answer; Done logs it. The row has just become the
+    // most recently touched item there is, so it belongs at the very back —
+    // past the twenty rows that are loaded.
+    const card = row("Item 0");
+    await user.click(within(card).getByRole("button", { name: /show the answer/i }));
+    await user.click(within(card).getByRole("button", { name: /finish studying/i }));
+
+    await waitFor(() => expect(screen.queryByText("Item 0")).not.toBeInTheDocument());
+    expect(screen.getByText("Item 1")).toBeInTheDocument();
+  });
+
+  it("keeps a studied item on screen when the whole list is loaded", async () => {
+    const user = userEvent.setup();
+    serve([item(), item({ id: "item-2", prompt: "Second" })]);
+    server.use(
+      http.post(api("/study-items/item-1/log_interaction/"), () =>
+        HttpResponse.json(item({ study_count: 2 })),
+      ),
+    );
+
+    renderApp("/study");
+    await screen.findByText("Kanji: 水");
+
+    const card = row("Kanji: 水");
+    await user.click(within(card).getByRole("button", { name: /show the answer/i }));
+    await user.click(within(card).getByRole("button", { name: /finish studying/i }));
+
+    // Nothing is hidden beyond the list, so the back of the queue is the
+    // bottom of what is on screen.
+    await waitFor(() => {
+      const titles = within(screen.getByRole("list", { name: /study items/i }))
+        .getAllByRole("listitem")
+        .map((li) => li.querySelector("h3")?.textContent);
+      expect(titles).toEqual(["Second", "Kanji: 水"]);
+    });
+  });
+
   it("disables Study on an item with no answer, but not on an image answer", async () => {
     serve([
       item({ notes: "" }),
@@ -717,13 +769,31 @@ describe("archiving and restoring", () => {
     await user.click(await screen.findByRole("button", { name: /more kanji: 水/i }));
     await user.click(screen.getByRole("button", { name: /^archive$/i }));
 
-    const archived = await screen.findByRole("list", { name: /archived study items/i });
+    // The archived section is folded away; the count on it is the only thing
+    // that changes until it is opened.
+    const toggle = await screen.findByRole("button", { name: /archived study items \(1\)/i });
+    await user.click(toggle);
+
+    const archived = screen.getByRole("list", { name: /archived study items/i });
     expect(within(archived).getByText("Kanji: 水")).toBeInTheDocument();
 
     await user.click(screen.getByRole("button", { name: /restore kanji: 水/i }));
     expect(await screen.findByRole("button", { name: /more kanji: 水/i })).toBeInTheDocument();
-    expect(screen.queryByRole("list", { name: /archived study items/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /archived study items/i })).not.toBeInTheDocument();
     expect(patches).toEqual([{ is_archived: true }, { is_archived: false }]);
+  });
+
+  it("keeps retired items folded away rather than at the foot of the list", async () => {
+    serve([item(), item({ id: "old", prompt: "Retired", is_archived: true })]);
+
+    renderApp("/study");
+    await screen.findByText("Kanji: 水");
+
+    // The section announces itself and its size, but not its contents.
+    expect(
+      screen.getByRole("button", { name: /archived study items \(1\)/i }),
+    ).toHaveAttribute("aria-expanded", "false");
+    expect(screen.queryByText("Retired")).not.toBeInTheDocument();
   });
 });
 

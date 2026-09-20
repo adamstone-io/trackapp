@@ -33,6 +33,7 @@ const FILTER_DEBOUNCE_MS = 250;
 
 export function StudySection() {
   const [categoryFilter, setCategoryFilter] = useState("");
+  const [showArchived, setShowArchived] = useState(false);
   // The filter is the server's business now, so it waits for the typing to
   // stop rather than sending a request per keystroke.
   const category = useDebounced(categoryFilter.trim(), FILTER_DEBOUNCE_MS);
@@ -85,7 +86,13 @@ export function StudySection() {
         )}
         <ListFoot list={active} label="study items" />
       </section>
-      {archived.items.length > 0 && <ArchivedStudyItems list={archived} />}
+      {archived.count > 0 && (
+        <ArchivedStudyItems
+          list={archived}
+          open={showArchived}
+          onToggle={() => setShowArchived((wasOpen) => !wasOpen)}
+        />
+      )}
     </>
   );
 }
@@ -110,32 +117,61 @@ function ListFoot({ list, label }: { list: StudyList; label: string }) {
   );
 }
 
-function ArchivedStudyItems({ list }: { list: StudyList }) {
+/**
+ * Retired items, folded away. They are somewhere to go looking when you want
+ * one back, not something to scroll past on the way down the active list —
+ * which is what they became once the active list stopped loading whole.
+ */
+function ArchivedStudyItems({
+  list,
+  open,
+  onToggle,
+}: {
+  list: StudyList;
+  open: boolean;
+  onToggle: () => void;
+}) {
   const editMutation = useEditStudyItem();
   return (
     <section className={styles.section}>
-      <h2 id="archived-study-items-heading" className={styles.heading}>
-        Archived study items
-      </h2>
-      <ul className={styles.list} aria-labelledby="archived-study-items-heading">
-        {list.items.map((item) => (
-          <li key={item.id} className={styles.item}>
-            <div className={styles.main}>
-              <span className={styles.archivedName}>{itemLabel(item)}</span>
-            </div>
-            <button
-              className={styles.moreAction}
-              type="button"
-              aria-label={`Restore ${itemLabel(item)}`}
-              disabled={!isSettled(item.id)}
-              onClick={() => editMutation.mutate({ id: item.id, patch: { is_archived: false } })}
-            >
-              Restore
-            </button>
-          </li>
-        ))}
-      </ul>
-      <ListFoot list={list} label="archived study items" />
+      <button
+        className={styles.archivedToggle}
+        type="button"
+        aria-expanded={open}
+        aria-controls="archived-study-items"
+        onClick={onToggle}
+      >
+        Archived study items ({list.count})
+      </button>
+      {open && (
+        <>
+          <ul
+            id="archived-study-items"
+            className={styles.list}
+            aria-label="Archived study items"
+          >
+            {list.items.map((item) => (
+              <li key={item.id} className={styles.item}>
+                <div className={styles.main}>
+                  <span className={styles.archivedName}>{itemLabel(item)}</span>
+                </div>
+                <button
+                  className={styles.moreAction}
+                  type="button"
+                  aria-label={`Restore ${itemLabel(item)}`}
+                  disabled={!isSettled(item.id)}
+                  onClick={() =>
+                    editMutation.mutate({ id: item.id, patch: { is_archived: false } })
+                  }
+                >
+                  Restore
+                </button>
+              </li>
+            ))}
+          </ul>
+          <ListFoot list={list} label="archived study items" />
+        </>
+      )}
     </section>
   );
 }
