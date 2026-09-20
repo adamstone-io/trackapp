@@ -121,13 +121,28 @@ describe("archiving and restoring", () => {
     await user.click(await screen.findByRole("button", { name: /more trackapp/i }));
     await user.click(screen.getByRole("button", { name: /^archive$/i }));
 
-    const archived = await screen.findByRole("list", { name: /archived projects/i });
+    // The section is folded away; only its count says anything happened.
+    await user.click(await screen.findByRole("button", { name: /archived projects \(1\)/i }));
+
+    const archived = screen.getByRole("list", { name: /archived projects/i });
     expect(within(archived).getByText("TrackApp")).toBeInTheDocument();
 
     await user.click(screen.getByRole("button", { name: /restore trackapp/i }));
     expect(await screen.findByRole("button", { name: /more trackapp/i })).toBeInTheDocument();
-    expect(screen.queryByRole("list", { name: /archived projects/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /archived projects/i })).not.toBeInTheDocument();
     expect(patches).toEqual([{ archived: true }, { archived: false }]);
+  });
+
+  it("keeps retired projects folded away on arrival", async () => {
+    serve([project(), project({ id: "project-2", name: "Old thing", archived: true })]);
+
+    renderApp("/workspace");
+    await screen.findByText("TrackApp");
+
+    expect(
+      screen.getByRole("button", { name: /archived projects \(1\)/i }),
+    ).toHaveAttribute("aria-expanded", "false");
+    expect(screen.queryByText("Old thing")).not.toBeInTheDocument();
   });
 });
 

@@ -23,6 +23,7 @@ export const PROJECT_COLORS = [
 
 export function ProjectSection() {
   const { data: projects } = useProjectsQuery();
+  const [showArchived, setShowArchived] = useState(false);
 
   if (!projects) return null;
   const active = projects.filter((project) => !project.archived);
@@ -47,37 +48,64 @@ export function ProjectSection() {
         )}
         <AddProjectForm />
       </section>
-      {archived.length > 0 && <ArchivedProjects projects={archived} />}
+      {archived.length > 0 && (
+        <ArchivedProjects
+          projects={archived}
+          open={showArchived}
+          onToggle={() => setShowArchived((wasOpen) => !wasOpen)}
+        />
+      )}
     </>
   );
 }
 
-function ArchivedProjects({ projects }: { projects: Project[] }) {
+/**
+ * Retired projects, folded away — the same treatment the study page's
+ * archived items get. They are somewhere to go looking when you want one
+ * back, not a list to scroll past every time you open the workspace.
+ */
+function ArchivedProjects({
+  projects,
+  open,
+  onToggle,
+}: {
+  projects: Project[];
+  open: boolean;
+  onToggle: () => void;
+}) {
   const editMutation = useEditProject();
   return (
     <section className={styles.section}>
-      <h2 id="archived-projects-heading" className={styles.heading}>
-        Archived projects
-      </h2>
-      <ul className={styles.list} aria-labelledby="archived-projects-heading">
-        {projects.map((project) => (
-          <li key={project.id} className={styles.item}>
-            <div className={styles.main}>
-              <ColorDot color={project.color} />
-              <span className={styles.archivedName}>{project.name}</span>
-            </div>
-            <button
-              className={styles.moreAction}
-              type="button"
-              aria-label={`Restore ${project.name}`}
-              disabled={!isSettled(project.id)}
-              onClick={() => editMutation.mutate({ id: project.id, patch: { archived: false } })}
-            >
-              Restore
-            </button>
-          </li>
-        ))}
-      </ul>
+      <button
+        className={styles.archivedToggle}
+        type="button"
+        aria-expanded={open}
+        aria-controls="archived-projects"
+        onClick={onToggle}
+      >
+        Archived projects ({projects.length})
+      </button>
+      {open && (
+        <ul id="archived-projects" className={styles.list} aria-label="Archived projects">
+          {projects.map((project) => (
+            <li key={project.id} className={styles.item}>
+              <div className={styles.main}>
+                <ColorDot color={project.color} />
+                <span className={styles.archivedName}>{project.name}</span>
+              </div>
+              <button
+                className={styles.moreAction}
+                type="button"
+                aria-label={`Restore ${project.name}`}
+                disabled={!isSettled(project.id)}
+                onClick={() => editMutation.mutate({ id: project.id, patch: { archived: false } })}
+              >
+                Restore
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
     </section>
   );
 }
