@@ -7,8 +7,10 @@ from django.conf import settings
 from django.utils import timezone
 from datetime import date, datetime, time, timedelta, timezone as dt_timezone
 from math import ceil
-from django.db.models import Case, Count, F, IntegerField, Min, Q, Sum, Value, When
-from django.db.models.functions import Coalesce
+from django.db.models import (
+    Case, Count, DateTimeField, F, IntegerField, Min, Q, Sum, Value, When,
+)
+from django.db.models.functions import Coalesce, Greatest
 from rest_framework.parsers import JSONParser, MultiPartParser, FormParser
 
 from django.core.validators import validate_email
@@ -468,6 +470,14 @@ class HabitViewSet(UserOwnedViewSet):
         return self._save_and_respond(habit)
 
 
+# A never-touched item sorts ahead of every touched one, so the stand-in for
+# its missing timestamp has to predate any real one. It cannot be left NULL:
+# SQLite's MAX() yields NULL when any argument is NULL, where PostgreSQL's
+# GREATEST skips them — the same query would order differently in dev and in
+# production. Coalescing every argument makes the two agree.
+NEVER_TOUCHED = datetime(1970, 1, 1, tzinfo=dt_timezone.utc)
+
+
 class StudyItemViewSet(UserOwnedViewSet):
     queryset = StudyItem.objects.all().order_by("last_studied_at", "created_at")
     serializer_class = StudyItemSerializer
@@ -502,6 +512,24 @@ class StudyItemViewSet(UserOwnedViewSet):
             'id',
         )
 
+    @staticmethod
+    def _apply_least_recently_touched(queryset):
+        """R31w's browse order: never-touched first, then oldest touch first.
+
+        A touch is a prime, a study, or a legacy review — an item whose only
+        interactions were reviews is not a new item. The page walks this order
+        twenty rows at a time, so it needs a total order: `created_at` breaks
+        ties between untouched items and `id` settles the rest, without which
+        a row can appear on two pages or on none.
+        """
+        return queryset.annotate(
+            _last_touched_at=Greatest(
+                Coalesce('last_primed_at', Value(NEVER_TOUCHED), output_field=DateTimeField()),
+                Coalesce('last_studied_at', Value(NEVER_TOUCHED), output_field=DateTimeField()),
+                Coalesce('last_reviewed_at', Value(NEVER_TOUCHED), output_field=DateTimeField()),
+            ),
+        ).order_by('_last_touched_at', 'created_at', 'id')
+
     def get_queryset(self):
         queryset = super().get_queryset()
 
@@ -519,19 +547,32 @@ class StudyItemViewSet(UserOwnedViewSet):
             queryset = self._apply_interaction_priority(
                 queryset.filter(is_reviewing=True), 'last_reviewed_at',
             )
+        else:
+            # The mode queries carry their own priority ordering; only the
+            # plain list is the study page's browse order.
+            queryset = self._apply_least_recently_touched(queryset)
 
+        # Absent, the archived and the active come back together, as they did
+        # before the list was paginated. The study page asks for one or the
+        # other: they are two lists on screen, and a shared stream would draw
+        # pages of archived rows into the active one.
+        archived = self.request.query_params.get('archived')
+        if archived is not None:
+            queryset = queryset.filter(is_archived=archived.lower() in ('1', 'true'))
+
+        # Prefix, not equality: the filter box is a type-ahead over the
+        # category list, and it narrows as you type.
         category = self.request.query_params.get('category')
         if category:
-            queryset = queryset.filter(category=category)
-        
-        
+            queryset = queryset.filter(category__istartswith=category)
+
         search = self.request.query_params.get('search')
 
         if search:
             queryset = queryset.filter(
                 Q(prompt__icontains=search) | Q(notes__icontains=search)
             )
-        
+
         return queryset
         
     @action(detail=True, methods=['post'])

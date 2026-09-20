@@ -1,8 +1,16 @@
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import {
+  keepPreviousData,
+  useInfiniteQuery,
+  useMutation,
+  useQuery,
+  useQueryClient,
+  type InfiniteData,
+  type QueryKey,
+} from "@tanstack/react-query";
 import {
   createStudyItem,
-  listAllStudyItems,
   listStudyCategories,
+  listStudyItems,
   logInteraction,
   patchStudyItem,
   removeStudyImage,
@@ -11,12 +19,19 @@ import {
   type StudyImageSlot,
   type StudyItemCreate,
   type StudyItemPatch,
+  type StudyItemQuery,
 } from "../../api/studyItems";
+import type { PaginatedPage } from "../../api/client";
 import type { StudyItem } from "../../api/types";
+import { useMemo } from "react";
 import { useToast } from "../../components/toast/ToastProvider";
 import { playInteractionLoggedSound } from "../../lib/sounds";
 
 export const STUDY_ITEMS_KEY = ["study-items"];
+/** Every paged list hangs off this prefix, so one mutation can reach all of
+ * them — active and archived, under whatever category filter — without also
+ * matching the categories query that sits beside them. */
+export const STUDY_LISTS_KEY = [...STUDY_ITEMS_KEY, "list"];
 export const STUDY_CATEGORIES_KEY = [...STUDY_ITEMS_KEY, "categories"];
 
 /** Shared key for per-item mutations (log/edit/archive) so a late response
@@ -25,41 +40,159 @@ const STUDY_MUTATION_KEY = [...STUDY_ITEMS_KEY, "mutate"];
 
 type QueryClient = ReturnType<typeof useQueryClient>;
 
-export function useStudyItemsQuery() {
-  return useQuery({ queryKey: STUDY_ITEMS_KEY, queryFn: listAllStudyItems });
+/** The filter a cached list was fetched under, read back off its query key. */
+interface ListFilter {
+  category: string;
+  archived: boolean;
+}
+
+function studyListKey(query: StudyItemQuery): QueryKey {
+  const filter: ListFilter = { category: query.category ?? "", archived: query.archived };
+  return [...STUDY_LISTS_KEY, filter];
+}
+
+type StudyPages = InfiniteData<PaginatedPage<StudyItem>, number>;
+
+/** A list the page can render: the rows loaded so far, and how to get more. */
+export interface StudyList {
+  items: StudyItem[];
+  /** Nothing to show yet — the first page is still in flight. */
+  isPending: boolean;
+  hasNextPage: boolean;
+  isFetchingNextPage: boolean;
+  fetchNextPage: () => void;
+}
+
+/**
+ * One page of rows at a time, the next arriving as the list is scrolled.
+ *
+ * The server holds the order and the filtering now. It has to: you cannot
+ * sort or narrow a collection you have only seen the first twenty rows of.
+ */
+export function useStudyList(query: StudyItemQuery): StudyList {
+  const { data, isPending, hasNextPage, isFetchingNextPage, fetchNextPage } = useInfiniteQuery({
+    queryKey: studyListKey(query),
+    queryFn: ({ pageParam }) => listStudyItems(query, pageParam),
+    initialPageParam: 1,
+    // DRF hands back an absolute `next` URL; its presence is the only part
+    // that matters, since the page number is just how far we have walked.
+    getNextPageParam: (last, pages) => (last.next ? pages.length + 1 : undefined),
+    // Changing the category filter is a new query key. Holding the previous
+    // rows until the new ones land keeps the list from collapsing to a
+    // loading line on every pass of the type-ahead.
+    placeholderData: keepPreviousData,
+  });
+
+  const items = useMemo(() => data?.pages.flatMap((page) => page.results) ?? [], [data]);
+
+  return { items, isPending, hasNextPage, isFetchingNextPage, fetchNextPage };
 }
 
 export function useStudyCategoriesQuery() {
   return useQuery({ queryKey: STUDY_CATEGORIES_KEY, queryFn: listStudyCategories });
 }
 
-/** Snapshot the cached list and apply an optimistic change; returns rollback state. */
-async function snapshotAndApply(
-  queryClient: QueryClient,
-  apply: (current: StudyItem[]) => StudyItem[],
-): Promise<StudyItem[] | undefined> {
-  await queryClient.cancelQueries({ queryKey: STUDY_ITEMS_KEY });
-  const previous = queryClient.getQueryData<StudyItem[]>(STUDY_ITEMS_KEY);
-  queryClient.setQueryData<StudyItem[]>(STUDY_ITEMS_KEY, (current) => apply(current ?? []));
-  return previous;
+type ListSnapshot = [QueryKey, StudyPages | undefined][];
+
+/** What every cached list holds right now, to roll back to on failure. */
+async function snapshotLists(queryClient: QueryClient): Promise<ListSnapshot> {
+  await queryClient.cancelQueries({ queryKey: STUDY_LISTS_KEY });
+  return queryClient.getQueriesData<StudyPages>({ queryKey: STUDY_LISTS_KEY });
 }
 
-function replaceRow(queryClient: QueryClient, id: string, saved: StudyItem) {
-  queryClient.setQueryData<StudyItem[]>(STUDY_ITEMS_KEY, (current) =>
-    current?.map((item) => (item.id === id ? saved : item)),
+/** Apply a change to every cached list, or to the ones the filter picks out. */
+function applyToLists(
+  queryClient: QueryClient,
+  apply: (pages: StudyPages) => StudyPages,
+  belongsIn?: (filter: ListFilter) => boolean,
+) {
+  queryClient.setQueriesData<StudyPages>(
+    {
+      queryKey: STUDY_LISTS_KEY,
+      predicate: belongsIn
+        ? ({ queryKey }) => belongsIn(queryKey[2] as ListFilter)
+        : undefined,
+    },
+    (pages) => (pages ? apply(pages) : pages),
   );
 }
 
-function rollback(queryClient: QueryClient, previous: StudyItem[] | undefined) {
-  queryClient.setQueryData(STUDY_ITEMS_KEY, previous ?? []);
+async function snapshotAndApply(
+  queryClient: QueryClient,
+  apply: (pages: StudyPages) => StudyPages,
+): Promise<ListSnapshot> {
+  const previous = await snapshotLists(queryClient);
+  applyToLists(queryClient, apply);
+  return previous;
 }
 
-function patchInList(
-  current: StudyItem[],
-  id: string,
-  patch: (item: StudyItem) => Partial<StudyItem>,
-): StudyItem[] {
-  return current.map((item) => (item.id === id ? { ...item, ...patch(item) } : item));
+function rollback(queryClient: QueryClient, previous: ListSnapshot | undefined) {
+  previous?.forEach(([key, pages]) => queryClient.setQueryData(key, pages));
+}
+
+/** Rewrite rows wherever they sit, leaving the paging untouched. */
+function mapRows(change: (item: StudyItem) => StudyItem) {
+  return (pages: StudyPages): StudyPages => ({
+    ...pages,
+    pages: pages.pages.map((page) => ({ ...page, results: page.results.map(change) })),
+  });
+}
+
+function patchRow(id: string, patch: (item: StudyItem) => Partial<StudyItem>) {
+  return mapRows((item) => (item.id === id ? { ...item, ...patch(item) } : item));
+}
+
+function dropRow(id: string) {
+  return (pages: StudyPages): StudyPages => ({
+    ...pages,
+    pages: pages.pages.map((page) => ({
+      ...page,
+      results: page.results.filter((item) => item.id !== id),
+    })),
+  });
+}
+
+/** The first page's head — where a never-touched item sorts, and where a
+ * restored one is worth showing even if the server would file it deeper. */
+function prependRow(item: StudyItem) {
+  return (pages: StudyPages): StudyPages => ({
+    ...pages,
+    pages: pages.pages.map((page, index) =>
+      index === 0 ? { ...page, results: [item, ...page.results] } : page,
+    ),
+  });
+}
+
+/** Mirrors the server's own filtering, so an optimistic row lands only in the
+ * lists a refetch would actually return it in. */
+function belongsIn(item: StudyItem) {
+  return (filter: ListFilter) =>
+    filter.archived === item.is_archived &&
+    item.category.toLowerCase().startsWith(filter.category.toLowerCase());
+}
+
+function findRow(queryClient: QueryClient, id: string): StudyItem | undefined {
+  for (const [, pages] of queryClient.getQueriesData<StudyPages>({ queryKey: STUDY_LISTS_KEY })) {
+    for (const page of pages?.pages ?? []) {
+      const found = page.results.find((item) => item.id === id);
+      if (found) return found;
+    }
+  }
+  return undefined;
+}
+
+/** Archiving and restoring move a row between two separately paged lists, so
+ * the optimistic update is a removal and an insertion rather than a patch. */
+function moveBetweenLists(queryClient: QueryClient, id: string, archived: boolean) {
+  const row = findRow(queryClient, id);
+  applyToLists(queryClient, dropRow(id));
+  if (!row) return;
+  const moved = { ...row, is_archived: archived };
+  applyToLists(queryClient, prependRow(moved), belongsIn(moved));
+}
+
+function replaceRow(queryClient: QueryClient, id: string, saved: StudyItem) {
+  applyToLists(queryClient, mapRows((item) => (item.id === id ? saved : item)));
 }
 
 function errorMessage(error: unknown, fallback: string): string {
@@ -184,7 +317,8 @@ export function useCreateStudyItem() {
         last_reviewed_at: null,
         is_archived: false,
       };
-      const previous = await snapshotAndApply(queryClient, (current) => [...current, optimistic]);
+      const previous = await snapshotLists(queryClient);
+      applyToLists(queryClient, prependRow(optimistic), belongsIn(optimistic));
       return { previous, tempId };
     },
     onSuccess: (saved, _variables, context) => {
@@ -235,11 +369,17 @@ export function useEditStudyItem() {
       if (failed.length > 0) showToast(imageFailureMessage("Saved the changes", failed));
       return row;
     },
-    onMutate: async ({ id, patch, images }) => ({
-      previous: await snapshotAndApply(queryClient, (current) =>
-        patchInList(current, id, () => ({ ...patch, ...clearedImageUrls(images) })),
-      ),
-    }),
+    onMutate: async ({ id, patch, images }) => {
+      const previous = await snapshotLists(queryClient);
+      // Archiving is a move between two separately paged lists, not a field
+      // change: the row has to leave one and appear in the other.
+      if (patch.is_archived === undefined) {
+        applyToLists(queryClient, patchRow(id, () => ({ ...patch, ...clearedImageUrls(images) })));
+      } else {
+        moveBetweenLists(queryClient, id, patch.is_archived);
+      }
+      return { previous };
+    },
     onSettled: (saved, error, { id }) => {
       syncFromServer(queryClient, saved, id);
       if (!error) invalidateCategories(queryClient);
@@ -261,8 +401,9 @@ export function useLogInteraction() {
     onMutate: async ({ id, kind }) => {
       const now = new Date().toISOString();
       return {
-        previous: await snapshotAndApply(queryClient, (current) =>
-          patchInList(current, id, (item) =>
+        previous: await snapshotAndApply(
+          queryClient,
+          patchRow(id, (item) =>
             kind === "prime"
               ? {
                   prime_count: item.prime_count + 1,

@@ -1,8 +1,27 @@
-import { apiFetch, fetchAllPages } from "./client";
+import { apiFetch, type PaginatedPage } from "./client";
 import type { StudyItem } from "./types";
 
-export function listAllStudyItems(): Promise<StudyItem[]> {
-  return fetchAllPages<StudyItem>("/study-items/");
+/** Which of the page's two lists to read, and narrowed to what category. */
+export interface StudyItemQuery {
+  /** Prefix match, applied by the server — the filter box's typed text. */
+  category?: string;
+  archived: boolean;
+}
+
+/**
+ * One page of study items, in the server's least-recently-touched order.
+ *
+ * A page at a time, not the whole collection: a mature account holds
+ * thousands of items, and walking every page before the first row rendered
+ * left the page blank for minutes.
+ */
+export function listStudyItems(
+  query: StudyItemQuery,
+  page: number,
+): Promise<PaginatedPage<StudyItem>> {
+  const params = new URLSearchParams({ page: String(page), archived: String(query.archived) });
+  if (query.category) params.set("category", query.category);
+  return apiFetch<PaginatedPage<StudyItem>>(`/study-items/?${params}`);
 }
 
 export interface StudyItemCreate {

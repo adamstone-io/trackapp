@@ -263,7 +263,12 @@ class StudyItemSerializer(serializers.ModelSerializer):
 
 
 class StudyItemListSerializer(StudyItemSerializer):
-    """Optimized serializer for list views (excludes heavy fields)"""
+    """Optimized serializer for list views (excludes heavy fields).
+
+    No today/week/month counts: each one walks that row's whole timestamp
+    array in Python, and no client reads them off a list row — they are paid
+    for twenty times a page for nothing.
+    """
 
     class Meta(StudyItemSerializer.Meta):
         fields = [
@@ -276,5 +281,4 @@ class StudyItemListSerializer(StudyItemSerializer):
             'first_reviewed_at', 'last_reviewed_at',
             'prime_count', 'study_count', 'review_count',
             'is_archived', 'created_at',
-            'today_count', 'week_count', 'month_count',
         ]

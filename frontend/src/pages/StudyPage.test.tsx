@@ -2,6 +2,7 @@ import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { renderApp, seedSession } from "../test/render";
 import { server, http, HttpResponse, api } from "../test/server";
+import { scrollToListFoot } from "../test/intersection";
 import { playInteractionLoggedSound } from "../lib/sounds";
 
 vi.mock("../lib/sounds", () => ({ playInteractionLoggedSound: vi.fn() }));
@@ -9,13 +10,12 @@ vi.mock("../lib/sounds", () => ({ playInteractionLoggedSound: vi.fn() }));
 beforeEach(() => {
   seedSession();
   serveCategories([]);
+  requested = [];
   vi.mocked(playInteractionLoggedSound).mockClear();
 });
 
-/** Backend shape: GET /api/study-items/ is paginated. */
-function page(rows: object[], next: string | null = null) {
-  return { count: rows.length, next, previous: null, results: rows };
-}
+/** The server's page size, which the list walks one page at a time. */
+const PAGE_SIZE = 20;
 
 function item(overrides: Record<string, unknown> = {}) {
   return {
@@ -38,9 +38,37 @@ function item(overrides: Record<string, unknown> = {}) {
   };
 }
 
-function serve(items: object[]) {
-  server.use(http.get(api("/study-items/"), () => HttpResponse.json(page(items))));
+/**
+ * A stand-in for GET /api/study-items/. It pages, splits the archived from
+ * the active, and prefix-matches the category — the ordering and filtering
+ * the server owns — so the tests exercise what the page actually asks for.
+ */
+function serve(items: Record<string, unknown>[]) {
+  server.use(
+    http.get(api("/study-items/"), ({ request }) => {
+      const params = new URL(request.url).searchParams;
+      requested.push(params);
+      const archived = params.get("archived") === "true";
+      const category = (params.get("category") ?? "").toLowerCase();
+      const matching = items.filter(
+        (item) =>
+          Boolean(item.is_archived) === archived &&
+          String(item.category).toLowerCase().startsWith(category),
+      );
+      const start = (Number(params.get("page") ?? 1) - 1) * PAGE_SIZE;
+      const rows = matching.slice(start, start + PAGE_SIZE);
+      return HttpResponse.json({
+        count: matching.length,
+        next: start + rows.length < matching.length ? "http://next" : null,
+        previous: null,
+        results: rows,
+      });
+    }),
+  );
 }
+
+/** Every list request the page has made, to assert on what it asked for. */
+let requested: URLSearchParams[] = [];
 
 function serveCategories(categories: { category: string; count: number }[]) {
   server.use(http.get(api("/study-items/categories/"), () => HttpResponse.json(categories)));
@@ -153,37 +181,14 @@ describe("study items list", () => {
     expect(addButton.compareDocumentPosition(list) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
   });
 
-  it("orders never-touched items first, then least-recently-touched", async () => {
+  // R31w's order is the server's (see the Django tests):
+  // the page walks it a page at a time and must not re-sort what it is given,
+  // or the second page would shuffle into the first.
+  it("renders rows in the order the server returned them", async () => {
     serve([
+      item({ id: "never", prompt: "Never touched", last_primed_at: null, last_studied_at: null }),
+      item({ id: "stale", prompt: "Stale", last_primed_at: "2026-08-20T10:00:00Z" }),
       item({ id: "recent", prompt: "Recent", last_primed_at: "2026-09-12T10:00:00Z" }),
-      item({
-        id: "never",
-        prompt: "Never touched",
-        prime_count: 0,
-        study_count: 0,
-        first_primed_at: null,
-        last_primed_at: null,
-        first_studied_at: null,
-        last_studied_at: null,
-      }),
-      item({
-        id: "stale",
-        prompt: "Stale",
-        last_primed_at: "2026-08-20T10:00:00Z",
-        last_studied_at: "2026-08-15T10:00:00Z",
-      }),
-      // Legacy items whose only interactions were reviews still count as touched.
-      item({
-        id: "reviewed",
-        prompt: "Reviewed once",
-        prime_count: 0,
-        study_count: 0,
-        first_primed_at: null,
-        last_primed_at: null,
-        first_studied_at: null,
-        last_studied_at: null,
-        last_reviewed_at: "2026-08-10T10:00:00Z",
-      }),
     ]);
 
     renderApp("/study");
@@ -192,7 +197,49 @@ describe("study items list", () => {
     const titles = within(screen.getByRole("list", { name: /study items/i }))
       .getAllByRole("listitem")
       .map((li) => li.querySelector("h3")?.textContent);
-    expect(titles).toEqual(["Never touched", "Reviewed once", "Stale", "Recent"]);
+    expect(titles).toEqual(["Never touched", "Stale", "Recent"]);
+  });
+
+  it("asks for the active side only, one page at a time", async () => {
+    serve([item()]);
+
+    renderApp("/study");
+    await screen.findByText("Kanji: 水");
+
+    const active = requested.find((params) => params.get("archived") === "false")!;
+    expect(active.get("page")).toBe("1");
+    // Both sides are asked for, but as separate lists.
+    expect(requested.some((params) => params.get("archived") === "true")).toBe(true);
+  });
+
+  it("loads the next page when the foot of the list comes into view", async () => {
+    const many = Array.from({ length: 25 }, (_, index) =>
+      item({ id: `item-${index}`, prompt: `Item ${index}` }),
+    );
+    serve(many);
+
+    renderApp("/study");
+    await screen.findByText("Item 0");
+
+    // The first page, and no more: the rest waits to be scrolled to.
+    expect(screen.getAllByRole("listitem")).toHaveLength(PAGE_SIZE);
+    expect(screen.queryByText("Item 20")).not.toBeInTheDocument();
+
+    scrollToListFoot();
+
+    expect(await screen.findByText("Item 24")).toBeInTheDocument();
+    expect(screen.getAllByRole("listitem")).toHaveLength(25);
+  });
+
+  it("stops asking once the last page has arrived", async () => {
+    serve([item()]);
+
+    renderApp("/study");
+    await screen.findByText("Kanji: 水");
+    const before = requested.length;
+
+    scrollToListFoot();
+    await waitFor(() => expect(requested).toHaveLength(before));
   });
 });
 
@@ -702,11 +749,36 @@ describe("category filter", () => {
       "guitar",
     ]);
 
+    // The filter is a server query now: the typed text goes out as a prefix
+    // and the list is whatever comes back.
+    // Both rows are on screen to begin with, so the kanji one leaving is what
+    // says the filtered page arrived — not the guitar one being present.
     await user.type(filter, "gui");
-    expect(screen.getByText("Barre chords")).toBeInTheDocument();
-    expect(screen.queryByText("Kanji: 水")).not.toBeInTheDocument();
+    await waitFor(() => {
+      expect(screen.getByText("Barre chords")).toBeInTheDocument();
+      expect(screen.queryByText("Kanji: 水")).not.toBeInTheDocument();
+    });
+    expect(requested.some((params) => params.get("category") === "gui")).toBe(true);
 
     await user.clear(filter);
-    expect(screen.getByText("Kanji: 水")).toBeInTheDocument();
+    expect(await screen.findByText("Kanji: 水")).toBeInTheDocument();
+  });
+
+  it("sends one request for the whole word, not one per keystroke", async () => {
+    const user = userEvent.setup();
+    serve([item()]);
+
+    renderApp("/study");
+    await screen.findByText("Kanji: 水");
+
+    await user.type(screen.getByLabelText(/filter by category/i), "kanji");
+    await waitFor(() =>
+      expect(requested.some((params) => params.get("category") === "kanji")).toBe(true),
+    );
+    const partial = requested.filter((params) => {
+      const category = params.get("category");
+      return category !== null && category !== "" && category !== "kanji";
+    });
+    expect(partial).toEqual([]);
   });
 });

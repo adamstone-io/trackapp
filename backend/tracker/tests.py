@@ -1578,3 +1578,99 @@ class StudyItemBundleTests(TestCase):
 
         with self.assertRaises(CommandError):
             self.import_back("--user", "nobody")
+
+
+class StudyItemListPagingTests(StudyItemApiTestCase):
+    """R31w-R31y: the browse order and the filters the list is walked with
+    belong to the server, because the page only ever holds the rows it has
+    scrolled to."""
+
+    def prompts(self, **params):
+        response = self.client.get("/api/study-items/", params, headers=self.headers)
+        self.assertEqual(response.status_code, 200)
+        return [row["prompt"] for row in response.json()["results"]]
+
+    def make(self, prompt, **fields):
+        return StudyItem.objects.create(user=self.user, prompt=prompt, **fields)
+
+    def test_never_touched_items_come_first_then_the_oldest_touch(self):
+        touched = datetime(2026, 8, 20, tzinfo=dt_timezone.utc)
+        self.make("Recent", last_primed_at=touched + timedelta(days=20))
+        self.make("Never touched")
+        self.make("Stale", last_primed_at=touched, last_studied_at=touched - timedelta(days=5))
+        # A legacy item whose only interactions were reviews is not new.
+        self.make("Reviewed once", last_reviewed_at=touched - timedelta(days=10))
+
+        self.assertEqual(
+            self.prompts(),
+            ["Never touched", "Reviewed once", "Stale", "Recent"],
+        )
+
+    def test_the_most_recent_touch_of_the_three_decides_the_order(self):
+        old = datetime(2026, 1, 1, tzinfo=dt_timezone.utc)
+        # Primed long ago but studied yesterday: the study is what counts.
+        self.make("Studied yesterday", last_primed_at=old, last_studied_at=timezone.now())
+        self.make("Primed long ago", last_primed_at=old)
+
+        self.assertEqual(self.prompts(), ["Primed long ago", "Studied yesterday"])
+
+    def test_untouched_items_are_ordered_by_when_they_were_created(self):
+        first = self.make("First")
+        second = self.make("Second")
+        # created_at is auto_now_add, so it is set after the fact to be sure
+        # which is older rather than relying on the clock's resolution.
+        StudyItem.objects.filter(pk=first.pk).update(
+            created_at=datetime(2026, 1, 1, tzinfo=dt_timezone.utc)
+        )
+        StudyItem.objects.filter(pk=second.pk).update(
+            created_at=datetime(2026, 2, 1, tzinfo=dt_timezone.utc)
+        )
+
+        self.assertEqual(self.prompts(), ["First", "Second"])
+
+    def test_the_archived_and_the_active_are_asked_for_separately(self):
+        self.make("Active")
+        self.make("Retired", is_archived=True)
+
+        self.assertEqual(self.prompts(archived="false"), ["Active"])
+        self.assertEqual(self.prompts(archived="true"), ["Retired"])
+        # Absent, both come back, as they did before the list was paged.
+        self.assertCountEqual(self.prompts(), ["Active", "Retired"])
+
+    def test_the_category_filter_matches_a_prefix_whatever_the_case(self):
+        self.make("Water", category="kanji")
+        self.make("Barre chords", category="guitar")
+
+        self.assertEqual(self.prompts(category="kan"), ["Water"])
+        self.assertEqual(self.prompts(category="KAN"), ["Water"])
+        self.assertEqual(self.prompts(category="nji"), [])
+
+    def test_the_list_comes_back_twenty_at_a_time(self):
+        for index in range(25):
+            self.make(f"Item {index:02d}")
+
+        first = self.client.get("/api/study-items/", headers=self.headers).json()
+        self.assertEqual(len(first["results"]), 20)
+        self.assertEqual(first["count"], 25)
+        self.assertIsNotNone(first["next"])
+
+        second = self.client.get(
+            "/api/study-items/", {"page": 2}, headers=self.headers
+        ).json()
+        self.assertEqual(len(second["results"]), 5)
+        self.assertIsNone(second["next"])
+        # No row appears on both pages and none is skipped between them.
+        self.assertEqual(
+            len({row["id"] for row in first["results"] + second["results"]}), 25
+        )
+
+    def test_a_list_row_carries_no_per_row_interaction_counts(self):
+        self.make("Water")
+
+        row = self.client.get("/api/study-items/", headers=self.headers).json()["results"][0]
+
+        # Each one walked that row's whole timestamp array in Python and no
+        # client read them; the detail serializer still offers them.
+        self.assertNotIn("today_count", row)
+        self.assertNotIn("week_count", row)
+        self.assertNotIn("month_count", row)

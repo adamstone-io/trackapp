@@ -1,17 +1,20 @@
-import { useMemo, useState, type FormEvent } from "react";
+import { useState, type FormEvent } from "react";
 import type { StudyItem } from "../../api/types";
 import type { StudyItemCreate } from "../../api/studyItems";
 import { formatDayMonthYear, formatDaysAgo } from "../../lib/time";
 import { isSettled } from "../../lib/optimistic";
+import { useDebounced } from "../../lib/useDebounced";
 import { RowMenu } from "../../components/RowMenu";
+import { useScrollSentinel } from "./useScrollSentinel";
 import {
   type StudyImageChange,
   type StudyImageChanges,
+  type StudyList,
   useCreateStudyItem,
   useEditStudyItem,
   useLogInteraction,
   useStudyCategoriesQuery,
-  useStudyItemsQuery,
+  useStudyList,
 } from "./useStudyItems";
 import styles from "./study.module.css";
 import formStyles from "./forms.module.css";
@@ -24,23 +27,20 @@ function itemLabel(item: StudyItem): string {
   return item.prompt.trim() || "Untitled";
 }
 
+/** Long enough that spelling a category is one request, short enough that
+ * the list still feels like it narrows as you type. */
+const FILTER_DEBOUNCE_MS = 250;
+
 export function StudySection() {
-  const { data: items } = useStudyItemsQuery();
-  const { data: categories } = useStudyCategoriesQuery();
   const [categoryFilter, setCategoryFilter] = useState("");
-
-  const visible = useMemo(() => {
-    if (!items) return undefined;
-    const filter = categoryFilter.trim().toLowerCase();
-    const matching = filter
-      ? items.filter((item) => item.category.toLowerCase().startsWith(filter))
-      : items;
-    return sortLeastRecentlyTouchedFirst(matching);
-  }, [items, categoryFilter]);
-
-  if (!visible) return null;
-  const active = visible.filter((item) => !item.is_archived);
-  const archived = visible.filter((item) => item.is_archived);
+  // The filter is the server's business now, so it waits for the typing to
+  // stop rather than sending a request per keystroke.
+  const category = useDebounced(categoryFilter.trim(), FILTER_DEBOUNCE_MS);
+  const { data: categories } = useStudyCategoriesQuery();
+  // Two lists on screen, two paged queries: interleaving them in one stream
+  // would drag pages of archived rows through the active list.
+  const active = useStudyList({ category, archived: false });
+  const archived = useStudyList({ category, archived: true });
 
   return (
     <>
@@ -63,51 +63,54 @@ export function StudySection() {
         {/* Above the list: with a long list, adding an item shouldn't mean
             scrolling past everything you already have. */}
         <AddStudyItemForm />
-        {active.length === 0 ? (
+        {/* The filter box and the add form render while the first page is in
+            flight. Waiting for rows before drawing any of the page is what
+            made a large collection look like a blank screen. */}
+        {active.isPending ? (
+          <p className={styles.empty} role="status">
+            Loading study items…
+          </p>
+        ) : active.items.length === 0 ? (
           <p className={styles.empty}>
-            {categoryFilter ? "No study items in this category." : "Add your first study item."}
+            {category ? "No study items in this category." : "Add your first study item."}
           </p>
         ) : (
           <ul className={styles.list} aria-label="Study items">
-            {active.map((item) => (
+            {active.items.map((item) => (
               <li key={item.id} className={styles.item}>
                 <StudyItemRow item={item} />
               </li>
             ))}
           </ul>
         )}
+        <ListFoot list={active} label="study items" />
       </section>
-      {archived.length > 0 && <ArchivedStudyItems items={archived} />}
+      {archived.items.length > 0 && <ArchivedStudyItems list={archived} />}
     </>
   );
 }
 
-/** All-list order per the spec: never-touched first, then oldest touch first. */
-function sortLeastRecentlyTouchedFirst(items: StudyItem[]): StudyItem[] {
-  return [...items].sort((a, b) => {
-    const touchedA = lastTouchedMs(a);
-    const touchedB = lastTouchedMs(b);
-    if (touchedA === null && touchedB === null) return createdMs(a) - createdMs(b);
-    if (touchedA === null) return -1;
-    if (touchedB === null) return 1;
-    return touchedA - touchedB;
-  });
+/**
+ * The end of a paged list. It offers nothing to press: coming into view is
+ * itself the request for the next page.
+ */
+function ListFoot({ list, label }: { list: StudyList; label: string }) {
+  const sentinel = useScrollSentinel(
+    list.fetchNextPage,
+    list.hasNextPage && !list.isFetchingNextPage,
+  );
+
+  if (!list.hasNextPage) return null;
+  return (
+    <div ref={sentinel} className={styles.loadMore}>
+      {list.isFetchingNextPage && (
+        <p className={styles.loadingMore} role="status">{`Loading more ${label}…`}</p>
+      )}
+    </div>
+  );
 }
 
-function lastTouchedMs(item: StudyItem): number | null {
-  // last_reviewed_at counts too: legacy items whose only interactions were
-  // reviews shouldn't sort as never-touched.
-  const touches = [item.last_primed_at, item.last_studied_at, item.last_reviewed_at]
-    .filter((iso): iso is string => typeof iso === "string")
-    .map((iso) => Date.parse(iso));
-  return touches.length > 0 ? Math.max(...touches) : null;
-}
-
-function createdMs(item: StudyItem): number {
-  return item.created_at ? Date.parse(item.created_at) : 0;
-}
-
-function ArchivedStudyItems({ items }: { items: StudyItem[] }) {
+function ArchivedStudyItems({ list }: { list: StudyList }) {
   const editMutation = useEditStudyItem();
   return (
     <section className={styles.section}>
@@ -115,7 +118,7 @@ function ArchivedStudyItems({ items }: { items: StudyItem[] }) {
         Archived study items
       </h2>
       <ul className={styles.list} aria-labelledby="archived-study-items-heading">
-        {items.map((item) => (
+        {list.items.map((item) => (
           <li key={item.id} className={styles.item}>
             <div className={styles.main}>
               <span className={styles.archivedName}>{itemLabel(item)}</span>
@@ -132,6 +135,7 @@ function ArchivedStudyItems({ items }: { items: StudyItem[] }) {
           </li>
         ))}
       </ul>
+      <ListFoot list={list} label="archived study items" />
     </section>
   );
 }

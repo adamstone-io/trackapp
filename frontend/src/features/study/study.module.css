@@ -163,3 +163,18 @@
 .logButton {
   composes: moreAction;
 }
+
+/* The foot of a paged list. It carries no affordance of its own — scrolling
+   it into view is what asks for the next page — so it only needs enough
+   height to be a target the observer can see. */
+.loadMore {
+  min-height: var(--space-4);
+  padding: var(--space-4) 0;
+  text-align: center;
+}
+
+.loadingMore {
+  color: var(--color-text-muted);
+  font-size: var(--text-sm);
+  margin: 0;
+}

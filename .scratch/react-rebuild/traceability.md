@@ -34,6 +34,7 @@ original ticket was scoped too small, not something to restructure away.
 | 06.6 Prompt is text or an image | done | R24 (prompt half) |
 | 06.7 Prime/Study confirmation sound | done | R27a (legacy parity) |
 | 06.8 Add study item above the list | done | — (UI) |
+| 06.9 Study list pages as you scroll | done | R31w, R31x, R31y, R57 |
 | 07 Dashboard (period selector; no separate /stats) | ready | R31, R32, R33, R33a |
 | 08 Scheduled tasks in the workspace | done | R33b, R60 (scheduled-tasks half), R62, R62a, R63, R63a, R64, R64a, R64b |
 | 09 Spaced repetition | ready | R31t, R31u, R31v |
@@ -47,6 +48,7 @@ original ticket was scoped too small, not something to restructure away.
 | 16 Edit times on logged items | done | R9f, R17b |
 | 17 Countdown completion sound | done | R2b |
 | 18 Live timer sync across devices | done | R9c |
+| 21 ensureTaskId fetches every task | ready | R59 (500ms interaction budget) |
 
 Cross-cutting: **R57a** (optimistic UI on every mutation) is a checklist item on
 tickets 02–13 rather than one ticket's scope.
