@@ -3,11 +3,16 @@ import { clearTokens, getAccessToken, getRefreshToken, setTokens } from "../auth
 
 export class ApiError extends Error {
   status: number;
+  /** The `code` the API names the failure by, where it names one. Statuses
+   * are shared — an unrouted URL and a missing row are both 404 — so a caller
+   * acting on a particular failure has to match the code, not the number. */
+  code?: string;
 
-  constructor(status: number, detail: string) {
+  constructor(status: number, detail: string, code?: string) {
     super(detail);
     this.name = "ApiError";
     this.status = status;
+    this.code = code;
   }
 }
 
@@ -139,6 +144,13 @@ export async function fetchAllPages<T>(path: string): Promise<T[]> {
   }
 }
 
+/** The machine-readable `code` an error body names itself by, if any. */
+function codeFromBody(data: unknown): string | undefined {
+  if (!data || typeof data !== "object") return undefined;
+  const code = (data as Record<string, unknown>).code;
+  return typeof code === "string" ? code : undefined;
+}
+
 /** Pull a human-readable message out of a DRF error body. */
 export function detailFromBody(data: unknown): string {
   if (data && typeof data === "object") {
@@ -175,7 +187,7 @@ async function unwrap<T>(response: Response): Promise<T> {
     if (response.status === 403 && isTrialExpiredBody(data)) {
       throw new TrialExpiredError();
     }
-    throw new ApiError(response.status, detailFromBody(data));
+    throw new ApiError(response.status, detailFromBody(data), codeFromBody(data));
   }
   return data as T;
 }

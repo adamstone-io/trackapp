@@ -300,14 +300,23 @@ describe("pause and resume", () => {
   });
 });
 
+/**
+ * Stopping is one request the server performs atomically: it records the
+ * entry and releases the session together. What the entry ends up saying —
+ * its duration, which task it hangs off — is the server's arithmetic now, and
+ * is covered by the Django tests; here we care what the page asks for and
+ * what it does with the answer.
+ */
 function stopHandlers({
   timer = undefined as Record<string, unknown> | undefined,
   tasks = [] as Array<Record<string, unknown>>,
-  entryStatus = 201,
+  stopStatus = 201,
   entryGate = undefined as Promise<void> | undefined,
 } = {}) {
   const calls = {
-    deleted: false,
+    stopped: false,
+    /** Every stop the page has asked for, to catch it asking twice. */
+    requests: [] as Record<string, unknown>[],
     createdTask: null as Record<string, unknown> | null,
     createdEntry: null as Record<string, unknown> | null,
   };
@@ -318,16 +327,43 @@ function stopHandlers({
       created_at: new Date(Date.now() - 30_000).toISOString(),
     });
   server.use(
-    // Once the timer is deleted the server has none — the app polls this
+    // Once the session is taken the server has none — the app polls this
     // endpoint, so a mock that answers with a stopped timer would resurrect it.
-    http.get(api("/active-timer/"), () => HttpResponse.json(calls.deleted ? null : activeTimer)),
-    http.delete(api("/active-timer/"), () => {
-      calls.deleted = true;
-      return new HttpResponse(null, { status: 204 });
+    http.get(api("/active-timer/"), () => HttpResponse.json(calls.stopped ? null : activeTimer)),
+    http.post(api("/active-timer/stop/"), async ({ request }) => {
+      calls.requests.push((await request.json()) as Record<string, unknown>);
+      if (entryGate) await entryGate;
+      if (stopStatus === 404) {
+        // Somebody else held the row and recorded the session already. The
+        // code is what says so — a 404 alone could just be a missing route.
+        return HttpResponse.json(
+          { detail: "There is no active timer to stop.", code: "no_active_timer" },
+          { status: 404 },
+        );
+      }
+      if (stopStatus !== 201) {
+        return HttpResponse.json({ detail: "Could not save entry." }, { status: stopStatus });
+      }
+      calls.stopped = true;
+      return HttpResponse.json(
+        {
+          id: "entry-1",
+          task: "task-9",
+          task_title: activeTimer.task_title,
+          started_at: activeTimer.created_at,
+          ended_at: calls.requests[calls.requests.length - 1].ended_at,
+          duration_seconds: 30,
+          notes: "",
+          breaks: [],
+        },
+        { status: 201 },
+      );
     }),
     http.get(api("/tasks/"), () =>
       HttpResponse.json({ count: tasks.length, next: null, previous: null, results: tasks }),
     ),
+    // The manual form still writes an entry directly — it has no session to
+    // release, so nothing about it is a race.
     http.post(api("/tasks/"), async ({ request }) => {
       calls.createdTask = (await request.json()) as Record<string, unknown>;
       return HttpResponse.json(
@@ -337,11 +373,10 @@ function stopHandlers({
     }),
     http.post(api("/time-entries/"), async ({ request }) => {
       calls.createdEntry = (await request.json()) as Record<string, unknown>;
-      if (entryGate) await entryGate;
-      if (entryStatus !== 201) {
-        return HttpResponse.json({ detail: "Could not save entry." }, { status: entryStatus });
-      }
-      return HttpResponse.json({ id: "entry-1", notes: "", breaks: [], ...calls.createdEntry }, { status: 201 });
+      return HttpResponse.json(
+        { id: "entry-manual", notes: "", breaks: [], ...calls.createdEntry },
+        { status: 201 },
+      );
     }),
   );
   return calls;
@@ -369,38 +404,49 @@ describe("stopping the timer", () => {
     expect(await screen.findByRole("button", { name: /start/i })).toBeInTheDocument();
 
     releaseEntry();
-    await waitFor(() => expect(calls.createdEntry).not.toBeNull());
-    // The server-side timer is cleared only after the entry is safely recorded.
-    await waitFor(() => expect(calls.deleted).toBe(true));
-    // Task titles match case-insensitively — no duplicate task created.
-    expect(calls.createdTask).toBeNull();
-    expect(calls.createdEntry).toMatchObject({
-      task: "task-9",
-      task_title: "Deep work",
-      notes: "",
-      breaks: [],
-    });
-    const duration = calls.createdEntry!.duration_seconds as number;
-    expect(duration).toBeGreaterThanOrEqual(29);
-    expect(duration).toBeLessThanOrEqual(32);
-    expect(typeof calls.createdEntry!.started_at).toBe("string");
-    expect(typeof calls.createdEntry!.ended_at).toBe("string");
+    // One request: the entry and the session's release are one server step.
+    await waitFor(() => expect(calls.requests).toHaveLength(1));
+    expect(typeof calls.requests[0].ended_at).toBe("string");
+    await waitFor(() => expect(calls.stopped).toBe(true));
 
     // The optimistic entry survives server confirmation.
     expect(within(log).getByText("Deep work")).toBeInTheDocument();
   });
 
-  it("creates the task first when no existing task matches the title", async () => {
+  it("takes back its own row when another tab recorded the session first", async () => {
     const user = userEvent.setup();
-    const calls = stopHandlers({ tasks: [{ id: "task-1", title: "Something else", category: "other", project: null }] });
+    const calls = stopHandlers({ stopStatus: 404 });
 
     renderApp("/timer");
     await screen.findByRole("timer");
     await user.click(screen.getByRole("button", { name: /stop/i }));
 
-    await waitFor(() => expect(calls.createdEntry).not.toBeNull());
-    expect(calls.createdTask).toMatchObject({ title: "Deep work" });
-    expect(calls.createdEntry).toMatchObject({ task: "task-new" });
+    await waitFor(() => expect(calls.requests).toHaveLength(1));
+    // The row this tab drew was never its entry to show; the log is refetched
+    // so what appears is whatever the tab that won actually recorded.
+    await waitFor(() =>
+      expect(screen.queryByText("Deep work")).not.toBeInTheDocument(),
+    );
+  });
+
+  it("keeps the session when the stop endpoint is missing rather than losing the entry", async () => {
+    const user = userEvent.setup();
+    stopHandlers({});
+    server.use(
+      // What an API deployed without this endpoint answers: a 404 with no
+      // code. Reading it as "already recorded" would bin the session.
+      http.post(api("/active-timer/stop/"), () =>
+        HttpResponse.json({ detail: "Not found." }, { status: 404 }),
+      ),
+    );
+
+    renderApp("/timer");
+    await screen.findByRole("timer");
+    await user.click(screen.getByRole("button", { name: /stop/i }));
+
+    // Rolled back and said so, rather than silently dropped.
+    expect(await screen.findByText(/not found/i)).toBeInTheDocument();
+    expect(screen.getByRole("timer")).toBeInTheDocument();
   });
 
   it("removes the optimistic entry and shows an auto-dismissing error toast when the server rejects", async () => {
@@ -411,7 +457,7 @@ describe("stopping the timer", () => {
       const entryGate = new Promise<void>((resolve) => (releaseEntry = resolve));
       stopHandlers({
         tasks: [{ id: "task-9", title: "Deep work", category: "other", project: null }],
-        entryStatus: 500,
+        stopStatus: 500,
         entryGate,
       });
 
@@ -520,10 +566,9 @@ describe("countdown mode", () => {
         vi.advanceTimersByTime(12_000);
       });
 
-      await waitFor(() => expect(calls.createdEntry).not.toBeNull());
-      const duration = calls.createdEntry!.duration_seconds as number;
-      expect(duration).toBeGreaterThanOrEqual(599);
-      expect(duration).toBeLessThanOrEqual(605);
+      // The countdown's length is clamped server-side (see the Django tests);
+      // what matters here is that the page asked for the stop exactly once.
+      await waitFor(() => expect(calls.requests).toHaveLength(1));
 
       const log = await screen.findByRole("list", { name: /today/i });
       expect(within(log).getByText("Deep work")).toBeInTheDocument();
@@ -591,9 +636,7 @@ describe("a countdown that runs out while you are on another page", () => {
       });
 
       await waitFor(() => expect(playTimerFinishedSound).toHaveBeenCalledTimes(1));
-      await waitFor(() => expect(calls.createdEntry).not.toBeNull());
-      // The countdown's own length, not however long it took to be noticed.
-      expect(calls.createdEntry!.duration_seconds).toBe(600);
+      await waitFor(() => expect(calls.requests).toHaveLength(1));
       // Symptom three: the readout in the bar outlived the timer it reported.
       // Give the poll a cycle to notice the session is gone.
       await act(async () => {
@@ -607,23 +650,24 @@ describe("a countdown that runs out while you are on another page", () => {
     }
   });
 
-  it("writes one entry however many times the timer page is revisited", async () => {
+  it("asks to stop once however many times the timer page is revisited", async () => {
     vi.useFakeTimers({ shouldAdvanceTime: true });
     const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
     try {
-      const entries: Record<string, unknown>[] = [];
-      stopHandlers({
+      const calls = stopHandlers({
         timer: nearlyExpired(78),
         tasks: [{ id: "task-9", title: "Deep work", category: "other", project: null }],
       });
+      // The session outlives its own stop here, so anything still watching
+      // keeps finding an expiry to act on. The server would refuse a second
+      // stop; this is about the page not asking for one.
       server.use(
-        // The timer survives its own stop: the session stays on the server, so
-        // anything watching for an expiry keeps finding one.
-        http.delete(api("/active-timer/"), () => new HttpResponse(null, { status: 500 })),
-        http.post(api("/time-entries/"), async ({ request }) => {
-          const body = (await request.json()) as Record<string, unknown>;
-          entries.push(body);
-          return HttpResponse.json({ id: `entry-${entries.length}`, notes: "", breaks: [], ...body }, { status: 201 });
+        http.post(api("/active-timer/stop/"), async ({ request }) => {
+          calls.requests.push((await request.json()) as Record<string, unknown>);
+          return HttpResponse.json(
+            { id: `entry-${calls.requests.length}`, notes: "", breaks: [] },
+            { status: 201 },
+          );
         }),
       );
 
@@ -632,7 +676,7 @@ describe("a countdown that runs out while you are on another page", () => {
       await act(async () => {
         vi.advanceTimersByTime(12_000);
       });
-      await waitFor(() => expect(entries).toHaveLength(1));
+      await waitFor(() => expect(calls.requests).toHaveLength(1));
 
       await user.click(screen.getByRole("link", { name: /^settings$/i }));
       await user.click(await screen.findByRole("link", { name: /^timer$/i }));
@@ -641,8 +685,8 @@ describe("a countdown that runs out while you are on another page", () => {
       });
 
       // The guard used to reset with the component that held it, so every
-      // return to the page wrote the same entry again.
-      expect(entries).toHaveLength(1);
+      // return to the page stopped the same session again.
+      expect(calls.requests).toHaveLength(1);
     } finally {
       vi.useRealTimers();
     }

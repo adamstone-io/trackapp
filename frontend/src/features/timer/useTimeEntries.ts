@@ -12,7 +12,7 @@ import {
 } from "../../api/entries";
 import { ensureTaskId } from "../../api/tasks";
 import { PROJECTS_KEY } from "../projects/useProjects";
-import { deleteActiveTimer } from "../../api/timer";
+import { stopActiveTimer } from "../../api/timer";
 import type { ActiveTimer, Project, TimeEntry, TodayEntry } from "../../api/types";
 import { useToast } from "../../components/toast/ToastProvider";
 import {
@@ -84,6 +84,13 @@ function confirmOptimisticEntry(queryClient: QueryClient, tempId: string, saved:
         ? { type: "time_entry", id: saved.id, sort_time: saved.started_at, data: saved }
         : entry,
     ),
+  );
+}
+
+/** Take back a row this tab drew for an entry it turned out not to own. */
+function dropOptimisticEntry(queryClient: QueryClient, tempId: string) {
+  queryClient.setQueryData<TodayEntry[]>(TODAY_ENTRIES_KEY, (current) =>
+    current?.filter((entry) => !(entry.type === "time_entry" && entry.id === tempId)),
   );
 }
 
@@ -348,13 +355,11 @@ export function useStopTimer() {
 
   return useMutation({
     mutationKey: TIMER_MUTATION_KEY,
-    mutationFn: async (request: StopRequest) => {
-      const saved = await persistEntry(stopDraft(request));
-      // Only clear the server-side timer once the entry is safely recorded; a
-      // failure here is harmless — the next refetch just resurrects the timer.
-      await deleteActiveTimer().catch(() => {});
-      return saved;
-    },
+    // One request the server performs atomically: it records the entry and
+    // releases the session together, so a second tab arriving mid-stop finds
+    // nothing to stop rather than recording the same session again. null
+    // means somebody else got there first.
+    mutationFn: (request: StopRequest) => stopActiveTimer(request.endedAt),
     onMutate: async (request) => {
       markLocalTimerStop();
       await queryClient.cancelQueries({ queryKey: ACTIVE_TIMER_KEY });
@@ -363,7 +368,17 @@ export function useStopTimer() {
       const entryContext = await prependOptimisticEntry(queryClient, stopDraft(request));
       return { previousTimer, ...entryContext };
     },
-    onSuccess: (saved, _request, context) => confirmOptimisticEntry(queryClient, context.tempId, saved),
+    onSuccess: (saved, _request, context) => {
+      if (saved) {
+        confirmOptimisticEntry(queryClient, context.tempId, saved);
+        return;
+      }
+      // The session was already recorded elsewhere. Drop the row this tab drew
+      // for it and take the real one from the server, rather than showing an
+      // entry that only exists here.
+      dropOptimisticEntry(queryClient, context.tempId);
+      queryClient.invalidateQueries({ queryKey: TODAY_ENTRIES_KEY });
+    },
     onError: (error, _request, context) => {
       rollbackOptimisticEntry(queryClient, context?.previousEntries);
       // The timer was never deleted server-side, so the session is still live.

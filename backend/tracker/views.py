@@ -4,7 +4,9 @@ from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from django.conf import settings
+from django.db import transaction
 from django.utils import timezone
+from django.utils.dateparse import parse_datetime
 from datetime import date, datetime, time, timedelta, timezone as dt_timezone
 from math import ceil
 from django.db.models import (
@@ -35,6 +37,7 @@ from rest_framework_simplejwt.token_blacklist.models import BlacklistedToken, Ou
 from .permissions import HasAppAccess
 from .subscription_utils import ensure_user_subscription
 from .serializers import (
+    lowercase_title,
     ActiveTimerSerializer,
     HabitSerializer,
     MomentSerializer,
@@ -1141,6 +1144,105 @@ class DailyStatsView(APIView):
         except (TypeError, ValueError):
             return self.DEFAULT_DAYS
         return max(1, min(days, self.MAX_DAYS))
+
+
+class ActiveTimerStopView(APIView):
+    """
+    POST /api/active-timer/stop/ — turn the running session into a time entry.
+
+    One step, not two. The client used to create the entry and then delete the
+    timer, which left a window — seconds wide, since resolving the task walked
+    every page of /tasks/ — in which another tab, or the same tab reloaded,
+    still saw a live session and stopped it too. Each one wrote its own entry:
+    same title, same times.
+
+    The ActiveTimer row is the lock. Whoever takes it writes the entry;
+    everyone arriving afterwards is told there is nothing to stop and writes
+    nothing. That holds across tabs, devices and reloads, which no guard
+    living in one browser's memory can.
+    """
+
+    permission_classes = [permissions.IsAuthenticated, HasAppAccess]
+
+    def post(self, request):
+        ended_at = self._ended_at(request.data.get("ended_at"))
+
+        with transaction.atomic():
+            timer = (
+                ActiveTimer.objects.select_for_update()
+                .filter(user=request.user)
+                .first()
+            )
+            if timer is None:
+                # The code, not the status, is what the client reads: an
+                # unrouted URL is a 404 too, and a client that cannot tell the
+                # two apart would treat a missing endpoint as a session
+                # somebody else recorded — and quietly drop the entry.
+                return Response(
+                    {
+                        "detail": "There is no active timer to stop.",
+                        "code": "no_active_timer",
+                    },
+                    status=status.HTTP_404_NOT_FOUND,
+                )
+            entry = self._record(request.user, timer, ended_at)
+            timer.delete()
+
+        return Response(TimeEntrySerializer(entry).data, status=status.HTTP_201_CREATED)
+
+    @staticmethod
+    def _ended_at(raw):
+        parsed = parse_datetime(raw) if isinstance(raw, str) else None
+        if parsed is None:
+            return timezone.now()
+        return parsed if timezone.is_aware(parsed) else timezone.make_aware(parsed)
+
+    @staticmethod
+    def _elapsed_seconds(timer, at):
+        """The session's length, which excludes whatever it spent paused."""
+        if timer.is_paused:
+            return timer.elapsed_seconds
+        segment = max(0, int((at - timer.started_at).total_seconds()))
+        return timer.elapsed_seconds + segment
+
+    def _record(self, user, timer, ended_at):
+        duration = self._elapsed_seconds(timer, ended_at)
+
+        # A countdown records the session that was asked for. Noticing it late
+        # — a closed tab, a sleeping machine, a page nobody was looking at —
+        # must not stretch the entry past the length it was set to run.
+        if timer.mode == ActiveTimer.MODE_COUNTDOWN and timer.target_duration:
+            overrun = duration - timer.target_duration
+            if overrun > 0:
+                duration = timer.target_duration
+                ended_at = ended_at - timedelta(seconds=overrun)
+
+        return TimeEntry.objects.create(
+            user=user,
+            task=timer.task or self._task_for(user, timer.task_title),
+            task_title=timer.task_title,
+            # created_at is when the session began; started_at is only the
+            # current segment, which every resume resets.
+            started_at=timer.created_at,
+            ended_at=ended_at,
+            duration_seconds=duration,
+            notes="",
+            breaks=[],
+        )
+
+    @staticmethod
+    def _task_for(user, title):
+        """The task this time belongs to, reusing one of the same name.
+
+        Titles are stored normalised, so an exact match is the whole of the
+        rule the client applied by hand — and it is one query rather than a
+        walk through every task the person owns.
+        """
+        normalized = lowercase_title(title)
+        task, _ = Task.objects.get_or_create(
+            user=user, title=normalized, project=None
+        )
+        return task
 
 
 class ActiveTimerView(APIView):

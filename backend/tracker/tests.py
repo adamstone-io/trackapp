@@ -5,7 +5,7 @@ from django.contrib.auth.models import User
 from django.test import TestCase
 from django.utils import timezone
 
-from .models import Habit, Moment, Project, StudyItem, Task, TimeEntry
+from .models import ActiveTimer, Habit, Moment, Project, StudyItem, Task, TimeEntry
 
 
 class EmailLoginTests(TestCase):
@@ -1674,3 +1674,134 @@ class StudyItemListPagingTests(StudyItemApiTestCase):
         self.assertNotIn("today_count", row)
         self.assertNotIn("week_count", row)
         self.assertNotIn("month_count", row)
+
+
+class ActiveTimerStopTests(TestCase):
+    """The stop is one atomic step, and the ActiveTimer row is the lock.
+
+    Two requests — record the entry, then release the session — left a window
+    in which another tab still saw a live timer and recorded the same session
+    again. No guard held in one browser's memory can close that: the tabs
+    share nothing but the row.
+    """
+
+    def setUp(self):
+        self.user = User.objects.create_user(
+            username="adam", email="adam@example.com", password="hunter2"
+        )
+        token = self.client.post(
+            "/api/auth/token/",
+            {"username": "adam", "password": "hunter2"},
+            content_type="application/json",
+        ).json()["access"]
+        self.headers = {"authorization": f"Bearer {token}"}
+
+    def start(self, **fields):
+        started = fields.pop("started_at", timezone.now() - timedelta(minutes=30))
+        timer = ActiveTimer.objects.create(
+            user=self.user,
+            task_title=fields.pop("task_title", "deep work"),
+            started_at=started,
+            **fields,
+        )
+        # created_at is auto_now_add; the session began when the segment did.
+        ActiveTimer.objects.filter(pk=timer.pk).update(created_at=started)
+        timer.refresh_from_db()
+        return timer
+
+    def stop(self, ended_at=None):
+        body = {} if ended_at is None else {"ended_at": ended_at.isoformat()}
+        return self.client.post(
+            "/api/active-timer/stop/",
+            body,
+            content_type="application/json",
+            headers=self.headers,
+        )
+
+    def test_stopping_records_the_entry_and_releases_the_session(self):
+        self.start()
+
+        response = self.stop()
+
+        self.assertEqual(response.status_code, 201)
+        self.assertEqual(TimeEntry.objects.count(), 1)
+        self.assertFalse(ActiveTimer.objects.exists())
+        entry = TimeEntry.objects.get()
+        self.assertEqual(entry.task_title, "deep work")
+        self.assertAlmostEqual(entry.duration_seconds, 1800, delta=5)
+
+    def test_a_second_stop_records_nothing(self):
+        self.start()
+
+        first = self.stop()
+        second = self.stop()
+
+        self.assertEqual(first.status_code, 201)
+        # The row is gone, so there is no session to turn into an entry.
+        self.assertEqual(second.status_code, 404)
+        # Named, because an unrouted URL is a 404 too and a client that cannot
+        # tell them apart would read a missing endpoint as a recorded session.
+        self.assertEqual(second.json()["code"], "no_active_timer")
+        self.assertEqual(TimeEntry.objects.count(), 1)
+
+    def test_an_expired_countdown_records_the_length_it_was_set_for(self):
+        # Ten minutes set, noticed an hour later: a tab that was closed, or a
+        # page nobody was looking at. The entry is the session, not the wait.
+        self.start(
+            started_at=timezone.now() - timedelta(hours=1),
+            mode=ActiveTimer.MODE_COUNTDOWN,
+            target_duration=600,
+        )
+
+        self.stop()
+
+        entry = TimeEntry.objects.get()
+        self.assertEqual(entry.duration_seconds, 600)
+        # And it ended when it ran out, not when somebody came back to it.
+        self.assertAlmostEqual(
+            (entry.ended_at - entry.started_at).total_seconds(), 600, delta=5
+        )
+
+    def test_a_stopwatch_records_every_second_it_ran(self):
+        self.start(started_at=timezone.now() - timedelta(hours=1))
+
+        self.stop()
+
+        self.assertAlmostEqual(TimeEntry.objects.get().duration_seconds, 3600, delta=5)
+
+    def test_a_paused_session_records_only_the_time_it_ran(self):
+        self.start(
+            started_at=timezone.now() - timedelta(hours=1),
+            is_paused=True,
+            elapsed_seconds=90,
+        )
+
+        self.stop()
+
+        self.assertEqual(TimeEntry.objects.get().duration_seconds, 90)
+
+    def test_the_entry_reuses_a_task_of_the_same_name(self):
+        existing = Task.objects.create(user=self.user, title="deep work")
+        self.start(task_title="deep work")
+
+        self.stop()
+
+        self.assertEqual(TimeEntry.objects.get().task, existing)
+        self.assertEqual(Task.objects.count(), 1)
+
+    def test_the_entry_creates_a_task_when_none_matches(self):
+        self.start(task_title="something new")
+
+        self.stop()
+
+        self.assertEqual(TimeEntry.objects.get().task.title, "something new")
+
+    def test_one_person_cannot_stop_another_person_s_timer(self):
+        other = User.objects.create_user(username="sam", password="hunter2")
+        ActiveTimer.objects.create(
+            user=other, task_title="theirs", started_at=timezone.now()
+        )
+
+        self.assertEqual(self.stop().status_code, 404)
+        self.assertTrue(ActiveTimer.objects.filter(user=other).exists())
+        self.assertEqual(TimeEntry.objects.count(), 0)

@@ -55,15 +55,27 @@ export function useCountdownExpiry() {
       stopTimer.mutate(buildStopRequest(timer, expiryMs(timer, target, nowMs)));
     };
 
-    // One timeout for the remaining time, rather than a tick that re-renders
-    // the whole layout every half second to ask "is it over yet".
-    const remainingMs = (target - computeElapsedSeconds(timer, Date.now())) * 1000;
-    if (remainingMs <= 0) {
+    const remainingMs = () => (target - computeElapsedSeconds(timer, Date.now())) * 1000;
+    if (remainingMs() <= 0) {
       fire();
       return;
     }
-    const pending = setTimeout(fire, remainingMs);
-    return () => clearTimeout(pending);
+
+    // A hidden tab's timers are throttled to a minute or worse, and a sleeping
+    // machine runs none at all, so the moment the tab is looked at again is
+    // its own reason to check rather than waiting on a timer that is late.
+    const catchUp = () => {
+      if (document.visibilityState === "visible" && remainingMs() <= 0) fire();
+    };
+    document.addEventListener("visibilitychange", catchUp);
+
+    // One timeout for the remaining time, rather than a tick that re-renders
+    // the whole layout every half second to ask "is it over yet".
+    const pending = setTimeout(fire, remainingMs());
+    return () => {
+      document.removeEventListener("visibilitychange", catchUp);
+      clearTimeout(pending);
+    };
     // The timer is what this watches; mutate is stable across renders.
   }, [timer]); // eslint-disable-line react-hooks/exhaustive-deps
 }
