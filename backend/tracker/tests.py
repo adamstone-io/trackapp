@@ -1436,3 +1436,145 @@ class TitleCaseTests(TestCase):
         response = self.post("/api/tasks/", {"title": "   "})
 
         self.assertEqual(response.status_code, 400)
+
+
+# A 1x1 PNG, the smallest real image that Pillow will open.
+TINY_PNG = bytes.fromhex(
+    "89504e470d0a1a0a0000000d494844520000000100000001080600000"
+    "01f15c4890000000a49444154789c6360000002000100ffff03000006"
+    "00057f8b2e0000000049454e44ae426082"
+)
+
+
+class StudyItemBundleTests(TestCase):
+    """Moving study items — notes and images — between deployments.
+
+    `backup_data` writes the database rows but never the files they point at,
+    so a restore leaves intact-looking rows with broken images. These commands
+    carry both.
+    """
+
+    def setUp(self):
+        from django.core.files.uploadedfile import SimpleUploadedFile
+        import tempfile
+
+        self.user = User.objects.create_user(username="adam", password="hunter2please")
+        self.bundle = tempfile.mkdtemp()
+        self.media = tempfile.mkdtemp()
+        self.png = SimpleUploadedFile("prompt.png", TINY_PNG, content_type="image/png")
+
+    def make_item(self, **overrides):
+        fields = dict(
+            user=self.user,
+            prompt="what is a monad?",
+            notes="a monoid in the category of endofunctors",
+            category="programming",
+            prime_count=4,
+            study_count=2,
+        )
+        fields.update(overrides)
+        return StudyItem.objects.create(**fields)
+
+    def export(self, *args):
+        from django.core.management import call_command
+
+        call_command("export_study_items", "--out", self.bundle, *args)
+
+    def import_back(self, *args):
+        from django.core.management import call_command
+
+        call_command("import_study_items", "--from", self.bundle, *args)
+
+    def bundle_json(self):
+        import json
+        import os
+
+        with open(os.path.join(self.bundle, "study_items.json")) as handle:
+            return json.load(handle)
+
+    def test_the_export_carries_the_notes_and_the_counts(self):
+        self.make_item()
+
+        self.export()
+
+        rows = self.bundle_json()
+        self.assertEqual(len(rows), 1)
+        self.assertEqual(rows[0]["prompt"], "what is a monad?")
+        self.assertEqual(rows[0]["notes"], "a monoid in the category of endofunctors")
+        self.assertEqual(rows[0]["category"], "programming")
+        self.assertEqual(rows[0]["prime_count"], 4)
+        self.assertEqual(rows[0]["study_count"], 2)
+
+    def test_the_export_copies_the_image_itself_not_just_its_path(self):
+        import os
+
+        with self.settings(MEDIA_ROOT=self.media):
+            item = self.make_item()
+            item.image = self.png
+            item.save()
+
+            self.export()
+
+            copied = os.path.join(self.bundle, "media", item.image.name)
+            self.assertTrue(os.path.exists(copied), f"missing {copied}")
+            with open(copied, "rb") as handle:
+                self.assertEqual(handle.read(), TINY_PNG)
+
+    def test_an_item_survives_the_round_trip_into_an_empty_database(self):
+        original = self.make_item()
+        self.export()
+        StudyItem.objects.all().delete()
+
+        self.import_back()
+
+        restored = StudyItem.objects.get()
+        self.assertEqual(restored.id, original.id)
+        self.assertEqual(restored.notes, "a monoid in the category of endofunctors")
+        self.assertEqual(restored.prime_count, 4)
+        self.assertEqual(restored.user, self.user)
+
+    def test_the_image_comes_back_readable(self):
+        with self.settings(MEDIA_ROOT=self.media):
+            item = self.make_item()
+            item.image = self.png
+            item.save()
+            name = item.image.name
+            self.export()
+            StudyItem.objects.all().delete()
+
+        restored_media = self.media + "-restored"
+        with self.settings(MEDIA_ROOT=restored_media):
+            self.import_back()
+
+            restored = StudyItem.objects.get()
+            self.assertEqual(restored.image.name, name)
+            with restored.image.open("rb") as handle:
+                self.assertEqual(handle.read(), TINY_PNG)
+
+    def test_importing_twice_updates_rather_than_duplicates(self):
+        self.make_item()
+        self.export()
+
+        self.import_back()
+        self.import_back()
+
+        self.assertEqual(StudyItem.objects.count(), 1)
+
+    def test_the_items_can_land_on_a_differently_named_account(self):
+        other = User.objects.create_user(username="bluepickle", password="hunter2please")
+        self.make_item()
+        self.export()
+        StudyItem.objects.all().delete()
+
+        self.import_back("--user", "bluepickle")
+
+        self.assertEqual(StudyItem.objects.get().user, other)
+
+    def test_an_unknown_target_account_is_refused(self):
+        from django.core.management.base import CommandError
+
+        self.make_item()
+        self.export()
+
+        with self.assertRaises(CommandError):
+            self.import_back("--user", "nobody")
