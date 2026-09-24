@@ -67,6 +67,7 @@ function habit(overrides: Record<string, unknown> = {}) {
     weekly_count: 3,
     monthly_count: 9,
     is_active: true,
+    is_favorite: false,
     streak_count: 3,
     last_completed_date: isoDay(0),
     last_logged_at: null,
@@ -417,5 +418,97 @@ describe("today's plan", () => {
     renderApp("/");
 
     expect(await screen.findByText("Nothing scheduled today.")).toBeInTheDocument();
+  });
+});
+
+describe("which habits reach the dashboard", () => {
+  /** Registered `daysAgo` ago, so the fallback has an order to work with. */
+  function registered(name: string, daysAgo: number, overrides: Record<string, unknown> = {}) {
+    return habit({
+      id: `habit-${name}`,
+      name,
+      created_at: new Date(Date.now() - daysAgo * 86_400_000).toISOString(),
+      ...overrides,
+    });
+  }
+
+  function shownNames(): string[] {
+    return within(screen.getByRole("list", { name: /habit streaks/i }))
+      .getAllByRole("listitem")
+      .map((row) => row.textContent ?? "");
+  }
+
+  it("shows only the habits picked out for it", async () => {
+    seedDashboard({
+      habits: [
+        registered("Meditate", 10),
+        registered("Read", 9, { is_favorite: true }),
+        registered("Run", 8),
+        registered("Stretch", 7, { is_favorite: true }),
+      ],
+    });
+
+    renderApp("/");
+    await screen.findByRole("list", { name: /habit streaks/i });
+
+    const names = shownNames();
+    expect(names.some((row) => row.includes("Read"))).toBe(true);
+    expect(names.some((row) => row.includes("Stretch"))).toBe(true);
+    expect(names.some((row) => row.includes("Meditate"))).toBe(false);
+    expect(names.some((row) => row.includes("Run"))).toBe(false);
+  });
+
+  it("falls back to the first three registered when none are picked", async () => {
+    seedDashboard({
+      habits: [
+        registered("Newest", 1),
+        registered("Oldest", 30),
+        registered("Second", 20),
+        registered("Third", 10),
+      ],
+    });
+
+    renderApp("/");
+    await screen.findByRole("list", { name: /habit streaks/i });
+
+    // The oldest three, in registration order — an ordering that does not
+    // shift under the person as they log things.
+    const names = shownNames();
+    expect(names).toHaveLength(3);
+    expect(names[0]).toContain("Oldest");
+    expect(names[1]).toContain("Second");
+    expect(names[2]).toContain("Third");
+  });
+
+  it("leaves retired habits out of the fallback", async () => {
+    seedDashboard({
+      habits: [
+        registered("Retired", 30, { is_active: false }),
+        registered("Live", 20),
+      ],
+    });
+
+    renderApp("/");
+    await screen.findByRole("list", { name: /habit streaks/i });
+
+    expect(shownNames()).toHaveLength(1);
+    expect(shownNames()[0]).toContain("Live");
+  });
+
+  it("shows one picked habit rather than three, when one is all that is picked", async () => {
+    seedDashboard({
+      habits: [
+        registered("Meditate", 30),
+        registered("Read", 20),
+        registered("Run", 10, { is_favorite: true }),
+      ],
+    });
+
+    renderApp("/");
+    await screen.findByRole("list", { name: /habit streaks/i });
+
+    // Picking is a choice, so the fallback does not top it up.
+    expect(shownNames()).toHaveLength(1);
+    expect(shownNames()[0]).toContain("Run");
   });
 });

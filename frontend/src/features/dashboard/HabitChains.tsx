@@ -1,6 +1,7 @@
 import type { Habit } from "../../api/types";
 import { formatWeekdayDayMonth, parseIsoDay, toIsoDay } from "../../lib/time";
 import { Card } from "./Card";
+import { habitsForDashboard } from "./dashboardHabits";
 import styles from "./dashboard.module.css";
 
 const CHAIN_DAYS = 28;
@@ -8,16 +9,18 @@ const CHAIN_DAYS = 28;
 /** "Don't break the chain": every habit's recent days, linked where the
  * habit was carried and broken wherever a day was skipped. */
 export function HabitChains({ habits }: { habits: Habit[] }) {
-  const active = habits.filter((habit) => habit.is_active);
+  // Not every habit — the ones picked out for the dashboard, or the oldest
+  // few when none have been.
+  const shown = habitsForDashboard(habits);
   const days = recentDays(CHAIN_DAYS);
 
   return (
     <Card title="Habit streaks">
-      {active.length === 0 ? (
+      {shown.length === 0 ? (
         <p className={styles.empty}>No habits yet.</p>
       ) : (
         <ul className={styles.chains} aria-label="Habit streaks">
-          {active.map((habit) => (
+          {shown.map((habit) => (
             <ChainRow key={habit.id} habit={habit} days={days} />
           ))}
         </ul>

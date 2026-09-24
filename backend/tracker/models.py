@@ -256,6 +256,9 @@ class Habit(models.Model):
     monthly_count = models.IntegerField(default=0)
 
     is_active = models.BooleanField(default=True)
+    #: Picked out for the dashboard. Nothing picked means the dashboard falls
+    #: back to the oldest few, so a new account still has something to show.
+    is_favorite = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True)
 
     

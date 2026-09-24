@@ -60,6 +60,9 @@ export function useCreateHabit() {
         daily_count: 0,
         weekly_count: 0,
         monthly_count: 0,
+        // Nothing is picked for the dashboard until someone picks it; a brand
+        // new habit joining the card would displace what is already there.
+        is_favorite: false,
         is_active: true,
         streak_count: 0,
         last_completed_date: null,

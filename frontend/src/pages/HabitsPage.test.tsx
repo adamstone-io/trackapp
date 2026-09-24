@@ -23,6 +23,7 @@ function habit(overrides: Record<string, unknown> = {}) {
     weekly_count: 5,
     monthly_count: 20,
     is_active: true,
+    is_favorite: false,
     streak_count: 4,
     last_completed_date: "2026-09-12",
     last_logged_at: "2026-09-12T21:00:00Z",
@@ -417,5 +418,38 @@ describe("editing a habit", () => {
       weekly_target: 10,
       monthly_target: 40,
     });
+  });
+});
+
+describe("picking habits for the dashboard", () => {
+  it("offers to show a habit on the dashboard, and to take it off again", async () => {
+    const user = userEvent.setup();
+    const patches: Record<string, unknown>[] = [];
+    let favorite = false;
+    server.use(
+      http.get(api("/habits/"), () =>
+        HttpResponse.json(habitsPage([habit({ is_favorite: favorite })])),
+      ),
+      http.patch(api("/habits/habit-1/"), async ({ request }) => {
+        const body = (await request.json()) as Record<string, unknown>;
+        patches.push(body);
+        favorite = Boolean(body.is_favorite);
+        return HttpResponse.json(habit({ is_favorite: favorite }));
+      }),
+    );
+
+    renderApp("/habits");
+    await user.click(await screen.findByRole("button", { name: /more meditate/i }));
+    // Named for what it does, not for the flag behind it.
+    await user.click(screen.getByRole("button", { name: /show on dashboard/i }));
+
+    await waitFor(() => expect(patches).toEqual([{ is_favorite: true }]));
+
+    await user.click(await screen.findByRole("button", { name: /more meditate/i }));
+    await user.click(await screen.findByRole("button", { name: /hide from dashboard/i }));
+
+    await waitFor(() =>
+      expect(patches).toEqual([{ is_favorite: true }, { is_favorite: false }]),
+    );
   });
 });

@@ -97,6 +97,16 @@ function HabitRow({ habit }: { habit: Habit }) {
           disabled={!isSettled(habit.id)}
           items={[
             { label: "Undo log", onSelect: () => unlogMutation.mutate(habit.id) },
+            {
+              // Named for what it does rather than for the flag behind it:
+              // "favourite" says nothing about where the habit turns up.
+              label: habit.is_favorite ? "Hide from dashboard" : "Show on dashboard",
+              onSelect: () =>
+                editMutation.mutate({
+                  id: habit.id,
+                  patch: { is_favorite: !habit.is_favorite },
+                }),
+            },
             { label: "Log a past day", onSelect: () => setBackfillOpen(true) },
             { label: "Edit", onSelect: () => setEditing(true) },
             {

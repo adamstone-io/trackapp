@@ -34,7 +34,15 @@ export function backfillHabit(id: string, date: string, amount: number): Promise
 }
 
 export type HabitPatch = Partial<
-  Pick<Habit, "name" | "daily_target" | "weekly_target" | "monthly_target" | "is_active">
+  Pick<
+    Habit,
+    | "name"
+    | "daily_target"
+    | "weekly_target"
+    | "monthly_target"
+    | "is_active"
+    | "is_favorite"
+  >
 >;
 
 export function patchHabit(id: string, patch: HabitPatch): Promise<Habit> {

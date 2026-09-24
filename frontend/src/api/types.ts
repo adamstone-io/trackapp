@@ -70,6 +70,8 @@ export interface Habit {
   weekly_count: number;
   monthly_count: number;
   is_active: boolean;
+  /** Picked out for the dashboard; see features/dashboard/dashboardHabits. */
+  is_favorite: boolean;
   /** Consecutive days the daily target was met; 0 while broken by a gap. */
   streak_count: number;
   last_completed_date: string | null;

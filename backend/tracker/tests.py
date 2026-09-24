@@ -1935,3 +1935,31 @@ class PasswordResetTests(TestCase):
             content_type="application/json",
         )
         self.assertEqual(rejected.status_code, 401)
+
+
+class HabitFavoriteTests(HabitApiTestCase):
+    """R33f: the dashboard shows the habits picked out for it.
+
+    The flag is all the backend owns — which habits a *dashboard* draws is the
+    dashboard's business, and the web app's rule is covered by its own tests.
+    """
+
+    def test_a_habit_is_not_picked_until_someone_picks_it(self):
+        habit = Habit.objects.create(user=self.user, name="meditate")
+
+        self.assertFalse(habit.is_favorite)
+
+    def test_the_flag_can_be_patched_and_comes_back_on_the_list(self):
+        habit = Habit.objects.create(user=self.user, name="meditate")
+
+        response = self.client.patch(
+            f"/api/habits/{habit.id}/",
+            {"is_favorite": True},
+            content_type="application/json",
+            headers=self.headers,
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(response.json()["is_favorite"])
+        listed = self.client.get("/api/habits/", headers=self.headers).json()["results"]
+        self.assertTrue(listed[0]["is_favorite"])
