@@ -36,6 +36,43 @@ class EmailVerification(models.Model):
         return f"EmailVerification({self.user.email}, verified={self.is_verified})"
 
 
+class PasswordReset(models.Model):
+    """A single-use, expiring ticket to set a new password without the old one.
+
+    Not a field on EmailVerification, and not one row per user: a reset proves
+    control of the mailbox at a moment in time, so it has to expire and be
+    spendable exactly once. Keeping the rows also means a fresh request can
+    retire the outstanding ones rather than leaving two live links.
+    """
+
+    #: How long a link is good for. Long enough to walk to the other machine,
+    #: short enough that a mailbox read later is not a way in.
+    TTL = timedelta(hours=1)
+
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="password_resets",
+    )
+    token = models.UUIDField(default=uuid4, unique=True, db_index=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    used_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+
+    @property
+    def is_spent(self) -> bool:
+        return self.used_at is not None
+
+    @property
+    def is_expired(self) -> bool:
+        return timezone.now() - self.created_at > self.TTL
+
+    def __str__(self) -> str:
+        return f"PasswordReset({self.user.email}, spent={self.is_spent})"
+
+
 class UserSubscription(models.Model):
     """Billing / trial state per user. Stripe fields reserved for later."""
 

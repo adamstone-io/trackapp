@@ -53,6 +53,7 @@ original ticket was scoped too small, not something to restructure away.
 | 18 Live timer sync across devices | done | R9c |
 | 21 ensureTaskId fetches every task | ready | R59 (500ms interaction budget) |
 | 22 Archived things live off the page | done | R29 (retire and restore), R13, R31y |
+| 23 Password reset for someone locked out | done | R45f, R45g, R45h, R45i |
 
 Cross-cutting: **R57a** (optimistic UI on every mutation) is a checklist item on
 tickets 02–13 rather than one ticket's scope.

@@ -4,6 +4,8 @@ from rest_framework_simplejwt.views import TokenRefreshView
 
 from .token_views import CustomTokenObtainPairView
 from .views import (
+    PasswordResetConfirmView,
+    PasswordResetRequestView,
     ActiveTimerStopView,
     ActiveTimerView,
     CurrentUserView,
@@ -35,6 +37,16 @@ urlpatterns = [
     path("api/auth/register/", RegisterView.as_view(), name="auth-register"),
     path("api/auth/verify-email/", VerifyEmailView.as_view(), name="auth-verify-email"),
     path("api/auth/resend-verification/", ResendVerificationView.as_view(), name="auth-resend-verification"),
+    path(
+        "api/auth/password-reset/",
+        PasswordResetRequestView.as_view(),
+        name="auth-password-reset",
+    ),
+    path(
+        "api/auth/password-reset/confirm/",
+        PasswordResetConfirmView.as_view(),
+        name="auth-password-reset-confirm",
+    ),
     path("api/auth/user/", CurrentUserView.as_view(), name="current-user"),
     path("api/auth/password/", PasswordChangeView.as_view(), name="password-change"),
     path("api/auth/token/", CustomTokenObtainPairView.as_view(), name="token-obtain"),

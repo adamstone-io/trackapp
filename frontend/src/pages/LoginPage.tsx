@@ -72,6 +72,16 @@ export function LoginPage() {
           </button>
         </form>
         <p className={styles.hint}>
+          {/* Carries the identifier over only when it is an address — the same
+              rule the verify redirect above uses, since the field takes either. */}
+          <Link
+            to="/forgot-password"
+            state={{ email: username.includes("@") ? username.trim() : "" }}
+          >
+            Forgot your password?
+          </Link>
+        </p>
+        <p className={styles.hint}>
           No account yet? <Link to="/register">Sign up</Link>
         </p>
       </div>

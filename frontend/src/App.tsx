@@ -5,6 +5,8 @@ import { AppLayout } from "./components/AppLayout";
 import { ArchivedHabitsPage } from "./pages/ArchivedHabitsPage";
 import { ArchivedProjectsPage } from "./pages/ArchivedProjectsPage";
 import { ArchivedStudyPage } from "./pages/ArchivedStudyPage";
+import { ForgotPasswordPage } from "./pages/ForgotPasswordPage";
+import { ResetPasswordPage } from "./pages/ResetPasswordPage";
 import { ToastProvider } from "./components/toast/ToastProvider";
 import { RequireAuth } from "./auth/RequireAuth";
 import { DashboardPage } from "./pages/DashboardPage";
@@ -44,6 +46,8 @@ export function App({ queryClient }: AppProps) {
         <Route path="/login" element={<LoginPage />} />
         <Route path="/register" element={<SignUpPage />} />
         <Route path="/verify-email" element={<VerifyEmailPage />} />
+        <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+        <Route path="/reset-password" element={<ResetPasswordPage />} />
         <Route path="/trial-expired" element={<TrialExpiredPage />} />
         <Route
           element={

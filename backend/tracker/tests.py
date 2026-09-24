@@ -1,11 +1,22 @@
 from datetime import datetime, timedelta, timezone as dt_timezone
+from unittest.mock import patch
+from uuid import uuid4
 
 from django.conf import settings
 from django.contrib.auth.models import User
 from django.test import TestCase
 from django.utils import timezone
 
-from .models import ActiveTimer, Habit, Moment, Project, StudyItem, Task, TimeEntry
+from .models import (
+    ActiveTimer,
+    Habit,
+    Moment,
+    PasswordReset,
+    Project,
+    StudyItem,
+    Task,
+    TimeEntry,
+)
 
 
 class EmailLoginTests(TestCase):
@@ -1805,3 +1816,122 @@ class ActiveTimerStopTests(TestCase):
         self.assertEqual(self.stop().status_code, 404)
         self.assertTrue(ActiveTimer.objects.filter(user=other).exists())
         self.assertEqual(TimeEntry.objects.count(), 0)
+
+
+class PasswordResetTests(TestCase):
+    """R45f: a person locked out can prove control of their mailbox instead.
+
+    The link stands in for the current password, so it has to be worth no more
+    than the password was: single-use, short-lived, and never an answer to the
+    question "does this address have an account?"
+    """
+
+    def setUp(self):
+        self.user = User.objects.create_user(
+            username="adam", email="adam@example.com", password="hunter2"
+        )
+        # Mail goes through Resend; nothing here is testing Resend.
+        patcher = patch("tracker.views.send_password_reset_email")
+        self.send_email = patcher.start()
+        self.addCleanup(patcher.stop)
+
+    def request_reset(self, email="adam@example.com"):
+        return self.client.post(
+            "/api/auth/password-reset/",
+            {"email": email},
+            content_type="application/json",
+        )
+
+    def confirm(self, token, new_password="correct-horse-battery"):
+        return self.client.post(
+            "/api/auth/password-reset/confirm/",
+            {"token": str(token), "new_password": new_password},
+            content_type="application/json",
+        )
+
+    def issued_token(self):
+        self.request_reset()
+        return PasswordReset.objects.get(user=self.user).token
+
+    def test_a_request_sends_a_link_and_the_link_sets_the_password(self):
+        response = self.confirm(self.issued_token())
+
+        self.assertEqual(response.status_code, 200)
+        self.user.refresh_from_db()
+        self.assertTrue(self.user.check_password("correct-horse-battery"))
+        self.assertEqual(self.send_email.call_count, 1)
+
+    def test_an_unknown_address_answers_the_same_and_sends_nothing(self):
+        known = self.request_reset()
+        unknown = self.request_reset("nobody@example.com")
+
+        # Identical, or the endpoint becomes a way to ask who has an account.
+        self.assertEqual(unknown.status_code, known.status_code)
+        self.assertEqual(unknown.json(), known.json())
+        self.assertEqual(self.send_email.call_count, 1)
+
+    def test_an_unverified_account_is_sent_nothing(self):
+        self.user.is_active = False
+        self.user.save(update_fields=["is_active"])
+
+        response = self.request_reset()
+
+        # Its way in is the verification link, which proves the same thing.
+        self.assertEqual(response.status_code, 200)
+        self.send_email.assert_not_called()
+
+    def test_a_link_cannot_be_spent_twice(self):
+        token = self.issued_token()
+
+        self.assertEqual(self.confirm(token).status_code, 200)
+        second = self.confirm(token, "another-password-entirely")
+
+        self.assertEqual(second.status_code, 400)
+        self.user.refresh_from_db()
+        self.assertTrue(self.user.check_password("correct-horse-battery"))
+
+    def test_a_link_older_than_its_hour_is_refused(self):
+        token = self.issued_token()
+        reset = PasswordReset.objects.get(token=token)
+        PasswordReset.objects.filter(pk=reset.pk).update(
+            created_at=timezone.now() - PasswordReset.TTL - timedelta(minutes=1)
+        )
+
+        self.assertEqual(self.confirm(token).status_code, 400)
+        self.user.refresh_from_db()
+        self.assertTrue(self.user.check_password("hunter2"))
+
+    def test_asking_again_retires_the_first_link(self):
+        first = self.issued_token()
+        self.request_reset()
+
+        # Two live links would mean an intercepted first mail stays useful.
+        self.assertEqual(self.confirm(first).status_code, 400)
+
+    def test_an_unknown_or_malformed_token_is_refused_rather_than_raising(self):
+        self.assertEqual(self.confirm(uuid4()).status_code, 400)
+        self.assertEqual(self.confirm("not-a-uuid").status_code, 400)
+
+    def test_the_new_password_goes_through_django_s_validators(self):
+        response = self.confirm(self.issued_token(), "123")
+
+        self.assertEqual(response.status_code, 400)
+        self.user.refresh_from_db()
+        self.assertTrue(self.user.check_password("hunter2"))
+
+    def test_a_reset_ends_every_session_that_knew_the_old_password(self):
+        refresh = self.client.post(
+            "/api/auth/token/",
+            {"username": "adam", "password": "hunter2"},
+            content_type="application/json",
+        ).json()["refresh"]
+
+        self.confirm(self.issued_token())
+
+        # A refresh token lives a year and would outlast the reset otherwise.
+        rejected = self.client.post(
+            "/api/auth/token/refresh/",
+            {"refresh": refresh},
+            content_type="application/json",
+        )
+        self.assertEqual(rejected.status_code, 401)

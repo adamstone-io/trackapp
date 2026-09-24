@@ -38,6 +38,20 @@ export function verifyEmail(token: string): Promise<{ detail: string }> {
   );
 }
 
+/** Ask for a reset link. The answer is the same whether or not the address is
+ * on an account, so there is nothing here to branch on. */
+export function requestPasswordReset(email: string): Promise<{ detail: string }> {
+  return postUnauthenticated<{ detail: string }>("/auth/password-reset/", { email });
+}
+
+/** Spend a reset link on a new password. */
+export function resetPassword(token: string, newPassword: string): Promise<{ detail: string }> {
+  return postUnauthenticated<{ detail: string }>("/auth/password-reset/confirm/", {
+    token,
+    new_password: newPassword,
+  });
+}
+
 export function resendVerification(email: string): Promise<{ detail: string }> {
   return postUnauthenticated<{ detail: string }>("/auth/resend-verification/", {
     email,

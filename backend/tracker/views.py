@@ -9,6 +9,7 @@ from django.utils import timezone
 from django.utils.dateparse import parse_datetime
 from datetime import date, datetime, time, timedelta, timezone as dt_timezone
 from math import ceil
+from uuid import UUID
 from django.db.models import (
     Case, Count, DateTimeField, F, IntegerField, Min, Q, Sum, Value, When,
 )
@@ -19,12 +20,13 @@ from django.core.validators import validate_email
 from django.core.exceptions import ValidationError as DjangoValidationError
 from django.contrib.auth.password_validation import validate_password
 
-from .emails import send_verification_email
+from .emails import send_password_reset_email, send_verification_email
 from .models import (
     ActiveTimer,
     local_date,
     EmailVerification,
     Habit,
+    PasswordReset,
     Moment,
     Project,
     StudyItem,
@@ -150,6 +152,98 @@ class RegisterView(APIView):
             {"detail": "Account created. Check your email to verify your account."},
             status=status.HTTP_201_CREATED,
         )
+
+
+class PasswordResetRequestView(APIView):
+    """POST /api/auth/password-reset/ — email a link to set a new password.
+
+    Answers the same way whether or not the address is on an account: the
+    endpoint is reachable without logging in, so a specific answer would make
+    it a way to ask which emails have accounts. Same rule as resend.
+    """
+
+    permission_classes = [permissions.AllowAny]
+    throttle_scope = "auth-password"
+
+    def post(self, request):
+        email = (request.data.get("email") or "").strip().lower()
+        if not email:
+            return _bad_request("Email is required.")
+
+        generic_ok = Response(
+            {"detail": "If that email is on an account, we've sent a reset link."}
+        )
+
+        user = User.objects.filter(email__iexact=email).first()
+        # An account that never verified has no password worth resetting — its
+        # way in is the verification link, which proves the same thing.
+        if user is None or not user.is_active:
+            return generic_ok
+
+        # A fresh request retires the outstanding ones: asking again because
+        # the first mail went astray should not leave two live links.
+        PasswordReset.objects.filter(user=user, used_at=None).update(
+            used_at=timezone.now()
+        )
+        reset = PasswordReset.objects.create(user=user)
+
+        try:
+            send_password_reset_email(user, reset.token)
+        except Exception:
+            # Same as verification: a mail failure is not the caller's to see,
+            # and saying so here would leak that the account exists.
+            pass
+
+        return generic_ok
+
+
+class PasswordResetConfirmView(APIView):
+    """POST /api/auth/password-reset/confirm/ — spend the link, set the password."""
+
+    permission_classes = [permissions.AllowAny]
+    throttle_scope = "auth-password"
+
+    def post(self, request):
+        token = (request.data.get("token") or "").strip()
+        new_password = request.data.get("new_password") or ""
+
+        if not token or not new_password:
+            return _bad_request("Both the token and the new password are required.")
+
+        reset = PasswordReset.objects.select_related("user").filter(token__in=_as_uuid(token)).first()
+        # Spent, stale and unknown are one answer: which of the three it was
+        # is not something an unauthenticated caller should be able to probe.
+        if reset is None or reset.is_spent or reset.is_expired:
+            return _bad_request("That reset link is no longer valid. Request a new one.")
+
+        try:
+            validate_password(new_password, user=reset.user)
+        except DjangoValidationError as error:
+            return _bad_request(" ".join(error.messages))
+
+        with transaction.atomic():
+            reset.used_at = timezone.now()
+            reset.save(update_fields=["used_at"])
+            reset.user.set_password(new_password)
+            reset.user.save(update_fields=["password"])
+
+        # Whoever knew the old password keeps no session: a reset is what
+        # someone does when they have lost control of the account.
+        _revoke_refresh_tokens(reset.user)
+
+        return Response({"detail": "Password reset. You can now log in."})
+
+
+def _as_uuid(token):
+    """The token as a one-item list, or none at all if it isn't a UUID.
+
+    A malformed token has to read as "no such reset" rather than raising —
+    the field is a UUID, and anything can be typed into a URL.
+    """
+    try:
+        return [UUID(token)]
+    except (ValueError, AttributeError, TypeError):
+        return []
 
 
 class VerifyEmailView(APIView):
