@@ -653,6 +653,36 @@ class ProjectTotalsTests(WorkspaceApiTestCase):
         self.assertEqual(rows[0]["total_seconds"], 0)
 
 
+class TimeEntryNotesTests(WorkspaceApiTestCase):
+    """R9j: notes on a logged entry are written apart from its title."""
+
+    def test_patching_notes_saves_them_and_leaves_the_title_alone(self):
+        task = Task.objects.create(user=self.user, title="programming")
+        entry = self.entry(task, 600)
+
+        response = self.client.patch(
+            f"/api/time-entries/{entry.id}/",
+            {"notes": "Wired up the notes modal\nWrote its test"},
+            content_type="application/json",
+            headers=self.headers,
+        )
+
+        self.assertEqual(response.status_code, 200)
+        entry.refresh_from_db()
+        self.assertEqual(entry.notes, "Wired up the notes modal\nWrote its test")
+        self.assertEqual(entry.task_title, "programming")
+
+    def test_todays_log_carries_the_notes(self):
+        task = Task.objects.create(user=self.user, title="programming")
+        entry = self.entry(task, 600)
+        entry.notes = "Refactored the timer"
+        entry.save()
+
+        rows = self.client.get("/api/today-entries/", headers=self.headers).json()
+
+        self.assertEqual(rows[0]["data"]["notes"], "Refactored the timer")
+
+
 class TimeEntryFilterTests(WorkspaceApiTestCase):
     """Ticket 05.5: a project's entries reach it through their task."""
 

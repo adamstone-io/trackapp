@@ -70,6 +70,15 @@ discard time already on the clock without writing an entry. Stop first.
 
 The section renders nothing when the day has no planned tasks.
 
+## Entry notes (React app)
+A logged entry's ⋮ menu has **Notes**, which opens a dialog (`EntryNotesModal`
+in `features/timer/TodayLog.tsx`) for free text about what the session covered —
+the detail that does not belong in the title. Save PATCHes `notes` on
+`/api/time-entries/{id}/` through `useEditTimeEntry`, optimistically like the
+row's other edits; Cancel, Escape or a backdrop click discard the draft. Enter
+is a new line; Cmd/Ctrl+Enter saves. Notes are trimmed, and saving them empty
+clears them. The field has always existed on the model — this is its first UI.
+
 ## Title case
 Titles are stored **lowercase** — `Task.title`, `TimeEntry.task_title` and
 `ActiveTimer.task_title`, normalised by `serializers.lowercase_title()`. Case is

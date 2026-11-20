@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useCallback, useState } from "react";
 import { useToast } from "../../components/toast/ToastProvider";
 import { useQuery } from "@tanstack/react-query";
 import { getTodayEntries } from "../../api/entries";
@@ -6,6 +6,7 @@ import type { TodayEntry } from "../../api/types";
 import { formatClockTime, formatDuration } from "../../lib/time";
 import { isSettled } from "../../lib/optimistic";
 import { RowMenu } from "../../components/RowMenu";
+import { Modal } from "../../components/Modal";
 import {
   TODAY_ENTRIES_KEY,
   useDeleteMoment,
@@ -185,11 +186,74 @@ function ClickableText({
   );
 }
 
+/** Free-text notes on a logged entry — what the session actually covered,
+ * kept out of the title. Save commits; Cancel, Escape or the backdrop discard. */
+function EntryNotesModal({
+  title,
+  initial,
+  onClose,
+  onCommit,
+}: {
+  title: string;
+  initial: string;
+  onClose: () => void;
+  onCommit: (next: string) => void;
+}) {
+  const [draft, setDraft] = useState(initial);
+
+  function save() {
+    onClose();
+    const next = draft.trim();
+    if (next === initial.trim()) return;
+    onCommit(next);
+  }
+
+  return (
+    <Modal title={`Notes · ${title}`} onClose={onClose}>
+      <form
+        className={styles.notesForm}
+        onSubmit={(event) => {
+          event.preventDefault();
+          save();
+        }}
+      >
+        <textarea
+          className={styles.notesInput}
+          aria-label="Entry notes"
+          placeholder="What did you get done?"
+          value={draft}
+          rows={8}
+          autoFocus
+          onChange={(event) => setDraft(event.target.value)}
+          onKeyDown={(event) => {
+            // Enter is for new lines; Cmd/Ctrl+Enter saves.
+            if (event.key === "Enter" && (event.metaKey || event.ctrlKey)) {
+              event.preventDefault();
+              save();
+            }
+          }}
+        />
+        <div className={styles.notesActions}>
+          <button className={styles.cancelMove} type="button" onClick={onClose}>
+            Cancel
+          </button>
+          <button className={styles.saveNotes} type="submit">
+            Save
+          </button>
+        </div>
+      </form>
+    </Modal>
+  );
+}
+
 function TimeEntryRow({ entry }: { entry: Extract<TodayEntry, { type: "time_entry" }> }) {
   const data = entry.data;
   const [editing, setEditing] = useState(false);
   const [editingTimes, setEditingTimes] = useState(false);
   const [movingProject, setMovingProject] = useState(false);
+  const [editingNotes, setEditingNotes] = useState(false);
+  // Stable, so a refetch re-rendering the row doesn't re-run Modal's focus setup mid-typing.
+  const closeNotes = useCallback(() => setEditingNotes(false), []);
   const editEntry = useEditTimeEntry();
   const deleteEntry = useDeleteTimeEntry();
   const moveEntry = useMoveEntryToProject();
@@ -256,6 +320,7 @@ function TimeEntryRow({ entry }: { entry: Extract<TodayEntry, { type: "time_entr
           { label: "Edit", onSelect: () => setEditing(true) },
           { label: "Times", onSelect: () => setEditingTimes(true) },
           { label: "Project", onSelect: () => setMovingProject(true) },
+          { label: "Notes", onSelect: () => setEditingNotes(true) },
           // One press, no confirm step — the owner's call for the day log.
           { label: "Delete", danger: true, onSelect: () => deleteEntry.mutate(entry.id) },
         ]}
@@ -277,6 +342,14 @@ function TimeEntryRow({ entry }: { entry: Extract<TodayEntry, { type: "time_entr
             Cancel
           </button>
         </div>
+      )}
+      {editingNotes && (
+        <EntryNotesModal
+          title={capitalizeFirst(data.task_title)}
+          initial={data.notes ?? ""}
+          onClose={closeNotes}
+          onCommit={(notes) => editEntry.mutate({ id: entry.id, patch: { notes } })}
+        />
       )}
     </>
   );
