@@ -245,7 +245,7 @@ export function useMoveEntryToProject() {
   });
 }
 
-/** Rename an entry, move it between projects, or correct its times — one hook
+/** Rename an entry, correct its times, or write its notes — one hook
  * per row type, taking a patch, the same shape as useEditMoment. */
 export function useEditTimeEntry() {
   const queryClient = useQueryClient();

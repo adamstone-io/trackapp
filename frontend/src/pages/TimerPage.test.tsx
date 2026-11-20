@@ -818,6 +818,78 @@ describe("renaming a time entry", () => {
   });
 });
 
+describe("notes on a time entry", () => {
+  const entryData = {
+    id: "te-1",
+    task: "task-1",
+    task_title: "Programming",
+    started_at: "2026-09-12T10:00:00Z",
+    ended_at: "2026-09-12T11:30:00Z",
+    duration_seconds: 5400,
+    notes: "",
+    breaks: [],
+  };
+
+  function serveEntry(notes: string, onPatch: (body: Record<string, unknown>) => void) {
+    server.use(
+      http.get(api("/today-entries/"), () =>
+        HttpResponse.json([
+          { type: "time_entry", id: "te-1", sort_time: entryData.started_at, data: { ...entryData, notes } },
+        ]),
+      ),
+      http.patch(api("/time-entries/te-1/"), async ({ request }) => {
+        const body = (await request.json()) as Record<string, unknown>;
+        onPatch(body);
+        return HttpResponse.json({ ...entryData, notes, ...body });
+      }),
+    );
+  }
+
+  it("writes notes from the row's ⋮ menu in a dialog, keeping them out of the title", async () => {
+    const user = userEvent.setup();
+    let patched: Record<string, unknown> | null = null;
+    serveEntry("", (body) => (patched = body));
+
+    renderApp("/timer");
+
+    const log = await screen.findByRole("list", { name: /today/i });
+    await user.click(within(log).getByRole("button", { name: "More Programming" }));
+    await user.click(within(log).getByRole("button", { name: /^notes$/i }));
+
+    const dialog = screen.getByRole("dialog", { name: /notes · programming/i });
+    const field = within(dialog).getByLabelText(/entry notes/i);
+    expect(field).toHaveFocus();
+    await user.type(field, "Wired up the notes modal{Enter}Wrote its test");
+    await user.click(within(dialog).getByRole("button", { name: /^save$/i }));
+
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    await waitFor(() => expect(patched).not.toBeNull());
+    expect(patched).toEqual({ notes: "Wired up the notes modal\nWrote its test" });
+    expect(within(log).getByRole("button", { name: "Programming" })).toBeInTheDocument();
+  });
+
+  it("opens with the saved notes, and Cancel leaves them untouched", async () => {
+    const user = userEvent.setup();
+    let patched = false;
+    serveEntry("Refactored the timer", () => (patched = true));
+
+    renderApp("/timer");
+
+    const log = await screen.findByRole("list", { name: /today/i });
+    await user.click(within(log).getByRole("button", { name: "More Programming" }));
+    await user.click(within(log).getByRole("button", { name: /^notes$/i }));
+
+    const dialog = screen.getByRole("dialog", { name: /notes · programming/i });
+    const field = within(dialog).getByLabelText(/entry notes/i);
+    expect(field).toHaveValue("Refactored the timer");
+    await user.type(field, " and more");
+    await user.click(within(dialog).getByRole("button", { name: /^cancel$/i }));
+
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    expect(patched).toBe(false);
+  });
+});
+
 describe("editing times on logged rows", () => {
   it("corrects a time entry's start and end, recomputing its duration", async () => {
     const user = userEvent.setup();

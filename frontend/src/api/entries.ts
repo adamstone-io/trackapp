@@ -35,7 +35,7 @@ export function patchMoment(id: string, patch: MomentPatch): Promise<Moment> {
 }
 
 export type TimeEntryPatch = Partial<
-  Pick<TimeEntry, "task_title" | "task" | "started_at" | "ended_at" | "duration_seconds">
+  Pick<TimeEntry, "task_title" | "task" | "started_at" | "ended_at" | "duration_seconds" | "notes">
 >;
 
 export function patchTimeEntry(id: string, patch: TimeEntryPatch): Promise<TimeEntry> {

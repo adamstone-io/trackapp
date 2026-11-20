@@ -15,10 +15,13 @@ export function Modal({
   children: ReactNode;
 }) {
   const panelRef = useRef<HTMLDivElement>(null);
+  // Read at first render, before a child's autoFocus can move focus inside.
+  const openerRef = useRef(document.activeElement as HTMLElement | null);
 
   useEffect(() => {
-    const opener = document.activeElement as HTMLElement | null;
-    panelRef.current?.focus();
+    const opener = openerRef.current;
+    // A field that autofocused keeps it; otherwise the panel takes focus.
+    if (!panelRef.current?.contains(document.activeElement)) panelRef.current?.focus();
 
     function handleKeyDown(event: KeyboardEvent) {
       if (event.key === "Escape") {
